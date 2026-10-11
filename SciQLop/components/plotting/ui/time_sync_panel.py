@@ -321,14 +321,35 @@ class _projection_shaped_callback:
             return result
         if not isinstance(result, (tuple, list)) or len(result) != 2:
             return result                  # already shaped, or something we don't know
-        time, values = result
-        values = np.asarray(values)
-        if values.ndim != 2:
-            log.error("a projection plot needs several dimensions; %s is 1-D, "
-                      "so there is nothing to project", getattr(self, "node", "product"))
+        try:
+            return _projection_buffers(*result)
+        except ValueError as e:
+            log.error("%s: %s", getattr(self, "node", "product"), e)
             return None
-        return [time] + [np.ascontiguousarray(values[:, i])
-                         for i in range(values.shape[1])]
+
+
+_PROJECTION_PANES = 3  # SciQLopNDProjectionPlot always builds three panes
+
+
+def _projection_buffers(time, values) -> list:
+    """``(time, (N, k))`` -> ``[time, d0, d1, d2]``, the layout a projection
+    plot reads: it picks how to read its buffers from their count.
+
+    simplify: with more components than panes, e.g. a position and its
+    magnitude, only the first three are projected."""
+    values = np.asarray(values)
+    if values.ndim != 2 or values.shape[1] < _PROJECTION_PANES:
+        raise ValueError(f"a projection plot needs {_PROJECTION_PANES} components, "
+                         f"got values of shape {values.shape}")
+    return [time] + [np.ascontiguousarray(values[:, i]) for i in range(_PROJECTION_PANES)]
+
+
+def _projection_labels(labels) -> list:
+    """One label per pane: with any other count SciQLopPlots builds no curve
+    at all, and the plot stays empty without an error."""
+    defaults = ["x", "y", "z"]
+    labels = list(labels)[:_PROJECTION_PANES]
+    return labels + defaults[len(labels):_PROJECTION_PANES]
 
 
 def _y_is_descending(y):
@@ -888,6 +909,7 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
         from SciQLopPlots import PlotType as _SQPPlotType
         if kwargs.get("plot_type") == _SQPPlotType.Projections:
             callback = _projection_shaped_callback(callback)
+            labels = _projection_labels(labels)
         r = target.plot(callback, labels=labels, **kwargs)
         if hasattr(r, '__iter__'):
             r[1].set_name(node.display_name())
@@ -908,8 +930,12 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
 
 def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], x, y, z=None, **kwargs):
     target, existing_plot = _resolve_plot_target(p, kwargs)
+    from SciQLopPlots import PlotType as _SQPPlotType
     if z is not None:
         r = target.plot(x, y, z, **kwargs)
+    elif kwargs.get("plot_type") == _SQPPlotType.Projections:
+        kwargs["labels"] = _projection_labels(kwargs.get("labels") or [])
+        r = target.plot(_projection_buffers(x, y), **kwargs)
     else:
         r = target.plot(x, y, **kwargs)
     if not hasattr(r, '__iter__') and existing_plot is not None:

@@ -8,7 +8,7 @@ def test_projection_axis_ranges_and_scales(qapp, main_window):
     from SciQLop.user_api.plot.enums import PlotType, ScaleType
 
     panel = create_plot_panel()
-    plot, _graph = panel.plot_data(np.arange(10), np.arange(10), plot_type=PlotType.Projection)
+    plot, _graph = panel.plot_data(np.arange(10.), np.random.rand(10, 3), plot_type=PlotType.Projection)
     plot.set_x_range(-1.0, 11.0)
     plot.set_y_range(-2.0, 12.0)
     plot.set_x_scale_type(ScaleType.Logarithmic)
@@ -21,7 +21,7 @@ def test_time_colored_curve(qapp, main_window):
     from SciQLop.user_api.plot.enums import PlotType
 
     panel = create_plot_panel()
-    plot, _graph = panel.plot_data(np.arange(10), np.arange(10), plot_type=PlotType.Projection)
+    plot, _graph = panel.plot_data(np.arange(10.), np.random.rand(10, 3), plot_type=PlotType.Projection)
     t = np.linspace(0, 1, 10)
     # A panel builds three-subplot projection plots, so a curve needs three
     # dimensions; two used to be accepted and silently plotted t as an axis.
