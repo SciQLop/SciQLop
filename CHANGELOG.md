@@ -20,6 +20,7 @@
 
 - An axis label or log scale you set now stays. When a product's data arrived, its metadata overwrote them. The plot-templates tutorial lost its log scales this way, and a label set right after `plot()` was replaced by the product's own label. Labels and scales you never touched still follow the metadata.
 - The metadata labels of a product loaded from a background thread could fail to appear. They are now applied on the GUI thread.
+- A layer's markers are named after the layer in the legend, instead of "Component 0".
 - Projection plots draw again. `panel.plot_data(t, xyz, plot_type=PlotType.Projection)` and products with more than three components, such as an MMS position with its magnitude, gave three empty panes with no error. A projection now uses the first three components. Data with fewer than three components raises an error instead of drawing nothing.
 - On a projection plot, every pane's legend now shows the graph's name: the product's name, or `name=` given to `plot_data`. The component names label the pane axes. Before, `name=` was ignored, each pane's legend showed one component, and the axes had no titles.
 

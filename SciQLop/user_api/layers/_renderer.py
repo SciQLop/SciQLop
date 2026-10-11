@@ -285,6 +285,7 @@ class LayerRenderer(QObject):
             graph = self._plot.scatter(
                 np.empty(0, dtype=np.float64),
                 np.empty(0, dtype=np.float64),
+                labels=[getattr(self._callback, "__name__", "layer")],
                 marker=GraphMarkerShape.FilledCircle,
             )
             for comp in graph.components():
