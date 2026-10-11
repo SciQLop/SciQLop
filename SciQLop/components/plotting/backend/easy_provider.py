@@ -1,6 +1,7 @@
 import functools
 import inspect
 import warnings
+import time
 
 import numpy as np
 from enum import Enum
@@ -293,15 +294,26 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
                           vp=self.name, n_knobs=n_knobs, n_deps=len(self._dependency_specs),
                           start=float(start), stop=float(stop)):
             if self._debug:
-                from SciQLop.user_api.virtual_products.validation import validate_and_call
-                result = validate_and_call(self._callback, *rng, None, None, **kwargs)
-                for d in result.diagnostics:
-                    if d.level == "error":
-                        log.error(f"{self.name}: {d.message}")
-                    elif d.level == "warning":
-                        log.warning(f"{self.name}: {d.message}")
-                return result.data
+                return self._call_and_validate(start, stop, rng, kwargs)
             return self._callback(*rng, **kwargs)
+
+    def _call_and_validate(self, start, stop, rng, kwargs):
+        """Errors raise so they reach the plot's overlay; warnings go to the log.
+
+        The validator gets the float range, not ``rng``: its coverage check
+        compares against the returned timestamps, which are floats."""
+        from SciQLop.user_api.virtual_products.validation import validate_with_data
+        t0 = time.monotonic()
+        data = self._callback(*rng, **kwargs)
+        result = validate_with_data(data, self._parameter_type.name.lower(), self._columns,
+                                    time.monotonic() - t0, start=float(start), stop=float(stop))
+        errors = [d.message for d in result.diagnostics if d.level == "error"]
+        if errors:
+            raise ValueError(f"{self.name}: " + "\n".join(errors))
+        for d in result.diagnostics:
+            if d.level == "warning":
+                log.warning(f"{self.name}: {d.message}")
+        return result.data
 
     def get_data(self, product, start: float, stop: float, knobs=None) -> DataProviderReturnType:
         res = self._checked_colored(self._invoke_callback(start, stop, knobs))
