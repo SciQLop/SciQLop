@@ -309,3 +309,17 @@ def test_panel_reproducer_snippet_passes_knobs_as_product_inputs(panel):
     from SciQLop.components.plotting.ui.graph_context_snippets import panel_reproducer_snippet
     snippet = panel_reproducer_snippet(panel)
     assert 'panel.plot_product("cda/DS/spec", product_inputs={\'method\': \'fast\'})' in snippet
+
+
+def test_coordinate_system_crosses_to_and_from_the_proxy_as_a_product_field():
+    """The proxy reads a product's frame from a top-level "coordinate_system",
+    not from product_inputs: an SSC orbit shared from SciQLop came back in GSE."""
+    from SciQLop.components.plotting.panel_template import ProductModel
+    from SciQLop.components.plotting.ui.proxy_share import _product_config, _product_model
+    product = ProductModel(path="speasy//ssc//mms1", label="mms1", kind="speasy", speasy_id="ssc/mms1",
+                           knobs={"coordinate_system": "gsm", "method": "fast"})
+    config = _product_config(product)
+    assert config["coordinate_system"] == "gsm"
+    assert config["product_inputs"] == {"method": "fast"}
+    back = _product_model(config, ["speasy", "ssc", "mms1"])
+    assert back.knobs == {"coordinate_system": "gsm", "method": "fast"}

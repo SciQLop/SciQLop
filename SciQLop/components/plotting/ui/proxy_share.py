@@ -58,10 +58,16 @@ def _plot_config(plot: PlotModel) -> Optional[dict]:
     return config
 
 
+# Knobs the proxy reads as product fields, not from product_inputs.
+_PROXY_PRODUCT_FIELDS = ("coordinate_system",)
+
+
 def _product_config(product: ProductModel) -> dict:
     config = {"path": product.speasy_id, "label": product.label}
-    if product.knobs:
-        config["product_inputs"] = dict(product.knobs)
+    knobs = dict(product.knobs or {})
+    config.update({k: knobs.pop(k) for k in _PROXY_PRODUCT_FIELDS if k in knobs})
+    if knobs:
+        config["product_inputs"] = knobs
     return config
 
 
@@ -161,6 +167,7 @@ def _plot_model(entry: dict, paths: dict[str, list[str]]) -> PlotModel:
 
 
 def _product_model(product: dict, path: list[str]) -> ProductModel:
+    knobs = {**{k: product[k] for k in _PROXY_PRODUCT_FIELDS if k in product},
+             **(product.get("product_inputs") or {})}
     return ProductModel(path="//".join(path), label=product.get("label") or product["path"],
-                        kind="speasy", speasy_id=product["path"],
-                        knobs=dict(product.get("product_inputs") or {}))
+                        kind="speasy", speasy_id=product["path"], knobs=knobs)
