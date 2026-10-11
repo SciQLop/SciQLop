@@ -131,7 +131,7 @@ class PanelTemplate(BaseModel):
             p.write_text(self.model_dump_json(indent=2))
         elif p.suffix in ('.yaml', '.yml'):
             import yaml
-            p.write_text(yaml.dump(self.model_dump(), default_flow_style=False, sort_keys=False))
+            p.write_text(yaml.dump(self.model_dump(mode="json"), default_flow_style=False, sort_keys=False))
         else:
             raise ValueError(f"Unsupported file extension: {p.suffix}")
 

@@ -86,6 +86,15 @@ class TestFileIO:
         loaded = PanelTemplate.from_file(path)
         assert loaded.name == "yaml_test"
 
+    def test_yaml_round_trip_keeps_axis_ranges(self, tmp_path):
+        """yaml.dump wrote the range tuple as !!python/tuple, which safe_load rejects."""
+        t = _minimal_template(plots=[PlotModel(products=[ProductModel(path="amda/imf")],
+                                               y_axis=AxisModel(log=True, range=(0.1, 100.0)))])
+        path = str(tmp_path / "ranged.yaml")
+        t.to_file(path)
+        loaded = PanelTemplate.from_file(path)
+        assert loaded.plots[0].y_axis.range == (0.1, 100.0)
+
     def test_save_and_load_yml(self, tmp_path):
         t = _minimal_template(name="yml_test")
         path = str(tmp_path / "test.yml")

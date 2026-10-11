@@ -24,6 +24,7 @@
 - The metadata labels of a product loaded from a background thread could fail to appear. They are now applied on the GUI thread.
 - A panel holding only a sub-panel no longer shows its "Add a product to this panel" overlay on top of the sub-panel's plots.
 - A layer's markers are named after the layer in the legend, instead of "Component 0".
+- A panel template saved as YAML can be loaded again. Saving wrote the axis ranges in a form the loader refuses, so "Import template" failed on any YAML file it had exported.
 - Projection plots draw again. `panel.plot_data(t, xyz, plot_type=PlotType.Projection)` and products with more than three components, such as an MMS position with its magnitude, gave three empty panes with no error. A projection now uses the first three components. Data with fewer than three components raises an error instead of drawing nothing.
 - On a projection plot, every pane's legend now shows the graph's name: the product's name, or `name=` given to `plot_data`. The component names label the pane axes. Before, `name=` was ignored, each pane's legend showed one component, and the axes had no titles.
 
