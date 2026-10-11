@@ -1309,6 +1309,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
             self._search_overlay.product_selected.connect(self._on_overlay_product_selected)
             self._search_overlay.proxy_config_pasted.connect(self._on_overlay_proxy_config)
             self.plot_added.connect(self._dismiss_search_overlay)
+            self.panel_added.connect(self._dismiss_search_overlay)
             self._search_overlay.raise_()
             self._search_overlay.focus_search()
 
