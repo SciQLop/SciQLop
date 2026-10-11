@@ -44,6 +44,48 @@ def test_a_vector_product_draws_on_a_projection_plot(plot_panel, qtbot):
     qtbot.waitUntil(lambda: _drawn_points(plot) > 0, timeout=10000)
 
 
+def _panes(plot):
+    from SciQLopPlots import SciQLopCurve, SciQLopPlot
+    panes = plot._get_impl_or_raise().findChildren(SciQLopPlot)
+    return [(pane, next(g for g in pane.plottables() if isinstance(g, SciQLopCurve)))
+            for pane in panes if any(isinstance(g, SciQLopCurve) for g in pane.plottables())]
+
+
+def test_a_named_projection_names_its_curve_and_its_axes(plot_panel):
+    from SciQLop.user_api.plot import PlotType
+    t0 = np.datetime64(START, "s").astype("float64")
+    plot, _ = plot_panel.plot_data(*_orbit(t0, t0 + 86400), plot_type=PlotType.Projection,
+                                   name="MMS1 orbit", labels=["X", "Y", "Z"])
+    panes = _panes(plot)
+    assert [c.labels() for _, c in panes] == [["MMS1 orbit"]] * 3
+    assert [(p.x_axis().label(), p.y_axis().label()) for p, _ in panes] == [("X", "Y"), ("Y", "Z"), ("Z", "X")]
+
+
+def test_a_product_projection_shows_the_product_name_and_its_components_on_the_axes(plot_panel, qtbot):
+    from SciQLop.user_api.plot import PlotType
+    from SciQLop.user_api.virtual_products import create_virtual_product, VirtualProductType
+    vp = create_virtual_product(f"projection_draws//orbit{next(_ids)}", _orbit,
+                                VirtualProductType.Vector, labels=["x", "y", "z"],
+                                display_name="Orbit")
+    plot_panel.time_range = (START, STOP)
+    plot, _ = plot_panel.plot(vp, plot_type=PlotType.Projection)
+    panes = _panes(plot)
+    assert [c.labels() for _, c in panes] == [["Orbit"]] * 3
+    assert [p.x_axis().label() for p, _ in panes] == ["x", "y", "z"]
+
+
+def test_product_metadata_hints_leave_projection_plots_alone(plot_panel):
+    """A projection plot has no y axis of its own: applying hints to it only
+    logged "Abstract method called" for y_axis() and y2_axis()."""
+    from SciQLop.components.plotting.ui import time_sync_panel as tsp
+    from SciQLop.user_api.plot import PlotType
+    from SciQLop.user_api.virtual_products import create_virtual_product, VirtualProductType
+    vp = create_virtual_product(f"projection_draws//vp{next(_ids)}", _orbit,
+                                VirtualProductType.Vector, labels=["x", "y", "z"])
+    plot, _ = plot_panel.plot(vp, plot_type=PlotType.Projection)
+    assert tsp._plot_key(plot._get_impl_or_raise()) not in tsp._PLOT_REGISTRIES
+
+
 def _position_with_magnitude(start: float, stop: float):
     t, xyz = _orbit(start, stop)
     return t, np.column_stack([xyz, np.linalg.norm(xyz, axis=1)])

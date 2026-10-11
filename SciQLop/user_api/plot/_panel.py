@@ -361,6 +361,8 @@ class PlotPanel(GuardedImpl):
                 "y data is required unless x is a SpeasyVariable")
 
         kwargs = _normalize_plot_kwargs(kwargs)
+        if kwargs["plot_type"] == _PlotType.Projections and name is not _UNSET:
+            kwargs["name"] = name  # set_name() can't rename a projection's pane legends
         _p, _g = _plot_static_data(self._get_impl_or_raise(), *ensure_arrays_of_double(x, y, z), index=plot_index,
                                    **kwargs)
         if name is not _UNSET:

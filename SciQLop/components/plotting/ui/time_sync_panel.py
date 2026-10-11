@@ -352,6 +352,18 @@ def _projection_labels(labels) -> list:
     return labels + defaults[len(labels):_PROJECTION_PANES]
 
 
+def _projection_legend(name: Optional[str], components: list) -> list:
+    """Every pane draws the same curve, so its legend names the curve; the
+    components go on the axes instead (see _label_projection_axes)."""
+    return [name] * _PROJECTION_PANES if name else components
+
+
+def _label_projection_axes(r, components: list) -> None:
+    plot = r[0] if isinstance(r, tuple) else None
+    if isinstance(plot, SciQLopNDProjectionPlot):
+        plot.set_axis_labels(components)
+
+
 def _y_is_descending(y):
     if len(y.shape) == 1 and len(y) > 1:
         return np.nanargmin(y) > np.nanargmax(y)
@@ -669,6 +681,8 @@ def _safe_plot_hints(provider, node) -> PlotHints:
 
 def _register_graph_hints(provider, node, r, target) -> Optional["_PostFetchHintsApplier"]:
     plot = _plot_from_result(r, target)
+    if isinstance(plot, SciQLopNDProjectionPlot):
+        return None  # no axes of its own; its panes are labelled by _label_projection_axes
     registry = _get_or_create_registry(plot)
     if registry is None:
         return None
@@ -907,10 +921,14 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
         labels = listify(provider.labels(node))
         log.debug(f"Building plot for {node.name()} with labels: {labels}, kwargs: {kwargs}")
         from SciQLopPlots import PlotType as _SQPPlotType
+        components = None
         if kwargs.get("plot_type") == _SQPPlotType.Projections:
             callback = _projection_shaped_callback(callback)
-            labels = _projection_labels(labels)
+            components = _projection_labels(labels)
+            labels = _projection_legend(node.display_name(), components)
         r = target.plot(callback, labels=labels, **kwargs)
+        if components is not None:
+            _label_projection_axes(r, components)
         if hasattr(r, '__iter__'):
             r[1].set_name(node.display_name())
         else:
@@ -934,8 +952,10 @@ def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProje
     if z is not None:
         r = target.plot(x, y, z, **kwargs)
     elif kwargs.get("plot_type") == _SQPPlotType.Projections:
-        kwargs["labels"] = _projection_labels(kwargs.get("labels") or [])
+        components = _projection_labels(kwargs.get("labels") or [])
+        kwargs["labels"] = _projection_legend(kwargs.pop("name", None), components)
         r = target.plot(_projection_buffers(x, y), **kwargs)
+        _label_projection_axes(r, components)
     else:
         r = target.plot(x, y, **kwargs)
     if not hasattr(r, '__iter__') and existing_plot is not None:
