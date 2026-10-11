@@ -17,6 +17,15 @@ class _Range:
     def stop(self): return self._stop
 
 
+class _StubGraph:
+    """Stands in for the graph plot_product returns; templates put it on its saved y axis."""
+    def y_axis(self):
+        return None
+
+    def set_y_axis(self, axis):
+        pass
+
+
 class _FakePanel(QWidget):
     def __init__(self, plots, start, stop):
         super().__init__()
@@ -208,11 +217,11 @@ def test_apply_proxy_config_sets_range_and_plots_products(qtbot, monkeypatch):
     def fake_plot_product(target, path, **kwargs):
         calls.append((path, target, kwargs.get("product_inputs")))
         if target is not panel:
-            return ("existing", "graph")
+            return ("existing", _StubGraph())
         plot = SciQLopPlot()
         plot.setObjectName(f"plot{len(panel.plots())}")
         plot.setParent(panel)
-        return (plot, "graph")
+        return (plot, _StubGraph())
 
     monkeypatch.setattr(time_sync_panel, "plot_product", fake_plot_product)
     monkeypatch.setattr(proxy_share, "speasy_product_paths",
@@ -247,7 +256,7 @@ def test_apply_proxy_config_groups_products_on_the_same_subplot(qtbot, monkeypat
             plots[-1].setParent(panel)
             target = None
         calls.append((path[-1], target))
-        return (plots[-1], "graph")
+        return (plots[-1], _StubGraph())
 
     monkeypatch.setattr(time_sync_panel, "plot_product", fake_plot_product)
     monkeypatch.setattr(proxy_share, "speasy_product_paths",

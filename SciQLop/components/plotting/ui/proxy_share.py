@@ -52,10 +52,17 @@ def _plot_config(plot: PlotModel) -> Optional[dict]:
     products = [_product_config(p) for p in plot.products if p.kind == "speasy" and p.speasy_id]
     if not products:
         return None
-    config = {"products": products, "y_axis": {"log": plot.y_axis.log}}
-    if any(p.is_colormap for p in plot.products):
+    has_colormap = any(p.is_colormap for p in plot.products)
+    config = {"products": products, "y_axis": {"log": _proxy_value_axis(plot, has_colormap).log}}
+    if has_colormap:
         config["log_z"] = plot.z_axis.log
     return config
+
+
+def _proxy_value_axis(plot: PlotModel, has_colormap: bool) -> AxisModel:
+    """The proxy has one y axis per plot: a spectrogram's energy axis (y2
+    here) when the plot has one, else the left axis."""
+    return plot.y2_axis if has_colormap and plot.y2_axis is not None else plot.y_axis
 
 
 # Knobs the proxy reads as product fields, not from product_inputs.
@@ -159,11 +166,9 @@ def template_from_proxy_config(config: dict) -> tuple[PanelTemplate, list[str]]:
 def _plot_model(entry: dict, paths: dict[str, list[str]]) -> PlotModel:
     products = [_product_model(p, paths[p["path"]]) for p in entry.get("products", [])
                 if p.get("path") in paths]
-    return PlotModel(
-        products=products,
-        y_axis=AxisModel(log=bool((entry.get("y_axis") or {}).get("log", False))),
-        z_axis=AxisModel(log=bool(entry.get("log_z", False))),
-    )
+    value_axis = AxisModel(log=bool((entry.get("y_axis") or {}).get("log", False)))
+    axes = {"y2_axis": value_axis} if "log_z" in entry else {"y_axis": value_axis}
+    return PlotModel(products=products, z_axis=AxisModel(log=bool(entry.get("log_z", False))), **axes)
 
 
 def _product_model(product: dict, path: list[str]) -> ProductModel:

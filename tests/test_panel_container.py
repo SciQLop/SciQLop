@@ -199,6 +199,15 @@ def test_deselect_shortcut_triggers_deselect_all(container):
     assert axis.selected() is False
 
 
+class _StubGraph:
+    """Stands in for the graph plot_product returns; templates put it on its saved y axis."""
+    def y_axis(self):
+        return None
+
+    def set_y_axis(self, axis):
+        pass
+
+
 def _plot_shortcut(plot, key):
     from PySide6.QtGui import QShortcut, QKeySequence
     seq = QKeySequence(key)
@@ -301,7 +310,7 @@ def test_template_range_beyond_zoom_limit_raises_the_limit(container, monkeypatc
 
     def fake_plot_product(panel, path, **kwargs):
         panel.create_plot(len(panel.plots()), PlotType.TimeSeries)
-        return (panel.plots()[-1], "graph")
+        return (panel.plots()[-1], _StubGraph())
 
     monkeypatch.setattr(time_sync_panel, "plot_product", fake_plot_product)
     container.time_range_bar.max_range_seconds = 86400.0

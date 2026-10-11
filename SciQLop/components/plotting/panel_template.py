@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, PrivateAttr
 
@@ -33,6 +33,7 @@ class ProductModel(BaseModel):
     speasy_id: Optional[str] = None
     graph_type: str = ""
     knobs: dict[str, Any] = {}
+    y_axis: Literal["y", "y2"] = "y"  # spectrograms always draw on y2
 
     @property
     def is_colormap(self) -> bool:
@@ -47,6 +48,7 @@ class AxisModel(BaseModel):
 class PlotModel(BaseModel):
     products: list[ProductModel]
     y_axis: AxisModel = AxisModel()
+    y2_axis: Optional[AxisModel] = None  # None: saved before right axes were kept
     z_axis: AxisModel = AxisModel()
 
 
@@ -57,15 +59,26 @@ class IntervalModel(BaseModel):
     label: str = ""
 
 
-def _restore_axis(axis, model: AxisModel) -> None:
-    if model.log:
-        axis.set_log(True)
+def _restore_axis(axis, model: Optional[AxisModel]) -> None:
+    if model is None:
+        return
+    axis.set_log(model.log)
     if model.range is not None:
         axis.set_range(*model.range)
 
 
+def _place_on_axis(plot, graph, axis_name: str) -> None:
+    target = plot.y2_axis() if axis_name == "y2" else plot.y_axis()
+    if graph is not None and graph.y_axis() is not target:
+        graph.set_y_axis(target)
+
+
+def _graph_axis_name(plot, graph) -> str:
+    return "y2" if graph.y_axis() is plot.y2_axis() else "y"
+
+
 def _plot_model(panel, plot_model: PlotModel) -> None:
-    from SciQLop.components.plotting.ui.time_sync_panel import plot_product
+    from SciQLop.components.plotting.ui.time_sync_panel import plot_product, _graph_from_result
     from SciQLopPlots import PlotType as _PlotType
     subplot = None
     for product in plot_model.products:
@@ -78,14 +91,15 @@ def _plot_model(panel, plot_model: PlotModel) -> None:
             r = plot_product(panel, resolved, plot_type=_PlotType.TimeSeries, **inputs)
             if r is not None:
                 subplot = r[0] if hasattr(r, '__iter__') else panel.plots()[-1]
-            else:
-                log.warning(f"Product not found, skipping: {product.path}")
         else:
             r = plot_product(subplot, resolved, **inputs)
-            if r is None:
-                log.warning(f"Product not found, skipping: {product.path}")
+        if r is None:
+            log.warning(f"Product not found, skipping: {product.path}")
+        elif subplot is not None:
+            _place_on_axis(subplot, _graph_from_result(r), product.y_axis)
     if subplot is not None:
         _restore_axis(subplot.y_axis(), plot_model.y_axis)
+        _restore_axis(subplot.y2_axis(), plot_model.y2_axis)
         _restore_axis(subplot.z_axis(), plot_model.z_axis)
 
 
@@ -148,8 +162,10 @@ class PanelTemplate(BaseModel):
             graphs = plot_graphs(plot)
             if graphs:
                 plots.append(PlotModel(
-                    products=[product_model(g) for g in graphs],
+                    products=[product_model(g).model_copy(update={"y_axis": _graph_axis_name(plot, g)})
+                              for g in graphs],
                     y_axis=PanelTemplate._capture_axis(plot.y_axis()),
+                    y2_axis=PanelTemplate._capture_axis(plot.y2_axis()),
                     z_axis=PanelTemplate._capture_axis(plot.z_axis()),
                 ))
         return PanelTemplate(
