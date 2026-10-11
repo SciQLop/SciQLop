@@ -176,6 +176,45 @@ def test_batch_session_exports_a_panel_without_a_display(tmp_path):
     assert Image.open(tmp_path / "sized.png").size == (800, 450)
 
 
+def test_batch_window_capture_shows_the_plots(tmp_path):
+    """The offscreen platform has no QRhi, so a plain grab() left every plot blank."""
+    script = _write_script(tmp_path / "window.py", """
+        import json
+        import numpy as np
+        from SciQLop.user_api.gui import get_main_window
+        from SciQLop.user_api.plot import create_plot_panel
+        from SciQLop.user_api.screenshot import capture_window
+
+        def sine(start, stop):
+            x = np.arange(start, stop, 10.0)
+            return x, np.sin(x / 300.)
+
+        panel = create_plot_panel()
+        panel.plot_function(sine)
+        panel.time_range = ("2020-01-01", "2020-01-01T02:00")
+        panel.settle(timeout=30)
+        capture_window("window.png")
+        plot = panel.plots[0]._get_impl_or_raise()
+        origin = plot.mapTo(get_main_window(), plot.rect().topLeft())
+        json.dump([origin.x(), origin.y(), plot.width(), plot.height()], open("plot.json", "w"))
+    """)
+    env = {k: v for k, v in os.environ.items() if k not in ("DISPLAY", "WAYLAND_DISPLAY", "QT_QPA_PLATFORM")}
+    env[BATCH_ENV] = BatchRequest(script=str(script), args=[], cwd=str(tmp_path)).to_env()
+    env["QT_QPA_PLATFORM"] = "offscreen"
+
+    proc = subprocess.run([sys.executable, "-m", "SciQLop.sciqlop_app"], env=env,
+                          capture_output=True, text=True, timeout=180)
+
+    assert proc.returncode == 0, _without_faulthandler_noise(proc.stderr)
+    import json
+    import numpy as np
+    from PIL import Image
+    x, y, w, h = json.loads((tmp_path / "plot.json").read_text())
+    plot_area = np.asarray(Image.open(tmp_path / "window.png").convert("RGB"))[y:y + h, x:x + w]
+    distinct_colours = len(np.unique(plot_area.reshape(-1, 3), axis=0))
+    assert distinct_colours > 20, "the plot area is blank"
+
+
 def test_batch_exit_closes_plugins_and_keeps_the_script_exit_code(tmp_path):
     marker = tmp_path / "plugin_closed"
     script = _write_script(tmp_path / "exit3.py", f"""

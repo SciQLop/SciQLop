@@ -37,6 +37,10 @@ class BatchRequest:
         return json.dumps(asdict(self))
 
 
+def in_batch_session() -> bool:
+    return BatchRequest.from_env(os.environ) is not None
+
+
 def run_batch_script(request: BatchRequest) -> int:
     """Run the script as ``__main__`` from the caller's directory.
 

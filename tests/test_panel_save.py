@@ -9,6 +9,16 @@ def test_explicit_size_sets_the_image_size(plot_panel, tmp_path):
     assert Image.open(tmp_path / "ql.png").size == (640, 360)
 
 
+def test_default_export_matches_the_screen_resolution(plot_panel, tmp_path, monkeypatch):
+    """On a HiDPI screen the panel shows 2 pixels per logical one; scale=1
+    exported it at half the resolution seen on screen."""
+    from PIL import Image
+    impl = plot_panel._get_impl_or_raise()
+    monkeypatch.setattr(impl, "devicePixelRatioF", lambda: 2.0)
+    plot_panel.save(str(tmp_path / "ql.png"))
+    assert Image.open(tmp_path / "ql.png").size == (2 * impl.width(), 2 * impl.height())
+
+
 def test_scale_is_refused_for_pdf(plot_panel, tmp_path):
     """save_pdf has no scale: silently dropping it would hand back a PDF
     at a size the caller did not ask for."""

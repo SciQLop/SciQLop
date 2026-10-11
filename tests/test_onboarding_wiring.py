@@ -37,6 +37,24 @@ def test_repeated_workspace_loads_start_the_tour_once(main_window, qtbot, monkey
     assert started == ["getting_started"]
 
 
+def test_batch_sessions_never_start_the_tour(main_window, qtbot, monkeypatch):
+    """A tour has no user to follow it, and it covers batch screenshots."""
+    from SciQLop.components.onboarding.backend.settings import OnboardingSettings
+    from SciQLop.core.batch import BATCH_ENV, BatchRequest
+
+    with OnboardingSettings() as s:
+        s.completed_tours = {}
+    monkeypatch.setenv(BATCH_ENV, BatchRequest(script="s.py").to_env())
+    started = []
+    monkeypatch.setattr(main_window, "_start_tour", started.append)
+    main_window._tour_timer.stop()
+
+    main_window._maybe_run_onboarding_tour(None)
+    qtbot.wait(700)
+
+    assert started == []
+
+
 def test_maybe_run_onboarding_tour_starts_when_not_completed(main_window, qtbot):
     from SciQLop.components.onboarding.backend.settings import OnboardingSettings
 

@@ -939,7 +939,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         workspaces_manager_instance().start()
 
     def _maybe_run_onboarding_tour(self, *_args) -> None:
-        if OnboardingSettings().completed_tours.get("getting_started", False):
+        from SciQLop.core.batch import in_batch_session
+        if in_batch_session() or OnboardingSettings().completed_tours.get("getting_started", False):
             return
         self._tour_timer.start()
 
