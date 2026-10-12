@@ -19,7 +19,7 @@ def _install_fake_ipywidgets(monkeypatch):
         def observe(self, fn, names="value"):
             self._observers.append((fn, names))
 
-    for cls_name in ("IntSlider", "FloatSlider", "Checkbox", "Dropdown", "Text"):
+    for cls_name in ("IntSlider", "FloatSlider", "IntText", "FloatText", "Checkbox", "Dropdown", "Text"):
         setattr(fake, cls_name, type(cls_name, (_Widget,), {}))
 
     class HBox(_Widget):

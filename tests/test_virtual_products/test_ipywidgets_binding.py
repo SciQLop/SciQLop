@@ -35,6 +35,12 @@ def _install_fake_ipywidgets(monkeypatch):
     class FloatSlider(_Widget):
         pass
 
+    class IntText(_Widget):
+        pass
+
+    class FloatText(_Widget):
+        pass
+
     class Checkbox(_Widget):
         pass
 
@@ -50,6 +56,8 @@ def _install_fake_ipywidgets(monkeypatch):
 
     fake.IntSlider = IntSlider
     fake.FloatSlider = FloatSlider
+    fake.IntText = IntText
+    fake.FloatText = FloatText
     fake.Checkbox = Checkbox
     fake.Dropdown = Dropdown
     fake.Text = Text
@@ -71,6 +79,20 @@ def test_widget_for_float(monkeypatch):
     from SciQLop.user_api.virtual_products.ipywidgets_binding import widget_for_spec
     w = widget_for_spec(FloatKnob(name="thr", default=0.5, min=0.0, max=1.0, step=0.01))
     assert isinstance(w, fake.FloatSlider)
+
+
+@pytest.mark.parametrize("spec", [
+    FloatKnob(name="frequency", default=0.01),
+    FloatKnob(name="noise_level", default=0.2, min=0.0),
+    IntKnob(name="window", default=5),
+])
+def test_a_knob_without_both_bounds_is_a_number_box(monkeypatch, spec):
+    """A slider without bounds spanned ±1e18: any drag jumped to an absurd value."""
+    fake = _install_fake_ipywidgets(monkeypatch)
+    from SciQLop.user_api.virtual_products.ipywidgets_binding import widget_for_spec
+    w = widget_for_spec(spec)
+    assert isinstance(w, (fake.FloatText, fake.IntText))
+    assert w.value == spec.default and w.step == spec.step
 
 
 def test_widget_for_choice(monkeypatch):

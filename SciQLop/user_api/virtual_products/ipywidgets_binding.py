@@ -22,20 +22,24 @@ def _has_widget_comm() -> bool:
         return False
 
 
+def _number_widget(spec, slider, text):
+    """A slider only when both bounds are known, as in the inspector; otherwise
+    a number box, since a slider over ±1e18 cannot pick a usable value. Values
+    past a single bound are clamped by the knob state."""
+    if spec.min is not None and spec.max is not None:
+        return slider(min=spec.min, max=spec.max, step=spec.step, value=spec.default,
+                      description=spec.label or spec.name)
+    return text(step=spec.step, value=spec.default, description=spec.label or spec.name)
+
+
 def widget_for_spec(spec: KnobSpec):
     w = _import_ipywidgets()
     if w is None:
         return None
     if isinstance(spec, IntKnob):
-        return w.IntSlider(min=spec.min if spec.min is not None else -2**31,
-                           max=spec.max if spec.max is not None else 2**31 - 1,
-                           step=spec.step or 1, value=spec.default,
-                           description=spec.label or spec.name)
+        return _number_widget(spec, w.IntSlider, w.IntText)
     if isinstance(spec, FloatKnob):
-        return w.FloatSlider(min=spec.min if spec.min is not None else -1e18,
-                             max=spec.max if spec.max is not None else 1e18,
-                             step=spec.step or 0.01, value=spec.default,
-                             description=spec.label or spec.name)
+        return _number_widget(spec, w.FloatSlider, w.FloatText)
     if isinstance(spec, BoolKnob):
         return w.Checkbox(value=spec.default,
                           description=spec.label or spec.name)

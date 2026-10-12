@@ -62,6 +62,7 @@
 - A virtual product may return a list instead of a tuple.
 - Out-of-process virtual products (`out_of_process=True`) now report the same mistakes on their plot. Before, their errors and colour mismatches only went to the log, and data outside the requested range drew nothing without a word.
 - `debug=True` now checks each result against the declared product type and labels. A vector with 2 columns instead of 3, or a misshaped spectrogram, is now reported. Its errors show on the plot instead of only in the log. It also no longer breaks on callbacks that take `datetime` arguments.
+- In a `%%vp --debug` cell, a number knob without both a `min` and a `max` is now a number box. Before, it was a slider from -10¹⁸ to 10¹⁸, so any drag jumped to an absurd value.
 
 ### Plugins
 
