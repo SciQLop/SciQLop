@@ -135,13 +135,20 @@ def extract_vp_type_info(annotation) -> Optional[VPTypeInfo]:
     return None
 
 
-def wrap_graph_data(raw_data, data_type_cls: type) -> Optional[_DataType]:
-    """Wrap raw graph.data() output into a typed data container."""
+def wrap_graph_data(raw_data, data_type_cls: type,
+                    start: Optional[float] = None, stop: Optional[float] = None) -> Optional[_DataType]:
+    """Wrap raw graph.data() output into a typed data container, keeping only
+    the samples within [start, stop] when given: a graph also holds data
+    prefetched around its view."""
     if raw_data is None or len(raw_data) < 2:
         return None
     time = np.asarray(raw_data[0])
     values = np.asarray(raw_data[1])
-    return data_type_cls(time=time, values=values)
+    if start is None or stop is None:
+        return data_type_cls(time=time, values=values)
+    window = slice(np.searchsorted(time, start, side="left"), np.searchsorted(time, stop, side="right"))
+    per_sample = len(values) == len(time)
+    return data_type_cls(time=time[window], values=values[window] if per_sample else values)
 
 
 _PRODUCT_TYPE_TO_CLASS = {

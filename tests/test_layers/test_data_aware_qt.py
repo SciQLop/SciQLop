@@ -480,6 +480,8 @@ class TestAddLayerAPI:
         ts_plot = _get_sciqlop_plot(plot_panel, qtbot)
         ts_plot.line(t, np.column_stack([bx, by, bz]),
                      labels=["Bx", "By", "Bz"])
+        from SciQLop.core import TimeRange
+        plot_panel.time_range = TimeRange(t[0], t[-1])
         qtbot.wait(50)
 
         invocations = []

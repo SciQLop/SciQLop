@@ -209,7 +209,7 @@ class LayerRenderer(QObject):
                     return
                 raw = self._data_source.data()
                 cls = data_class_for_product_type(self._data_type.product_type)
-                data = wrap_graph_data(raw, cls)
+                data = wrap_graph_data(raw, cls, start, stop)
                 if data is None:
                     self._render([])
                     return
@@ -322,8 +322,7 @@ class LayerRenderer(QObject):
         segfaults inside ``QWidget::sharedPainter()``. We use the
         ``_x_axis`` reference cached at connect time so we never hit
         the wrapper during teardown, and only attempt the disconnect at
-        all when a ``range_changed`` slot was actually connected
-        (data-aware layers don't connect it).
+        all when a ``range_changed`` slot was actually connected.
         """
         if self._disposed:
             return

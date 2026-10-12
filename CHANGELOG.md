@@ -24,6 +24,7 @@
 - The metadata labels of a product loaded from a background thread could fail to appear. They are now applied on the GUI thread.
 - A panel holding only a sub-panel no longer shows its "Add a product to this panel" overlay on top of the sub-panel's plots.
 - A layer's markers are named after the layer in the legend, instead of "Component 0".
+- A layer that reads a product's data (`data: Vector` and the like) now gets only the samples on screen. It used to get everything the plot had loaded, including data fetched ahead around the view, so a "maximum on screen" marker could land outside the plot. Such a layer also reruns when you pan over data already loaded.
 - A panel template saved as YAML can be loaded again. Saving wrote the axis ranges in a form the loader refuses, so "Import template" failed on any YAML file it had exported.
 - A coordinate system chosen for a product (for example SSC orbits in GSM) now crosses to the Speasy proxy and back. The proxy reads it as a product field; SciQLop sent it among the product's other inputs, and dropped it when loading a proxy link.
 - Templates keep both y axes and which one each graph draws on: a spectrogram's energy axis (right) and lines on the left or right axis. Before, only the left axis was saved, so a spectrogram lost its energy scale and range, a proxy link forced that axis to linear, and a line moved to the right axis came back on the left. A saved linear axis is now restored too.
