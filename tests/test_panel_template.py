@@ -44,7 +44,7 @@ class TestPydanticModels:
 
     def test_defaults(self):
         t = _minimal_template()
-        assert t.version == 1
+        assert t.version == 2
         assert t.description == ""
         assert t.intervals == []
         assert t.plots[0].y_axis.log is False
@@ -95,6 +95,15 @@ class TestFileIO:
         loaded = PanelTemplate.from_file(path)
         assert loaded.plots[0].y_axis.range == (0.1, 100.0)
 
+    def test_a_yaml_template_saved_with_python_tuples_still_loads(self, tmp_path):
+        import yaml
+        old = _minimal_template(plots=[PlotModel(products=[ProductModel(path="amda/imf")],
+                                                 y_axis=AxisModel(log=True, range=(0.1, 100.0)))])
+        path = tmp_path / "old.yaml"
+        path.write_text(yaml.dump(old.model_dump(), default_flow_style=False, sort_keys=False))
+        assert "!!python/tuple" in path.read_text()
+        assert PanelTemplate.from_file(str(path)).plots[0].y_axis.range == (0.1, 100.0)
+
     def test_save_and_load_yml(self, tmp_path):
         t = _minimal_template(name="yml_test")
         path = str(tmp_path / "test.yml")
@@ -125,6 +134,35 @@ class TestTemplateDiscovery:
         names = [t.name for t in list_templates()]
         assert "a" in names
         assert "b" in names
+
+    def test_listing_rewrites_a_version_1_template_with_each_graph_axis(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("SciQLop.components.plotting.panel_template.templates_dir", lambda: tmp_path)
+        (tmp_path / "old.json").write_text(json.dumps({"name": "old", "version": 1, "plots": [{"products": [
+            {"path": "a//spectro", "graph_type": "SciQLopColorMapFunction"},
+            {"path": "a//line", "graph_type": "SciQLopLineGraphFunction"},
+            {"path": "a//unknown"}]}]}))
+        list_templates()
+        saved = json.loads((tmp_path / "old.json").read_text())
+        assert saved["version"] == 2
+        assert [p["y_axis"] for p in saved["plots"][0]["products"]] == ["y2", "y", None]
+
+    def test_listing_rewrites_an_old_yaml_template_without_python_tuples(self, tmp_path, monkeypatch):
+        import yaml
+        monkeypatch.setattr("SciQLop.components.plotting.panel_template.templates_dir", lambda: tmp_path)
+        old = _minimal_template(plots=[PlotModel(products=[ProductModel(path="amda/imf")],
+                                                 y_axis=AxisModel(range=(0.1, 100.0)))]).model_dump()
+        old["version"] = 1
+        (tmp_path / "old.yaml").write_text(yaml.dump(old))
+        list_templates()
+        assert yaml.safe_load((tmp_path / "old.yaml").read_text())["version"] == 2
+
+    def test_listing_leaves_a_current_template_untouched(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("SciQLop.components.plotting.panel_template.templates_dir", lambda: tmp_path)
+        path = tmp_path / "new.json"
+        _minimal_template().to_file(str(path))
+        before = path.stat().st_mtime_ns
+        list_templates()
+        assert path.stat().st_mtime_ns == before
 
     def test_find_template_by_name(self, tmp_path, monkeypatch):
         monkeypatch.setattr("SciQLop.components.plotting.panel_template.templates_dir", lambda: tmp_path)

@@ -33,7 +33,7 @@ class ProductModel(BaseModel):
     speasy_id: Optional[str] = None
     graph_type: str = ""
     knobs: dict[str, Any] = {}
-    y_axis: Literal["y", "y2"] = "y"  # spectrograms always draw on y2
+    y_axis: Optional[Literal["y", "y2"]] = None  # None: where the graph type draws by default
 
     @property
     def is_colormap(self) -> bool:
@@ -67,7 +67,9 @@ def _restore_axis(axis, model: Optional[AxisModel]) -> None:
         axis.set_range(*model.range)
 
 
-def _place_on_axis(plot, graph, axis_name: str) -> None:
+def _place_on_axis(plot, graph, axis_name: Optional[str]) -> None:
+    if axis_name is None:
+        return
     target = plot.y2_axis() if axis_name == "y2" else plot.y_axis()
     if graph is not None and graph.y_axis() is not target:
         graph.set_y_axis(target)
@@ -115,28 +117,65 @@ def _read_max_zoom(panel) -> float | None:
     return None
 
 
+TEMPLATE_VERSION = 2
+
+
+def _default_axis(product: dict) -> dict:
+    graph_type = product.get("graph_type") or ""
+    if "y_axis" in product or not graph_type:
+        return product
+    return {**product, "y_axis": "y2" if "ColorMap" in graph_type else "y"}
+
+
+def _upgrade(data: dict) -> dict:
+    """Version 1 did not say which y axis each graph draws on; a spectrogram
+    always drew on y2, any other graph on y."""
+    if data.get("version", 1) >= TEMPLATE_VERSION:
+        return data
+    plots = [{**plot, "products": [_default_axis(p) for p in plot.get("products", [])]}
+             for plot in data.get("plots", [])]
+    return {**data, "plots": plots, "version": TEMPLATE_VERSION}
+
+
+def _read_template_data(p: Path) -> dict:
+    import json
+    if p.suffix == '.json':
+        return json.loads(p.read_text())
+    if p.suffix in ('.yaml', '.yml'):
+        return _load_yaml(p.read_text())
+    raise ValueError(f"Unsupported file extension: {p.suffix}")
+
+
+def _load_yaml(text: str):
+    """Templates saved before 0.14.2 wrote ranges as !!python/tuple, which
+    safe_load rejects; read those as plain lists."""
+    import yaml
+
+    class Loader(yaml.SafeLoader):
+        pass
+
+    Loader.add_constructor("tag:yaml.org,2002:python/tuple", Loader.construct_sequence)
+    return yaml.load(text, Loader=Loader)
+
+
 class PanelTemplate(BaseModel):
     name: str
     description: str = ""
-    version: int = 1
+    version: int = TEMPLATE_VERSION
     time_range: Optional[TimeRangeModel] = None
     plots: list[PlotModel]
     intervals: list[IntervalModel] = []
     max_zoom_seconds: float | None = None
     _source_path: str | None = PrivateAttr(default=None)
+    _saved_version: int = PrivateAttr(default=TEMPLATE_VERSION)
 
     @staticmethod
     def from_file(path: str) -> PanelTemplate:
         p = Path(path)
-        text = p.read_text()
-        if p.suffix == '.json':
-            t = PanelTemplate.model_validate_json(text)
-        elif p.suffix in ('.yaml', '.yml'):
-            import yaml
-            t = PanelTemplate.model_validate(yaml.safe_load(text))
-        else:
-            raise ValueError(f"Unsupported file extension: {p.suffix}")
+        data = _read_template_data(p)
+        t = PanelTemplate.model_validate(_upgrade(data))
         t._source_path = str(p.resolve())
+        t._saved_version = data.get("version", 1)
         return t
 
     def to_file(self, path: str) -> None:
@@ -276,10 +315,20 @@ def list_templates() -> list[PanelTemplate]:
             if f.stem not in seen_stems:
                 seen_stems.add(f.stem)
                 try:
-                    results.append(PanelTemplate.from_file(str(f)))
+                    results.append(_load_upgrading_file(f))
                 except Exception:
                     pass
     return results
+
+
+def _load_upgrading_file(path: Path) -> PanelTemplate:
+    t = PanelTemplate.from_file(str(path))
+    if t._saved_version < TEMPLATE_VERSION:
+        try:
+            t.to_file(str(path))
+        except OSError as e:
+            log.warning(f"Could not upgrade template {path}: {e}")
+    return t
 
 
 def find_template_file(name: str) -> Path | None:

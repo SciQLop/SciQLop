@@ -103,4 +103,18 @@ def test_a_template_saved_before_right_axes_were_kept_still_loads():
     from SciQLop.components.plotting.panel_template import PanelTemplate
     t = PanelTemplate.model_validate({"name": "old", "plots": [
         {"products": [{"path": "a//b"}], "y_axis": {"log": False, "range": [0, 5]}}]})
-    assert t.plots[0].y2_axis is None and t.plots[0].products[0].y_axis == "y"
+    assert t.plots[0].y2_axis is None and t.plots[0].products[0].y_axis is None
+
+
+def _saved_before_right_axes_were_kept(template):
+    old = template.model_dump()
+    for plot in old["plots"]:
+        del plot["y2_axis"]
+        for product in plot["products"]:
+            del product["y_axis"]
+    return type(template).model_validate(old)
+
+
+def test_an_old_template_keeps_its_spectrogram_on_the_right_axis(plot_panel, main_window):
+    restored = _apply_to_new_panel(_saved_before_right_axes_were_kept(_template_of(_mixed_plot(plot_panel))))
+    assert [g.y_axis() is restored.y2_axis() for g in restored.plottables()] == [True, False]
