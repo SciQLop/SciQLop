@@ -40,7 +40,10 @@
 
 ### Dependencies
 
-- SciQLopPlots 0.51.1:
+- SciQLopPlots 0.51.3:
+  - Showing a new message on a plot overlay that is already on screen now redraws it with the new text and level. It used to keep the old one until cleared.
+  - Lines of large, gap-free data (for example MMS FGM survey) no longer break into dashes at some zoom levels.
+  - The colour bar spans the data area only. It used to run past the x axis and cover the last time label.
   - A plot made before its time range was set fits its data. A stale fetch for the panel's previous range used to take the plot's one-time fit, leaving the axis at 0..5.
   - Axis and colour-bar labels too long for their plot are shortened in the middle, instead of being cut at both ends.
   - A sub-panel follows its parent panel's time range, and plots side by side all keep their time labels.
