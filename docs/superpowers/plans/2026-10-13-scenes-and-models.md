@@ -38,7 +38,9 @@
 - **No frame alias table**: normalisation keeps the part before `>`, upper-cases, and checks the bundled catalogue. Add aliases when a real product needs one.
 - **Trajectories go through speasy** (`cdpp3dview` provider, cached) instead of a SciQLop 3DView trajectory client.
 - **`cross_section` always uses bisection** along in-plane rays (no separate fast path): one code path, exact to ~1e-12 body radii after 60 halvings.
-- **Non-radial boundaries' "all sections, faint" mode is skipped**: no built-in model needs it. → skipped: add when a non-radial model is registered.
+- **Non-radial boundaries' "all sections, faint" mode is skipped**: no built-in model needs it. A non-radial `Boundary` is accepted, but its sections are summarised per angle like a radial one, which is only right if they are star-shaped around the focus. → skipped: add when a non-radial model is registered.
+- **Task 0 added**: a pre-existing bug in projection plots found while planning (see Task 0).
+- **Plan review (opencode, 2026-10-13)** fixed: overlay getter `text()`, `GuardedImpl` has no `__init__`, `remove_plot` takes an index, drop targets can be panes, undefined drop-error helper, `Boundary` protocol exported, unknown frames raise `FrameError` everywhere, non-position products refused, Mars label and mixed-frame tests. Its "seed workaround segfaults" claim did not reproduce (offscreen and Xvfb, bare and `TimeSyncPanel`); what did reproduce became Task 0.
 
 ## Review Focus
 
@@ -47,6 +49,71 @@
 3. An interval crossing midnight → rotations from both days are stitched without a duplicate-time Slerp error. (Task 1 test `test_rotation_spans_two_days`.)
 4. A model whose section is open (tail) → no fake closing line across the tail. (Task 3 test `test_open_tail_leaves_a_gap`.)
 5. Closing a scene plot while a boundary fetch is in flight → no crash (reporter is parented to the subplot; `_PlotErrorReporter.report` already checks `shiboken6.isValid`). (Task 6 test `test_closing_scene_plot_mid_fetch`.)
+
+---
+
+### Task 0: Projection plots no longer get y-axis defaults they don't have
+
+Found while planning (2026-10-13). Every projection plot added to a `TimeSyncPanel` prints
+`Abstract method called: virtual SciQLopPlotAxisInterface* SciQLopPlotInterface::y_axis() const from concrete class: SciQLopNDProjectionPlot`
+(and `y2_axis`): `apply_defaults_to_plot` (`SciQLop/components/plotting/backend/autoscale_percentile.py:59`, a `plot_added`
+hook) treats every plot as having axes. A projection plot has none of its own; its three panes do. Calling an abstract
+C++ method returns null and can crash depending on what follows.
+
+**Files:**
+- Modify: `SciQLop/components/plotting/backend/autoscale_percentile.py:59-71`
+- Test: the existing autoscale-percentile test file (`grep -rln "apply_defaults_to_plot" tests`), or `tests/test_autoscale_percentile_projection.py` if none fits
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+import numpy as np
+from SciQLopPlots import GraphType, PlotType
+
+from .fixtures import *  # noqa: F401, F403
+
+
+def test_projection_plots_get_defaults_on_their_panes(plot_panel, capfd):
+    z = np.zeros(1)
+    proj, _ = plot_panel._get_impl_or_raise().plot([z, z, z, z], plot_type=PlotType.Projections,
+                                                   graph_type=GraphType.ParametricCurve, labels=["", "", ""])
+    assert "Abstract method called" not in capfd.readouterr().err
+    assert all(hasattr(proj.subplot(i), "_sciqlop_percentile_snapshot") for i in range(proj.subplot_count()))
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `uv run pytest <that file>::test_projection_plots_get_defaults_on_their_panes -v`
+Expected: FAIL on the "Abstract method called" assert. If the message goes to the C++ stderr and `capfd` doesn't see it, keep only the second assert (it fails too: the snapshot is set on the projection, not its panes).
+
+- [ ] **Step 3: Fix the shared hook**
+
+```python
+def _axis_plots(plot) -> list:
+    """A projection plot has no axes of its own; its panes do."""
+    if hasattr(plot, "subplot_count"):
+        return [plot.subplot(i) for i in range(plot.subplot_count())]
+    return [plot]
+
+
+def apply_defaults_to_plot(plot) -> None:
+    """..."""  # keep the existing docstring
+    for p in _axis_plots(plot):
+        _apply_defaults(p)
+```
+
+Move the current body of `apply_defaults_to_plot` into `_apply_defaults(plot)` unchanged. Grep every other `plot_added` hook in `time_sync_panel.py` (`_route_canvas_context_menus`, `_apply_theme_to_plot`) for `x_axis()`/`y_axis()` calls on the added plot; if any warns the same way, route it through `_axis_plots` too.
+
+- [ ] **Step 4: Run it, plus the autoscale tests**
+
+Run: `uv run pytest -k "autoscale or percentile or projection" -v` → all pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git commit -m "fix(plotting): projection plots get axis defaults on their panes" -- \
+  SciQLop/components/plotting/backend/autoscale_percentile.py <test file>
+```
 
 ---
 
@@ -173,6 +240,8 @@ def test_frame_names_from_metadata_are_normalised(raw, frame):
 def test_unknown_frame_is_refused():
     with pytest.raises(FrameError, match="RTN"):
         normalise_frame("RTN")
+    with pytest.raises(FrameError, match="RTN"):
+        rotation("RTN", "GSM", np.array([0.0]))
 ```
 
 The `tilt` expectation: compute it from the recorded file in Step 1 (angle of the YZ rotation at 00:00 and 01:00) and paste the two values, rounded to 2 decimals. The live values on 2026-10-13 were ≈ 12.65° and 13.81°.
@@ -232,6 +301,9 @@ def normalise_frame(name: str) -> str:
 
 def _check_same_centre(from_frame: str, to_frame: str) -> None:
     centres = frame_centres()
+    unknown = [f for f in (from_frame, to_frame) if f not in centres]
+    if unknown:
+        raise FrameError(f"3DView does not know the frame {unknown[0]!r}")
     if centres[from_frame] != centres[to_frame]:
         raise FrameError(f"{from_frame} is centred on {centres[from_frame]} and {to_frame} on "
                          f"{centres[to_frame]}: 3DView matrices are rotations only")
@@ -273,12 +345,12 @@ def rotation(from_frame: str, to_frame: str, times: np.ndarray) -> Rotation:
     return Slerp(stamps, rots)(np.clip(times, stamps[0], stamps[-1]))
 ```
 
-Note: `rotation` validates centres with the bundled catalogue, so `test_frames_centred_on_different_bodies_are_refused` makes no network call. `_check_same_centre` raises `KeyError` for unknown names; callers pass names already through `normalise_frame`, or the scene/model declarations validated in Task 4.
+Note: `rotation` validates centres with the bundled catalogue, so `test_frames_centred_on_different_bodies_are_refused` makes no network call.
 
 - [ ] **Step 5: Run to verify they pass**
 
 Run: `uv run pytest tests/scenes/test_frames.py -v`
-Expected: 9 passed.
+Expected: 10 passed.
 
 - [ ] **Step 6: Commit**
 
@@ -299,6 +371,7 @@ git commit -m "feat(scenes): frame rotations from 3DView matrices" -- <same path
 **Interfaces:**
 - Produces:
   - `Plane(normal: np.ndarray (n,3), offset: np.ndarray (n,))`, frozen dataclass.
+  - `Boundary(Protocol)`: the attributes below plus `sample_times` and `cross_section`; the type scenes accept.
   - `class RadialBoundary` with class attributes `name, body, kind, frame, label, description, reference: str`, `focus: tuple[float, float, float] = (0, 0, 0)`, `theta_max: float = np.deg2rad(150)`, `cadence: Optional[float] = None`, `n_samples: int = 200`, `n_rays: int = 720`; abstract `radius(theta, phi, times) -> np.ndarray` (theta, phi shape (n, m); times (n,); returns (n, m)); `sample_times(start, stop) -> np.ndarray`; `cross_section(planes: Plane, times) -> np.ndarray (n, n_rays, 3)` in model frame, body radii, NaN where no crossing.
 
 - [ ] **Step 1: Write the failing tests** — `tests/scenes/test_boundary.py`
@@ -392,7 +465,7 @@ Expected: FAIL, `ModuleNotFoundError`.
 ```python
 """Boundaries star-shaped around a focus: r = r(θ, φ, t)."""
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Protocol
 
 import numpy as np
 
@@ -404,6 +477,23 @@ _FAR = 1e3  # body radii; a ray still inside the boundary this far out has no cr
 class Plane:
     normal: np.ndarray   # (n, 3) unit normals, one per time
     offset: np.ndarray   # (n,) signed distance from the origin
+
+
+class Boundary(Protocol):
+    """What a scene needs from a boundary model. RadialBoundary implements it; a
+    non-radial model implements sample_times and cross_section itself."""
+    name: str
+    body: str
+    kind: str
+    frame: str
+    label: str
+    description: str
+    reference: str
+    focus: tuple[float, float, float]
+
+    def sample_times(self, start: float, stop: float) -> np.ndarray: ...
+
+    def cross_section(self, planes: Plane, times: np.ndarray) -> np.ndarray: ...
 
 
 def _in_plane_basis(normal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -753,7 +843,7 @@ def test_with_boundary_swaps_one_kind(registries):
 
 def test_public_surface_reexports():
     from SciQLop.user_api import scenes
-    for name in ("Body", "Scene", "RadialBoundary", "Plane", "register_body", "register_boundary",
+    for name in ("Body", "Scene", "Boundary", "RadialBoundary", "Plane", "register_body", "register_boundary",
                  "register_scene", "list_bodies", "list_boundaries", "list_scenes"):
         assert hasattr(scenes, name)
 ```
@@ -809,7 +899,7 @@ from typing import Literal, Mapping, Union
 
 import astropy.units as u
 
-from .boundary import RadialBoundary
+from .boundary import Boundary
 from .frames import FrameError, frame_centres
 from .registry import BODIES, BOUNDARIES, SCENES
 
@@ -827,11 +917,11 @@ class Scene:
     name: str
     body: str
     frame: str
-    boundaries: Mapping[str, Union[str, RadialBoundary]] = field(default_factory=dict)
+    boundaries: Mapping[str, Union[str, Boundary]] = field(default_factory=dict)
     summary: Literal["median", "mean"] = "median"
     envelope: bool = True
 
-    def with_boundary(self, kind: str, model: Union[str, RadialBoundary]) -> "Scene":
+    def with_boundary(self, kind: str, model: Union[str, Boundary]) -> "Scene":
         return dataclasses.replace(self, boundaries={**self.boundaries, kind: model})
 
 
@@ -839,10 +929,10 @@ class Scene:
 class ResolvedScene:
     scene: Scene
     body: Body
-    boundaries: dict[str, RadialBoundary]
+    boundaries: dict[str, Boundary]
 
 
-def _model(ref) -> RadialBoundary:
+def _model(ref) -> Boundary:
     return BOUNDARIES.get(ref) if isinstance(ref, str) else ref
 
 
@@ -852,7 +942,7 @@ def _check_frame(frame: str, body: Body) -> None:
         raise FrameError(f"{frame} is centred on {centre}, not {body.threedview}")
 
 
-def _check_body(model: RadialBoundary, body: Body) -> None:
+def _check_body(model: Boundary, body: Body) -> None:
     if model.body != body.name:
         raise ValueError(f"{model.name!r} is a {model.body} model; this is a {body.name} scene")
 
@@ -874,13 +964,13 @@ def resolve(scene: Union[Scene, str]) -> ResolvedScene:
 
 Register your own from a plugin's ``load(main_window)``; plot one with ``panel.plot_scene(name)``.
 """
-from SciQLop.components.scenes.boundary import Plane, RadialBoundary
+from SciQLop.components.scenes.boundary import Boundary, Plane, RadialBoundary
 from SciQLop.components.scenes.frames import FrameError
 from SciQLop.components.scenes.model import Body, Scene
 from SciQLop.components.scenes.registry import BODIES, BOUNDARIES, SCENES, NotRegistered
 from SciQLop.user_api.threading import on_main_thread
 
-__all__ = ["Body", "Scene", "Plane", "RadialBoundary", "FrameError", "NotRegistered",
+__all__ = ["Body", "Scene", "Plane", "Boundary", "RadialBoundary", "FrameError", "NotRegistered",
            "register_body", "register_boundary", "register_scene",
            "list_bodies", "list_boundaries", "list_scenes"]
 
@@ -1148,7 +1238,7 @@ git commit -m "feat(scenes): built-in Earth, Mars and Mercury scenes" -- SciQLop
   - `remove_boundary(proj, graphs: list) -> None`.
   - `ScenePlot` (user_api, `GuardedImpl` subclass): `.scene -> Scene`, `.set_boundary(kind, model)`, `.add_trajectory(source)` (Task 7), `.projection -> ProjectionPlot`.
   - `PlotPanel.plot_scene(scene: Scene | str) -> ScenePlot`.
-  - `scene_plot_for(proj) -> Optional[ScenePlot]` lookup used by Task 8.
+  - `remember_scene_plot(proj, scene_plot)` and `scene_plot_for(widget) -> Optional[ScenePlot]` in `components/scenes/scene_plot.py` (walks parents, so a pane resolves to its scene); used by Task 8.
 
 - [ ] **Step 1: Write the failing tests** — `tests/scenes/test_scene_plot.py`
 
@@ -1175,12 +1265,28 @@ def wait_for_data(qtbot, graph):
     qtbot.waitUntil(lambda: graph.data() is not None and len(graph.data()[0]) > 0, timeout=5000)
 
 
+def axis_labels(sp):
+    proj = sp.projection._get_impl_or_raise()
+    return {a.label() for i in range(proj.subplot_count()) for a in (proj.subplot(i).x_axis(), proj.subplot(i).y_axis())}
+
+
 def test_a_scene_plot_has_three_labelled_panes(plot_panel, earth):
     sp = plot_panel.plot_scene("Earth environment")
-    proj = sp.projection._get_impl_or_raise()
-    assert proj.subplot_count() == 3
-    assert proj.subplot(0).x_axis().label() == "X GSM [R_E]"
-    assert proj.subplot(1).y_axis().label() == "Z GSM [R_E]"
+    assert sp.projection._get_impl_or_raise().subplot_count() == 3
+    assert axis_labels(sp) == {"X GSM [R_E]", "Y GSM [R_E]", "Z GSM [R_E]"}
+
+
+def test_another_body_labels_its_own_frame_and_unit(plot_panel, earth):
+    assert axis_labels(plot_panel.plot_scene("Mars environment")) == {"X MSO [R_M]", "Y MSO [R_M]", "Z MSO [R_M]"}
+
+
+def test_a_model_in_another_frame_is_rotated(plot_panel, earth, qtbot, monkeypatch):
+    from scipy.spatial.transform import Rotation
+    seen = set()
+    monkeypatch.setattr(summary, "rotation",
+                        lambda f, t, times: seen.add((f, t)) or Rotation.identity(len(times)))
+    plot_panel.plot_scene("Earth environment")   # Jelinek 2012 is a GSE model in a GSM scene
+    qtbot.waitUntil(lambda: ("GSM", "GSE") in seen, timeout=5000)
 
 
 def test_each_pane_draws_its_own_section(plot_panel, earth, qtbot):
@@ -1200,9 +1306,9 @@ def test_a_time_range_change_recomputes(plot_panel, earth, qtbot):
     from SciQLop.components.scenes import scene_plot
     scene_plot.pane_summary = summary_calls
     try:
-        sp = plot_panel.plot_scene("Earth environment")
-        plot_panel.time_range = plot_panel.time_range.__class__(0.0, 3600.0)
-        qtbot.waitUntil(lambda: any(c == (0.0, 3600.0) for c in calls), timeout=5000)
+        plot_panel.plot_scene("Earth environment")
+        plot_panel.time_range = TimeRange(0.0, 3600.0)
+        qtbot.waitUntil(lambda: (0.0, 3600.0) in set(calls), timeout=5000)
     finally:
         scene_plot.pane_summary = original
 
@@ -1217,12 +1323,12 @@ def test_boundary_error_shows_on_overlay(plot_panel, earth, qtbot, monkeypatch):
     monkeypatch.setattr(scene_plot, "pane_summary", down)
     sp = plot_panel.plot_scene("Earth environment")
     sub = sp.projection._get_impl_or_raise().subplot(0)
-    qtbot.waitUntil(lambda: "3DView" in (sub.overlay().message() or ""), timeout=5000)
+    qtbot.waitUntil(lambda: "3DView" in (sub.overlay().text() or ""), timeout=5000)
 
 
 def test_closing_scene_plot_mid_fetch(plot_panel, earth, qtbot):
     sp = plot_panel.plot_scene("Earth environment")
-    plot_panel.remove_plot(sp.projection) if hasattr(plot_panel, "remove_plot") else sp.projection.close()
+    plot_panel._get_impl_or_raise().remove_plot(sp.projection._get_impl_or_raise())
     qtbot.wait(300)
 
 
@@ -1233,10 +1339,11 @@ def test_swapping_a_boundary_replaces_its_curves(plot_panel, earth):
     assert len(sp.projection._get_impl_or_raise().subplot(0).plottables()) == before
 ```
 
-Before writing Step 3, check three API details and adjust the tests if they differ (each is a one-line introspection in `uv run python -c`):
-- the overlay text getter: `type(sub.overlay())` and its methods (`message`, `text`, …);
-- the curve data getter on `SciQLopCurveFunction` (`data()` returning `[x, y]`?) — if absent, assert on `graph.components()[0]` data or on `pane_summary` call results instead;
-- how a projection plot is removed from a panel in `user_api` (`PlotPanel.remove_plot`? `ProjectionPlot.close`?) — `grep -n "def remove\|def close" SciQLop/user_api/plot/_panel.py SciQLop/user_api/plot/_plots.py`.
+Add `from SciQLop.user_api.plot import TimeRange` to the test imports.
+
+Checked by the plan review (SciQLopPlots 0.51.3): the overlay getter is `overlay().text()`; `SciQLopCurveFunction.data()` stays `[None, None]` until a finite range is set, hence `wait_for_data`; `PlotPanel.remove_plot` takes an index and only finds `SciQLopPlot` children, so the test removes the projection through the raw panel's `remove_plot(plot)`.
+
+Before Step 3, confirm that setting `plot_panel.time_range` reaches `proj.time_axis()` of a projection inside the panel (one introspection: set the range, print `proj.time_axis().range()`). If it does not, `_pane_graph` must also observe the panel's time axis; `test_a_time_range_change_recomputes` is the check either way.
 
 - [ ] **Step 2: Run to verify they fail**
 
@@ -1357,36 +1464,54 @@ Check `proj.subplot(i).remove_plottable` exists (`type(SciQLopPlot.remove_plotta
 
 `SciQLop/user_api/scenes/__init__.py` — add:
 
+The lookup from a Qt plot to its `ScenePlot` lives in `components/scenes/scene_plot.py`, so it stays out of the
+public surface. A drop can land on one of the three panes rather than the projection itself, so it walks up the parents:
+
 ```python
 import shiboken6
 
+_SCENE_PLOTS: dict[int, object] = {}
+
+
+def _key(qobject) -> int:
+    return shiboken6.getCppPointer(qobject)[0]
+
+
+def remember_scene_plot(proj, scene_plot) -> None:
+    key = _key(proj)
+    _SCENE_PLOTS[key] = scene_plot
+    proj.destroyed.connect(lambda *_: _SCENE_PLOTS.pop(key, None))
+
+
+def scene_plot_for(widget):
+    """The ScenePlot showing *widget*: the projection itself or one of its panes; None otherwise."""
+    while widget is not None:
+        found = _SCENE_PLOTS.get(_key(widget))
+        if found is not None:
+            return found
+        widget = widget.parent()
+    return None
+```
+
+Test it in `test_scene_plot.py`: `scene_plot_for(proj.subplot(1)) is sp` and `scene_plot_for(<a time-series plot of the same panel>) is None`.
+
+`SciQLop/user_api/scenes/__init__.py` — add (`GuardedImpl` is a bare mixin with no `__init__`: assign `_impl` like `ProjectionPlot.__init__` does):
+
+```python
 from SciQLop.components.scenes import scene_plot as _scene_plot
 from SciQLop.components.scenes.model import resolve
 from SciQLop.user_api.plot._plots import ProjectionPlot
 from SciQLop.user_api.plot._thread_safety import GuardedImpl
-
-_SCENE_PLOTS: dict[int, "ScenePlot"] = {}
-
-
-def _key(proj) -> int:
-    return shiboken6.getCppPointer(proj)[0]
-
-
-def scene_plot_for(proj):
-    return _SCENE_PLOTS.get(_key(proj))
 
 
 class ScenePlot(GuardedImpl):
     """A projection plot showing a scene: its body, boundaries and trajectories, in one frame and unit."""
 
     def __init__(self, proj, resolved):
-        super().__init__(proj)
         self._impl = proj
         self._resolved = resolved
         self._boundary_graphs = {}
-        key = _key(proj)
-        _SCENE_PLOTS[key] = self
-        proj.destroyed.connect(lambda *_: _SCENE_PLOTS.pop(key, None))
+        _scene_plot.remember_scene_plot(proj, self)
 
     def _get_impl_or_raise(self):
         return self._impl
@@ -1412,7 +1537,7 @@ class ScenePlot(GuardedImpl):
         self._resolved = resolved
 ```
 
-Read `GuardedImpl` in `SciQLop/user_api/plot/_thread_safety.py` before writing this class and follow how `ProjectionPlot.__init__` uses it (constructor arguments, `_on_destroyed`, `_get_impl_or_raise`); the sketch above must match that pattern, not override it blindly.
+Compare with `ProjectionPlot.__init__`/`_get_impl_or_raise` in `SciQLop/user_api/plot/_plots.py` and copy its dead-object check (it raises a clear error once the Qt object is gone) into `ScenePlot._get_impl_or_raise`.
 
 `PlotPanel.plot_scene` in `SciQLop/user_api/plot/_panel.py` (next to `plot_data`):
 
@@ -1534,6 +1659,14 @@ def test_a_product_without_unit_is_refused(fake_speasy, monkeypatch):
     monkeypatch.setattr(speasy, "get_data", lambda *a, **k: FakeVariable([[1, 0, 0]] * 2, {"COORDINATE_SYSTEM": "GSM"}))
     with pytest.raises(ValueError, match="no unit"):
         scene_plot.trajectory_source("cda/X/pos", EARTH)(0.0, 600.0)
+
+
+def test_a_product_that_is_not_a_position_is_refused(monkeypatch):
+    import speasy
+    monkeypatch.setattr(speasy, "get_data", lambda *a, **k: FakeVariable(
+        [[1.0], [2.0]], {"UNITS": "km", "COORDINATE_SYSTEM": "GSM", "FIELDNAM": "Bt"}))
+    with pytest.raises(ValueError, match="Bt is not a position"):
+        scene_plot.trajectory_source("cda/X/bt", EARTH)(0.0, 600.0)
 ```
 
 Plus one Qt test in the same file, using `plot_panel`, the `earth` fixture pattern from Task 6 and `fake_speasy`: `sp.add_trajectory("MMS1")` adds a plottable to the projection and time colouring is enabled (`proj.time_color_enabled()`).
@@ -1578,9 +1711,12 @@ def _fetch(source: str, frame: str, start: float, stop: float):
 
 
 def _in_body_radii(v, body) -> np.ndarray:
+    name = v.meta.get("FIELDNAM", "the product")
     unit = v.unit or v.meta.get("UNITS")
     if not unit:
-        raise ValueError(f"{v.meta.get('FIELDNAM', 'the product')} has no unit")
+        raise ValueError(f"{name} has no unit")
+    if v.values.ndim != 2 or v.values.shape[1] < 3:
+        raise ValueError(f"{name} is not a position: values of shape {v.values.shape}")
     return (v.values[:, :3] * u.Unit(unit)).to_value(body.radius)
 
 
@@ -1698,10 +1834,16 @@ Expected: FAIL, `ModuleNotFoundError: SciQLop.components.scenes.tree`.
 
 ```python
 """Scenes and models in the products tree, and what dropping them does."""
+from SciQLopPlots import OverlayLevel, OverlayPosition, OverlaySizeMode
+
 from SciQLop.core.enums import ParameterType
 from SciQLop.core.models import ProductsModelNodeType, add_product_node
 
 KIND_KEY = "sciqlop_kind"
+
+
+def show_drop_error(plot, message: str) -> None:
+    plot.overlay().show_message(message, OverlayLevel.Error, OverlaySizeMode.FitContent, OverlayPosition.Top)
 
 
 def _add_node(path: list[str], name: str, kind: str, description: str) -> None:
@@ -1726,18 +1868,18 @@ def plot_scene(plot, product, panel):
 
 def set_boundary(plot, product, panel):
     from SciQLop.components.scenes.registry import BOUNDARIES
-    from SciQLop.user_api.scenes import scene_plot_for
+    from SciQLop.components.scenes.scene_plot import scene_plot_for
     model = next(m for m in BOUNDARIES.list() if (m.label or m.name) == product[-1])
     scene_plot_for(plot).set_boundary(model.kind, model)
 
 
 def add_trajectory(plot, product, panel):
-    from SciQLop.user_api.scenes import scene_plot_for
+    from SciQLop.components.scenes.scene_plot import scene_plot_for
     scene_plot_for(plot).add_trajectory("//".join(product))
 
 
 def refuse(plot, product, panel):
-    plot.overlay().show_message(f"{product[-1]} is a model: drop it on a scene plot of its body", *_ERROR_STYLE)
+    show_drop_error(plot, f"{product[-1]} is a model: drop it on a scene plot of its body")
 
 
 def plot_product(plot, product, panel):
@@ -1762,14 +1904,14 @@ def drop_handler(kind: str, target_is_scene: bool):
     return _TABLE[(kind, target_is_scene)]
 ```
 
-`_ERROR_STYLE`: copy the `(OverlayLevel.Error, OverlaySizeMode.FitContent, OverlayPosition.Top)` tuple used by `_PlotErrorReporter._show` (import those enums from where `time_sync_panel.py` imports them). For `plot_scene`, check how the user_api wraps an existing `TimeSyncPanel` impl into a `PlotPanel` (`grep -n "class PlotPanel" -A20 SciQLop/user_api/plot/_panel.py`) and use that constructor; if wrapping is awkward, call `create_scene_plot` + `ScenePlot` directly as `PlotPanel.plot_scene` does. A boundary dropped on a scene of another body: `set_boundary` raises `ValueError` from `resolve`; catch it in `ProductDnDCallback.call` and show it with `refuse`'s overlay style (never raise from the drop slot).
+For `plot_scene`, check how the user_api wraps an existing `TimeSyncPanel` impl into a `PlotPanel` (`grep -n "class PlotPanel" -A20 SciQLop/user_api/plot/_panel.py`) and use that constructor; if wrapping is awkward, call `create_scene_plot` + `ScenePlot` directly as `PlotPanel.plot_scene` does. A boundary dropped on a scene of another body: `set_boundary` raises `ValueError` from `resolve`; catch it in `ProductDnDCallback.call` and show it with `refuse`'s overlay style (never raise from the drop slot).
 
 `ProductDnDCallback.call` becomes:
 
 ```python
     def call(self, plot, mime_data: QMimeData):
-        from SciQLop.components.scenes.tree import KIND_KEY, drop_handler
-        from SciQLop.user_api.scenes import scene_plot_for
+        from SciQLop.components.scenes.tree import KIND_KEY, drop_handler, show_drop_error
+        from SciQLop.components.scenes.scene_plot import scene_plot_for
         for product in decode_mime(mime_data):
             node = ProductsModel.node(product)
             if node is None:
@@ -1779,10 +1921,10 @@ def drop_handler(kind: str, target_is_scene: bool):
                 drop_handler(kind, scene_plot_for(plot) is not None)(plot, product, self.parent())
             except Exception as e:
                 log.error("drop of %s failed", product, exc_info=True)
-                _show_drop_error(plot, f"{product[-1]}: {e}")
+                show_drop_error(plot, f"{product[-1]}: {e}")
 ```
 
-`_show_drop_error` is a small module function next to it using the same overlay style. In `_provider.py`, replace `LAYER_META_KEY: "true"` with `"sciqlop_kind": "layer"` and delete `LAYER_META_KEY`; `grep -rn "LAYER_META_KEY\|sciqlop_layer" SciQLop tests` must return nothing afterwards (update any test that referenced it).
+Add a drop test onto a **pane** (`proj.subplot(1)`) of a scene plot, not only onto the projection: a boundary dropped there must swap the scene's boundary. In `_provider.py`, replace `LAYER_META_KEY: "true"` with `"sciqlop_kind": "layer"` and delete `LAYER_META_KEY`; `grep -rn "LAYER_META_KEY\|sciqlop_layer" SciQLop tests` must return nothing afterwards (update any test that referenced it).
 
 Smart search: check that it indexes node `description` metadata (`grep -n "description" SciQLop/components/smart_search/*.py SciQLop/components/products/smart_search_domain.py`). If it does, typing "magnetopause" finds the models with no extra code; add that as a test in `test_scene_tree.py`. If it doesn't, put the kind in the node name's path (it already is: `Models/Earth/magnetopause/...`) and say so in the commit message.
 
