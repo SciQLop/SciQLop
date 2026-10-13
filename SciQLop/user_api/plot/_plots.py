@@ -18,11 +18,14 @@ from SciQLopPlots import SciQLopNDProjectionPlot as _SciQLopNDProjectionPlot
 from SciQLopPlots import GraphType as _GraphType, GraphMarkerShape as _GraphMarkerShape
 from SciQLopPlots import ColorGradient as _ColorGradient
 from SciQLop.components.plotting.ui.time_sync_panel import plot_product as _plot_product
-from ._thread_safety import on_main_thread, GuardedImpl
+from SciQLop.components.plotting.ui.time_sync_panel import unnamed_columns as _unnamed_columns
+from ._thread_safety import on_main_thread, GuardedImpl, _qt_property
+from ._axis import Axis
 from ._overlay import Overlay
 from .._annotations import experimental_api
-from PySide6.QtCore import Qt as _Qt
+from ._lines import _LINE_STYLE_TO_QT
 from PySide6.QtGui import QColor as _QColor, QPen as _QPen
+from SciQLop.core.colors import to_qcolor
 
 from speasy.core import AnyDateTimeType
 
@@ -95,15 +98,6 @@ def _bind_y_axis(plottable, y_axis: str):
     if isinstance(plottable, Graph):
         plottable.y_axis = y_axis
     return plottable
-
-
-_LINE_STYLE_TO_QT = {
-    GraphLineStyle.Solid: _Qt.PenStyle.SolidLine,
-    GraphLineStyle.Dash: _Qt.PenStyle.DashLine,
-    GraphLineStyle.Dot: _Qt.PenStyle.DotLine,
-    GraphLineStyle.DashDot: _Qt.PenStyle.DashDotLine,
-    GraphLineStyle.DashDotDot: _Qt.PenStyle.DashDotDotLine,
-}
 
 
 def _given(value):
@@ -414,6 +408,32 @@ class _BasePlot(GuardedImpl, Plot):
         return getter()
 
     @on_main_thread
+    def axis(self, name: _AxisName) -> Axis:
+        """The ``"x"``, ``"y"``, ``"y2"`` or ``"z"`` axis, to style its label,
+        ticks and autoscaling.
+
+        Examples
+        --------
+        >>> plot.axis("y").label_color = "red"
+        """
+        self._resolve_axis(name)
+        return Axis(self, name)
+
+    name = _qt_property("objectName", "setObjectName", to_qt=str,
+                       doc="The plot's name, shown in the Properties panel.")
+    crosshair = _qt_property("crosshair_enabled", "set_crosshair_enabled", to_qt=bool,
+                            doc="Show a crosshair with the values under the mouse.")
+    equal_aspect_ratio = _qt_property("equal_aspect_ratio", "set_equal_aspect_ratio", to_qt=bool,
+                                     doc="Keep one x unit as long as one y unit on screen.")
+    scroll_factor = _qt_property("scroll_factor", "set_scroll_factor", to_qt=float,
+                                doc="How much one mouse-wheel step zooms.")
+    auto_scale = _qt_property("auto_scale", "set_auto_scale", to_qt=bool,
+                             doc="Fit the vertical axes to the data whenever it changes.")
+    legend_font = _qt_property("font", "set_font", of=lambda plot: plot._get_impl_or_raise().legend())
+    legend_color = _qt_property("color", "set_color", to_qt=to_qcolor,
+                               of=lambda plot: plot._get_impl_or_raise().legend())
+
+    @on_main_thread
     def apply_hints(self, hints) -> None:
         """Apply a :class:`SciQLop.core.plot_hints.PlotHints` bundle.
 
@@ -656,6 +676,7 @@ class XYPlot(_BasePlot):
             else:
                 raise ValueError("Invalid arguments")
         elif len(args) == 2:
+            kwargs.setdefault("labels", _unnamed_columns(args[1]))
             raw = _apply_name(
                 self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs), name)
             _apply_graph_options(raw, line_style, line_shape, gap_threshold)

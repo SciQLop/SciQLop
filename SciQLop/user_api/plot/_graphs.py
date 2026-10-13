@@ -4,7 +4,7 @@ import numpy as np
 
 import math
 
-from .enums import BinStrategy, LineShape
+from .enums import BinStrategy, LineShape, HistogramNormalization
 from .protocol import Plot, Plottable
 from ..virtual_products import VirtualProduct
 from SciQLopPlots import SciQLopHistogram2D as _SciQLopHistogram2D
@@ -15,7 +15,8 @@ from SciQLopPlots import ColorGradient as _ColorGradient
 from SciQLopPlots import GraphLineStyle as _SqpLineShape
 from PySide6.QtGui import QColor as _QColor
 from SciQLop.core.colors import to_qcolor
-from ._thread_safety import on_main_thread, GuardedImpl
+from ._thread_safety import on_main_thread, GuardedImpl, _qt_property
+from ._lines import Line, _over_lines
 from SciQLop.core import tracing as _tracing
 
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
@@ -174,6 +175,46 @@ class _Named:
         return self._impl.objectName()
 
 
+class _ColorScaled:
+    """The colour scale shared by colormaps and 2D histograms."""
+
+    @property
+    @on_main_thread
+    def z_log_scale(self) -> bool:
+        return self._get_impl_or_raise().z_log_scale()
+
+    @z_log_scale.setter
+    @on_main_thread
+    def z_log_scale(self, v: bool):
+        self._get_impl_or_raise().set_z_log_scale(v)
+
+    @property
+    @on_main_thread
+    def gradient(self):
+        return self._get_impl_or_raise().gradient()
+
+    @gradient.setter
+    @on_main_thread
+    def gradient(self, g):
+        self._get_impl_or_raise().set_gradient(_as_color_gradient(g))
+
+    @property
+    @on_main_thread
+    def autoscale_percentile(self) -> tuple[float, float]:
+        """The (low, high) percentiles of the data the colour scale fits to
+        when it autoscales, so outliers do not wash out the rest."""
+        impl = self._get_impl_or_raise()
+        return impl.autoscale_percentile_low(), impl.autoscale_percentile_high()
+
+    @autoscale_percentile.setter
+    @on_main_thread
+    def autoscale_percentile(self, bounds: tuple[float, float]):
+        low, high = bounds
+        impl = self._get_impl_or_raise()
+        impl.set_autoscale_percentile_low(float(low))
+        impl.set_autoscale_percentile_high(float(high))
+
+
 class Graph(GuardedImpl, _Named, Plottable):
     def __init__(self, impl, plot=None):
         self._impl = impl
@@ -258,6 +299,19 @@ class Graph(GuardedImpl, _Named, Plottable):
 
     @property
     @on_main_thread
+    def lines(self) -> List[Line]:
+        """One :class:`Line` per component, to style a single line."""
+        return [Line(self, i) for i in range(len(self._get_impl_or_raise().components()))]
+
+    color = _over_lines("color", "Colour of every line; None when they differ.")
+    line_width = _over_lines("line_width", "Width of every line, in pixels; None when they differ.")
+    line_style = _over_lines("line_style", "Dash pattern (GraphLineStyle) of every line; None when they differ.")
+    marker = _over_lines("marker", "Marker (MarkerShape) of every line; None when they differ.")
+    marker_size = _over_lines("marker_size", "Marker size of every line; None when they differ.")
+    marker_color = _over_lines("marker_color", "Marker outline colour of every line; None when they differ.")
+
+    @property
+    @on_main_thread
     def gap_threshold(self) -> float:
         """A line graph breaks where a step is more than this many times its
         neighbours'. ``0`` never breaks it, for step or state data."""
@@ -278,7 +332,7 @@ class Graph(GuardedImpl, _Named, Plottable):
             p.text(f"Graph({self._impl})")
 
 
-class ColorMap(GuardedImpl, _Named, Plottable):
+class ColorMap(GuardedImpl, _Named, _ColorScaled, Plottable):
     def __init__(self, impl):
         self._impl = impl
         _wire_destroyed(self, impl)
@@ -320,6 +374,12 @@ class ColorMap(GuardedImpl, _Named, Plottable):
     def visible(self, visible):
         self._get_impl_or_raise().set_visible(visible)
 
+    auto_scale_y = _qt_property("auto_scale_y", "set_auto_scale_y", to_qt=bool,
+                               doc="Fit the y axis to the data whenever it changes.")
+    contour_levels = _qt_property("auto_contour_level_count", "set_auto_contour_levels", to_qt=int,
+                                 doc="How many evenly spaced contour lines to draw; 0 draws none.")
+    contour_color = _qt_property("contour_color", "set_contour_color", to_qt=to_qcolor)
+
     def _repr_pretty_(self, p, cycle):
         if cycle:
             p.text("ColorMap(...)")
@@ -327,7 +387,7 @@ class ColorMap(GuardedImpl, _Named, Plottable):
             p.text(f"ColorMap({self._impl})")
 
 
-class Histogram2D(GuardedImpl, _Named, Plottable):
+class Histogram2D(GuardedImpl, _Named, _ColorScaled, Plottable):
     """A 2D density histogram. Bins (x, y) scatter into an x_bins x y_bins grid."""
 
     def __init__(self, impl, x_bin_edges=None, y_bin_edges=None):
@@ -388,23 +448,22 @@ class Histogram2D(GuardedImpl, _Named, Plottable):
 
     @property
     @on_main_thread
-    def z_log_scale(self) -> bool:
-        return self._get_impl_or_raise().z_log_scale()
+    def bins(self) -> tuple[int, int]:
+        """Number of bins along (x, y)."""
+        impl = self._get_impl_or_raise()
+        return impl.x_bins(), impl.y_bins()
 
-    @z_log_scale.setter
+    @bins.setter
     @on_main_thread
-    def z_log_scale(self, v: bool):
-        self._get_impl_or_raise().set_z_log_scale(v)
+    def bins(self, bins: tuple[int, int]):
+        x_bins, y_bins = bins
+        self._get_impl_or_raise().set_bins(int(x_bins), int(y_bins))
 
-    @property
-    @on_main_thread
-    def gradient(self):
-        return self._get_impl_or_raise().gradient()
-
-    @gradient.setter
-    @on_main_thread
-    def gradient(self, g):
-        self._get_impl_or_raise().set_gradient(_as_color_gradient(g))
+    x_bins_log = _qt_property("x_bins_log", "set_x_bins_log", to_qt=bool)
+    y_bins_log = _qt_property("y_bins_log", "set_y_bins_log", to_qt=bool)
+    normalization = _qt_property("normalization", "set_normalization",
+                                to_qt=lambda n: HistogramNormalization(n).value,
+                                from_qt=HistogramNormalization)
 
     @property
     def x_bin_edges(self):

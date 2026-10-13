@@ -20,6 +20,8 @@
 
 ### Plotting
 
+- Everything the Properties panel edits can now be set from Python, so notebooks and the agent can do what a user does by clicking. `graph.lines` gives each line of a graph, with its colour, width, dash style, marker, marker size and colour, and visibility; the same settings on the graph apply to all its lines. `plot.axis("y")` styles an axis label, its tick labels and its autoscaling. Plots gain `name`, `crosshair`, `equal_aspect_ratio`, `scroll_factor`, `auto_scale` and the legend font and colour. Colormaps gain their gradient, log colour scale, contours and y autoscale; 2D histograms their bins and normalisation. A panel can be renamed with `panel.name = ...`.
+- An XY curve plotted without `labels=` now takes `line_style=` and other styling straight away. Its lines only appeared once its data had been processed, so styling applied right after plotting was silently lost.
 - An axis label or log scale you set now stays. When a product's data arrived, its metadata overwrote them. The plot-templates tutorial lost its log scales this way, and a label set right after `plot()` was replaced by the product's own label. Labels and scales you never touched still follow the metadata.
 - The metadata labels of a product loaded from a background thread could fail to appear. They are now applied on the GUI thread.
 - A panel holding only a sub-panel no longer shows its "Add a product to this panel" overlay on top of the sub-panel's plots.

@@ -1,12 +1,15 @@
 """Plotting API. This module provides the public API for plotting data and managing plot panels.
 """
 from .enums import (ScaleType, PlotType, OverlayLevel, OverlaySizeMode, OverlayPosition, LineShape,
-                    GraphType, GraphLineStyle, BinStrategy, AxisType, CoordinateSystem, Orientation)
+                    GraphType, GraphLineStyle, BinStrategy, AxisType, CoordinateSystem, Orientation,
+                    MarkerShape, HistogramNormalization)
 from .protocol import Plot, Plottable
 
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 from ._plots import XYPlot, TimeSeriesPlot, ProjectionPlot, TimeRange
 from ._graphs import Histogram2D, Waterfall
+from ._lines import Line
+from ._axis import Axis
 from ._timeline import Timeline, Interval, IntervalEdit
 from ._panel import PlotPanel, create_plot_panel, plot_panel, list_plot_panels
 from ._panel_menus import register_panel_menu, unregister_panel_menu
@@ -24,6 +27,6 @@ __all__ = ['register_panel_menu', 'unregister_panel_menu', 'ScaleType', 'PlotTyp
            'create_plot_panel', 'plot_panel', 'list_plot_panels',
            'GraphType', 'GraphLineStyle', 'BinStrategy', 'AxisType', 'CoordinateSystem', 'Orientation', 'TimeRange', 'Pixmap', 'Ellipse', 'Text', 'CurvedLine', 'HorizontalLine',
            'VerticalLine', 'StraightLine', 'RectangularSpan', 'HorizontalSpan',
-           'LineTermination', 'fluent',
+           'LineTermination', 'fluent', 'Line', 'Axis', 'MarkerShape', 'HistogramNormalization',
            'Overlay', 'OverlayLevel', 'OverlaySizeMode', 'OverlayPosition',
            'Marker', 'Span', 'HLine', 'Scalar', 'Vector', 'MultiComponent', 'Spectrogram']

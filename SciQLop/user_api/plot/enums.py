@@ -56,6 +56,32 @@ class LineShape(Enum):
     StepCenter = 3
 
 
+class MarkerShape(Enum):
+    """The symbol drawn at each point of a line."""
+    NoMarker = 0
+    Dot = 1
+    Circle = 2
+    Square = 3
+    Triangle = 4
+    Diamond = 5
+    Star = 6
+    Plus = 7
+    Cross = 8
+    FilledCircle = 9
+    InvertedTriangle = 10
+    CrossedSquare = 11
+    PlusSquare = 12
+    CrossedCircle = 13
+    PlusCircle = 14
+
+
+class HistogramNormalization(Enum):
+    """``Counts`` shows raw bin counts; ``PerColumn`` divides each x column by
+    its total, so each column shows the distribution of y at that x."""
+    Counts = 0
+    PerColumn = 1
+
+
 class AxisType(Enum):
     Linear = 0
     Logarithmic = 1

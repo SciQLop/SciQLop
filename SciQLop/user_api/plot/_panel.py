@@ -171,8 +171,14 @@ class PlotPanel(GuardedImpl):
     @experimental_api()
     @on_main_thread
     def name(self) -> str:
-        """The panel's unique name."""
+        """The panel's unique name. Renaming to a name already taken adds a
+        number to keep it unique."""
         return self._get_impl_or_raise().name
+
+    @name.setter
+    @on_main_thread
+    def name(self, name: str) -> None:
+        self._get_impl_or_raise().setObjectName(str(name))
 
     @experimental_api()
     @on_main_thread

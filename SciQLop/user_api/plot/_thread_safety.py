@@ -20,4 +20,29 @@ class GuardedImpl:
         self.__impl = value
 
 
+def _same(value):
+    return value
+
+
+def _wrapped_impl(wrapper):
+    return wrapper._get_impl_or_raise()
+
+
+def _qt_property(getter: str, setter: str, *, to_qt=_same, from_qt=_same, of=_wrapped_impl,
+                doc: str = ""):
+    """A property forwarding to ``getter()`` / ``setter(value)`` on a Qt object,
+    on the GUI thread. ``of(wrapper)`` picks that object (the wrapped impl by
+    default); ``to_qt`` / ``from_qt`` convert the value on the way in / out."""
+
+    @on_main_thread
+    def fget(self):
+        return from_qt(getattr(of(self), getter)())
+
+    @on_main_thread
+    def fset(self, value):
+        getattr(of(self), setter)(to_qt(value))
+
+    return property(fget, fset, doc=doc)
+
+
 __all__ = ["on_main_thread", "GuardedImpl"]
