@@ -42,3 +42,15 @@ def test_speasy_variable_spectrogram_reduces_to_time_freq_z():
     assert abs(x[0] - 1577836800.0) < 1.0
     np.testing.assert_array_equal(y, freqs)
     np.testing.assert_array_equal(z, zvals)
+
+
+def test_reducing_plain_arrays_does_not_import_speasy():
+    """Importing speasy pings every data server; with one down, a worker's
+    first request waited on the network."""
+    import subprocess
+    import sys
+    code = ("import sys, numpy as np\n"
+            "from SciQLop.components.plotting.backend.remote.reduction import reduce_result\n"
+            "reduce_result((np.arange(3.0), np.arange(3.0)), arity=2)\n"
+            "assert 'speasy' not in sys.modules\n")
+    subprocess.run([sys.executable, "-c", code], check=True, timeout=60)

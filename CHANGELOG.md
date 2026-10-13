@@ -58,6 +58,7 @@
 
 ### Virtual products
 
+- An out-of-process virtual product no longer waits on the network for its first data. The worker loaded Speasy to check the result's type, and loading Speasy pings each data server; with one down, the first request hung for up to 30 seconds.
 - A product that fails to load now says why on its plot. Before, the error only went to the log, and the plot just stayed empty. This covers virtual products and data products alike, for example an archive that can't be reached.
 - Several virtual-product mistakes used to give an empty plot with no message. They are now errors shown on the plot:
   - returning something other than a tuple, a `SpeasyVariable` or `None`, such as a DataFrame or a bare array;

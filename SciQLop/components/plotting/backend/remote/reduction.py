@@ -19,11 +19,11 @@ def epoch_seconds(time_values: np.ndarray) -> np.ndarray:
 
 
 def _is_speasy_variable(result) -> bool:
-    try:
-        from speasy.products.variable import SpeasyVariable
-    except Exception:
-        return False
-    return isinstance(result, SpeasyVariable)
+    # Looked up, not imported: importing speasy pings every data server, so with
+    # one down the worker's first request waited on the network. A SpeasyVariable
+    # result means the callback already imported speasy.
+    variable = getattr(sys.modules.get("speasy.products.variable"), "SpeasyVariable", None)
+    return variable is not None and isinstance(result, variable)
 
 
 def _from_speasy(v, arity: int) -> List[np.ndarray]:
