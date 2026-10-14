@@ -34,3 +34,15 @@ def test_an_unregistered_scene_restores_as_a_placeholder(plot_panel, registered)
                                                                           "trajectories": []})])
     t.apply(impl)
     assert [(p.kind, p.config["scene"]) for p in PanelTemplate.from_panel(impl).plots] == [(PROJECTION, "nowhere_gsm")]
+
+
+def test_an_unregistered_boundary_keeps_the_scene_default_and_no_placeholder(plot_panel, registered):
+    from SciQLop.components.scenes.scene_plot import scene_plot_for
+    impl = plot_panel._get_impl_or_raise()
+    t = PanelTemplate(name="s", plots=[PlotModel(kind=PROJECTION, config={
+        "scene": "Earth environment", "boundaries": {"magnetopause": "nowhere_mp"}, "trajectories": []})])
+    t.apply(impl)
+    scene_plots = [s for s in map(scene_plot_for, impl.plots()) if s is not None]
+    assert len(impl.plots()) == 1 and len(scene_plots) == 1
+    assert scene_plots[0]._resolved.boundaries["magnetopause"].name == "shue1998"
+    assert [p.kind for p in PanelTemplate.from_panel(impl).plots] == [PROJECTION]

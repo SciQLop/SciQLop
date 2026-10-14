@@ -39,11 +39,21 @@ def _scene_from_config(panel, config: dict):
     name and restores as a placeholder. Save full scene definitions if users plot unregistered scenes."""
     from SciQLop.user_api.plot import PlotPanel
     sp = PlotPanel(panel).plot_scene(config["scene"])
-    for kind, name in config.get("boundaries", {}).items():
-        sp.set_boundary(kind, name)
-    for source in config.get("trajectories", []):
-        sp.add_trajectory(source)
+    steps = [(f"boundary {name!r} for {kind}", sp.set_boundary, (kind, name))
+             for kind, name in config.get("boundaries", {}).items()]
+    steps += [(f"trajectory {source!r}", sp.add_trajectory, (source,)) for source in config.get("trajectories", [])]
+    for what, step, args in steps:
+        _apply_optional(sp, panel, what, step, args)
     return sp
+
+
+def _apply_optional(sp, panel, what: str, step, args: tuple) -> None:
+    """Once the scene plot exists, a stale boundary or trajectory is shown on it instead of aborting the restore."""
+    from SciQLop.components.scenes.tree import show_refusal
+    try:
+        step(*args)
+    except Exception as e:
+        show_refusal(sp._get_impl_or_raise(), panel, f"Could not restore {what}: {e}")
 
 
 PLOT_KINDS.contribute(PlotKind(PROJECTION, "Scene", plot_product=_plot_scene_item, owns=_owns,
