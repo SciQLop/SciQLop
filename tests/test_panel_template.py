@@ -44,7 +44,7 @@ class TestPydanticModels:
 
     def test_defaults(self):
         t = _minimal_template()
-        assert t.version == 2
+        assert t.version == 3
         assert t.description == ""
         assert t.intervals == []
         assert t.plots[0].y_axis.log is False
@@ -100,7 +100,7 @@ class TestFileIO:
         old = _minimal_template(plots=[PlotModel(products=[ProductModel(path="amda/imf")],
                                                  y_axis=AxisModel(log=True, range=(0.1, 100.0)))])
         path = tmp_path / "old.yaml"
-        path.write_text(yaml.dump(old.model_dump(), default_flow_style=False, sort_keys=False))
+        path.write_text(yaml.dump({**old.model_dump(), "version": 2}, default_flow_style=False, sort_keys=False))
         assert "!!python/tuple" in path.read_text()
         assert PanelTemplate.from_file(str(path)).plots[0].y_axis.range == (0.1, 100.0)
 
@@ -143,8 +143,9 @@ class TestTemplateDiscovery:
             {"path": "a//unknown"}]}]}))
         list_templates()
         saved = json.loads((tmp_path / "old.json").read_text())
-        assert saved["version"] == 2
-        assert [p["y_axis"] for p in saved["plots"][0]["products"]] == ["y2", "y", None]
+        assert saved["version"] == 3
+        products = saved["panel"]["slots"]["plots"][0]["config"]["products"]
+        assert [p["y_axis"] for p in products] == ["y2", "y", None]
 
     def test_listing_rewrites_an_old_yaml_template_without_python_tuples(self, tmp_path, monkeypatch):
         import yaml
@@ -154,7 +155,7 @@ class TestTemplateDiscovery:
         old["version"] = 1
         (tmp_path / "old.yaml").write_text(yaml.dump(old))
         list_templates()
-        assert yaml.safe_load((tmp_path / "old.yaml").read_text())["version"] == 2
+        assert yaml.safe_load((tmp_path / "old.yaml").read_text())["version"] == 3
 
     def test_listing_leaves_a_current_template_untouched(self, tmp_path, monkeypatch):
         monkeypatch.setattr("SciQLop.components.plotting.panel_template.templates_dir", lambda: tmp_path)

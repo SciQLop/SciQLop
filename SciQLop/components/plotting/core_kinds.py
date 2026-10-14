@@ -1,4 +1,4 @@
-"""Core contributions of the plotting component: the time-series plot kind (and, from Task 2, the core drop rules)."""
+"""Core contributions of the plotting component: the time-series plot kind and the core drop rules."""
 from SciQLop.core.drop_rules import DROP_RULES, DropRule
 from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE, PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
 from SciQLop.core.plot_kinds import PLOT_KINDS, TIMESERIES, PlotKind
@@ -15,7 +15,20 @@ def _plot_timeseries(target, product, kwargs):
     return r
 
 
-PLOT_KINDS.contribute(PlotKind(TIMESERIES, "Time series", plot_product=_plot_timeseries), owner="sciqlop")
+def _timeseries_config(plot) -> dict:
+    from SciQLop.components.plotting.panel_template import _timeseries_model
+    return _timeseries_model(plot).model_dump(mode="json", exclude={"kind", "config"})
+
+
+def _timeseries_from_config(panel, config):
+    from SciQLop.components.plotting.panel_template import PlotModel, _restore_timeseries
+    from SciQLop.user_api.plot._plots import to_plot
+    subplot = _restore_timeseries(panel, PlotModel.model_validate(config))
+    return to_plot(subplot) if subplot is not None else None
+
+
+PLOT_KINDS.contribute(PlotKind(TIMESERIES, "Time series", plot_product=_plot_timeseries,
+                               to_config=_timeseries_config, from_config=_timeseries_from_config), owner="sciqlop")
 
 
 def _plot_product_drop(plot, product, panel):

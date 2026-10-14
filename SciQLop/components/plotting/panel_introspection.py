@@ -19,6 +19,16 @@ def ordered_plots(panel) -> list:
     return [by_name[ptr.objectName()] for ptr in ptrs if ptr.objectName() in by_name]
 
 
+def _concrete(plot):
+    data = getattr(plot, "data", None)
+    return data() if callable(data) else plot
+
+
+def ordered_panel_plots(panel) -> list:
+    """Every plot in panel order, each a concrete widget (time-series, projection or placeholder)."""
+    return [_concrete(ptr) for ptr in panel.plots()]
+
+
 def plot_graphs(plot) -> list:
     """Every plottable in ``plot``: line graphs *and* colormaps. Colormaps are
     not ``SciQLopGraphInterface`` — both derive from

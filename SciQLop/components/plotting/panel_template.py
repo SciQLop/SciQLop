@@ -14,6 +14,7 @@ from pydantic import BaseModel, PrivateAttr, field_validator
 
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.graph_context import GraphContext, context_of, graph_name
+from SciQLop.core.plot_kinds import PLOT_KINDS, TIME_PANEL, TIMESERIES, plot_kind_of, plugin_of
 from SciQLop.core.source_kinds import canonical_id, source_kind
 
 log = getLogger(__name__)
@@ -53,7 +54,10 @@ class AxisModel(BaseModel):
 
 
 class PlotModel(BaseModel):
-    products: list[ProductModel]
+    """A time-series plot uses the fields below; any other kind keeps everything in ``config``."""
+    products: list[ProductModel] = []
+    kind: str = TIMESERIES
+    config: dict[str, Any] = {}
     y_axis: AxisModel = AxisModel()
     y2_axis: Optional[AxisModel] = None  # None: saved before right axes were kept
     z_axis: AxisModel = AxisModel()
@@ -86,7 +90,7 @@ def _graph_axis_name(plot, graph) -> str:
     return "y2" if graph.y_axis() is plot.y2_axis() else "y"
 
 
-def _plot_model(panel, plot_model: PlotModel) -> None:
+def _restore_timeseries(panel, plot_model: PlotModel):
     from SciQLop.components.plotting.ui.time_sync_panel import plot_product, _graph_from_result
     from SciQLopPlots import PlotType as _PlotType
     subplot = None
@@ -110,6 +114,8 @@ def _plot_model(panel, plot_model: PlotModel) -> None:
         _restore_axis(subplot.y_axis(), plot_model.y_axis)
         _restore_axis(subplot.y2_axis(), plot_model.y2_axis)
         _restore_axis(subplot.z_axis(), plot_model.z_axis)
+    return subplot
+
 
 
 def _read_max_zoom(panel) -> float | None:
@@ -124,7 +130,28 @@ def _read_max_zoom(panel) -> float | None:
     return None
 
 
-TEMPLATE_VERSION = 2
+TEMPLATE_VERSION = 3
+_V2 = 2
+
+
+class PanelNode(BaseModel):
+    """A node of the panel tree (spec §5); its kind names a sciqlop.plot_kinds contribution or a panel kind."""
+    kind: str
+    id: str = ""
+    config: dict[str, Any] = {}
+    slots: dict[str, list["PanelNode"]] = {}
+
+
+def _plot_node(plot: PlotModel) -> PanelNode:
+    if plot.kind == TIMESERIES:
+        return PanelNode(kind=TIMESERIES, config=plot.model_dump(mode="json", exclude={"kind", "config"}))
+    return PanelNode(kind=plot.kind, config=plot.config)
+
+
+def _plot_model_of(node: PanelNode) -> PlotModel:
+    if node.kind == TIMESERIES:
+        return PlotModel.model_validate(node.config)
+    return PlotModel(kind=node.kind, config=node.config)
 
 
 def _default_axis(product: dict) -> dict:
@@ -137,11 +164,11 @@ def _default_axis(product: dict) -> dict:
 def _upgrade(data: dict) -> dict:
     """Version 1 did not say which y axis each graph draws on; a spectrogram
     always drew on y2, any other graph on y."""
-    if data.get("version", 1) >= TEMPLATE_VERSION:
+    if data.get("version", 1) >= _V2:
         return data
     plots = [{**plot, "products": [_default_axis(p) for p in plot.get("products", [])]}
              for plot in data.get("plots", [])]
-    return {**data, "plots": plots, "version": TEMPLATE_VERSION}
+    return {**data, "plots": plots, "version": _V2}
 
 
 def _read_template_data(p: Path) -> dict:
@@ -180,7 +207,8 @@ class PanelTemplate(BaseModel):
     def from_file(path: str) -> PanelTemplate:
         p = Path(path)
         data = _read_template_data(p)
-        t = PanelTemplate.model_validate(_upgrade(data))
+        t = (PanelTemplate.from_tree(data) if data.get("version", 1) >= TEMPLATE_VERSION
+             else PanelTemplate.model_validate({**_upgrade(data), "version": TEMPLATE_VERSION}))
         t._source_path = str(p.resolve())
         t._saved_version = data.get("version", 1)
         return t
@@ -188,12 +216,34 @@ class PanelTemplate(BaseModel):
     def to_file(self, path: str) -> None:
         p = Path(path)
         if p.suffix == '.json':
-            p.write_text(self.model_dump_json(indent=2))
+            import json
+            p.write_text(json.dumps(self.to_tree(), indent=2))
         elif p.suffix in ('.yaml', '.yml'):
             import yaml
-            p.write_text(yaml.dump(self.model_dump(mode="json"), default_flow_style=False, sort_keys=False))
+            p.write_text(yaml.dump(self.to_tree(), default_flow_style=False, sort_keys=False))
         else:
             raise ValueError(f"Unsupported file extension: {p.suffix}")
+
+    def to_tree(self) -> dict:
+        root = PanelNode(kind=TIME_PANEL,
+                         config={"time_range": self.time_range.model_dump() if self.time_range else None},
+                         slots={"plots": [_plot_node(p) for p in self.plots]})
+        return {"version": TEMPLATE_VERSION, "name": self.name, "description": self.description,
+                "max_zoom_seconds": self.max_zoom_seconds,
+                "intervals": [i.model_dump() for i in self.intervals], "panel": root.model_dump(mode="json")}
+
+    @staticmethod
+    def from_tree(data: dict) -> PanelTemplate:
+        root = PanelNode.model_validate(data["panel"])
+        if root.kind != TIME_PANEL:
+            raise ValueError(f"panel kind {root.kind!r} needs plugin {plugin_of(root.kind)!r} (panel kinds other "
+                             f"than {TIME_PANEL} are not supported yet)")
+        time_range = root.config.get("time_range")
+        return PanelTemplate(name=data["name"], description=data.get("description", ""),
+                             max_zoom_seconds=data.get("max_zoom_seconds"),
+                             intervals=data.get("intervals", []),
+                             time_range=TimeRangeModel(**time_range) if time_range else None,
+                             plots=[_plot_model_of(n) for n in root.slots.get("plots", [])])
 
     @staticmethod
     def _capture_axis(axis) -> AxisModel:
@@ -202,18 +252,9 @@ class PanelTemplate(BaseModel):
 
     @staticmethod
     def from_panel(panel) -> PanelTemplate:
-        from SciQLop.components.plotting.panel_introspection import ordered_plots, plot_graphs
-        plots = []
-        for plot in ordered_plots(panel):
-            graphs = plot_graphs(plot)
-            if graphs:
-                plots.append(PlotModel(
-                    products=[product_model(g).model_copy(update={"y_axis": _graph_axis_name(plot, g)})
-                              for g in graphs],
-                    y_axis=PanelTemplate._capture_axis(plot.y_axis()),
-                    y2_axis=PanelTemplate._capture_axis(plot.y2_axis()),
-                    z_axis=PanelTemplate._capture_axis(plot.z_axis()),
-                ))
+        from SciQLop.components.plotting.panel_introspection import ordered_panel_plots
+        models = (_saved_plot(plot) for plot in ordered_panel_plots(panel))
+        plots = [m for m in models if m is not None]
         return PanelTemplate(
             name=panel.windowTitle() or panel.objectName(),
             time_range=_time_range_model(panel),
@@ -236,7 +277,7 @@ class PanelTemplate(BaseModel):
         if self.time_range is not None:
             panel.set_time_axis_range(self._time_range())
         for plot_model in self.plots:
-            _plot_model(panel, plot_model)
+            _restore_plot(panel, plot_model)
         self._apply_zoom_limit(panel)
 
     def _time_range(self):
@@ -266,6 +307,48 @@ class PanelTemplate(BaseModel):
         tr = self._time_range()
         span = tr.stop() - tr.start()
         return span if current is not None and span > current else None
+
+
+def _timeseries_model(plot) -> Optional[PlotModel]:
+    from SciQLop.components.plotting.panel_introspection import plot_graphs
+    graphs = plot_graphs(plot)
+    if not graphs:
+        return None
+    return PlotModel(
+        products=[product_model(g).model_copy(update={"y_axis": _graph_axis_name(plot, g)}) for g in graphs],
+        y_axis=PanelTemplate._capture_axis(plot.y_axis()),
+        y2_axis=PanelTemplate._capture_axis(plot.y2_axis()),
+        z_axis=PanelTemplate._capture_axis(plot.z_axis()),
+    )
+
+
+def _saved_plot(plot) -> Optional[PlotModel]:
+    from SciQLop.components.plotting.placeholder import placeholder_model
+    kept = placeholder_model(plot)
+    if kept is not None:
+        return kept
+    kind = plot_kind_of(plot)
+    if kind.id == TIMESERIES:
+        return _timeseries_model(plot)
+    if kind.to_config is None:
+        log.warning(f"a {kind.id} plot is not saved: its plot kind has no to_config")
+        return None
+    return PlotModel(kind=kind.id, config=kind.to_config(plot))
+
+
+def _restore_plot(panel, model: PlotModel):
+    """A plot kind that is not registered, or whose from_config fails, leaves a placeholder that keeps the node."""
+    from SciQLop.components.plotting.placeholder import add_placeholder
+    if model.kind == TIMESERIES:
+        return _restore_timeseries(panel, model)
+    kind = PLOT_KINDS.get(model.kind) if model.kind in PLOT_KINDS else None
+    if kind is None or kind.from_config is None:
+        return add_placeholder(panel, model)
+    try:
+        return kind.from_config(panel, model.config)
+    except Exception as e:
+        log.error(f"restoring a {model.kind} plot failed", exc_info=True)
+        return add_placeholder(panel, model, reason=str(e))
 
 
 def _time_range_model(panel) -> Optional[TimeRangeModel]:
