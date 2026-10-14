@@ -27,7 +27,7 @@ Third-party plugins can do everything bundled plugins do.
 | Where contributions are declared | In code, during `activate(ctx)`. `plugin.json` carries dependencies and a `provides` summary for the app store. |
 | Plugin dependencies | SciQLop resolves them by plugin name and version. pip never decides which plugins are installed; it only installs `python_dependencies`. |
 | Packaged plugins | Every plugin ships a `plugin.json`, including pip/GitHub-installed ones (found next to the entry-point module). |
-| Plugin identity | The `plugin.json` `name`. Folder names and entry-point names are local aliases, migrated in settings. |
+| Plugin identity | The key SciQLop already uses everywhere (settings, `loaded_plugins`, the existing `dependencies` of collaborative_catalogs): the folder name, or the entry-point name for a packaged plugin. `plugin.json` `name` stays the display name ("Planetary scenes"). |
 | API versioning | A plugin's `version` is its API version; plugins follow semver (breaking API change = major bump). No separate `api_version`. |
 
 ## 3. Plugin contract
@@ -36,7 +36,7 @@ Third-party plugins can do everything bundled plugins do.
 
 ```json
 {
-  "name": "vdf_study",
+  "name": "VDF event study",
   "version": "1.0.0",
   "description": "Event study panels combining VDFs and Earth scenes",
   "authors": [{"name": "A. Author", "email": "a@lab.fr", "organization": "LPP"}],
@@ -69,7 +69,8 @@ silently dropped.
 
 ### 3.2 Loading
 
-1. Read every enabled plugin's `plugin.json` (folder and entry-point plugins alike) and key it by `name`.
+1. Read every enabled plugin's `plugin.json` (folder and entry-point plugins alike), keyed by plugin id
+   (folder or entry-point name).
 2. Compute the load set: enabled plugins whose required dependencies are present and in range,
    recursively. Present optional dependencies join the ordering; absent ones are just absent.
 3. Topologically sort on required + present optional dependencies; ties broken by `name`, so the order
@@ -97,7 +98,7 @@ the new contract; a module with only `load(main_window)` keeps today's behaviour
 
 | Member | Meaning |
 |---|---|
-| `ctx.name`, `ctx.version`, `ctx.main_window` | identity; main window for UI work |
+| `ctx.name`, `ctx.version`, `ctx.main_window` | plugin id (folder or entry-point name), version; main window for UI work |
 | `ctx.extension_point(id, type, doc)` | declare an EP owned by this plugin; `id` must start with `ctx.name.` |
 | `ctx.contribute(ep_id, item)` | add `item` to an EP; owner = this plugin |
 | `ctx.plugin(name)` | the API of an active plugin listed in `dependencies`/`optional_dependencies`; raises `UndeclaredDependency` otherwise, `PluginUnavailable` if it is not active |
@@ -234,7 +235,7 @@ Not exposed in this design: disabling asks for a restart.
   (e.g. `register_scene`/`register_boundary` add product-tree nodes, `register_layer` stays a decorator)
   and its `replace` behaviour; it becomes an adapter onto its EP.
 - Persisted values keep loading: source-kind aliases (§4.2), templates v2 read-migration (§5), plugin
-  settings keyed by folder/entry-point name migrated to `plugin.json` names.
+  settings keep their folder/entry-point keys (they already are the plugin ids).
 - One EP at a time; each migration removes its hard-coded dispatch in the same change.
 - Scenes migrate first, as proof that a plugin contributes exactly like a third party would.
 - Plugin-author documentation moves with the code: every change that adds or migrates an EP updates
@@ -293,7 +294,7 @@ opencode review (2026-10-14), verified against the code. Applied: F1 fallback en
 change, F3 owner rule, F4 loader states, F5 store index fields, F6 product kind = data shape (enums
 kept), F7/F9 confirmed issues, F8 `sciqlop.<component>` prefix, D1 `activate(ctx)` instead of
 parameter sniffing, D2/D6 load set + deterministic order, D3 `added` for caches, D4 live install through
-the resolver, D5 kernel replay, D7 identity = `plugin.json` name, D9 legacy kind aliases, D10
+the resolver, D5 kernel replay, D7 identity = folder/entry-point name (the review suggested `plugin.json` name, but that field is a display name today: "Planetary scenes"), D9 legacy kind aliases, D10
 panel_kinds to Tier 2, D11 main-thread affinity, D12 replacement caveat.
 Not applied: cutting `provides` (D8) — the user wants app-store visibility, so the store index carries
 it instead; a separate `api_version` (F9) — semver on `version` is simpler and matches VS Code/Grafana;
