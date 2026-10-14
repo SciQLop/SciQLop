@@ -5,11 +5,11 @@ import threading
 import time as _time
 import traceback
 import numpy as np
-from PySide6.QtCore import QMimeData, QObject, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import QApplication, QWidget
 from PySide6.QtGui import QColor
-from SciQLopPlots import SciQLopMultiPlotPanel, SciQLopTheme, PlotDragNDropCallback, ProductsModel, SciQLopPlot, \
+from SciQLopPlots import SciQLopMultiPlotPanel, SciQLopTheme, ProductsModel, SciQLopPlot, \
     GraphType, SciQLopNDProjectionPlot, OverlayLevel, OverlaySizeMode, OverlayPosition, \
     SciQLopLineGraph, SciQLopSingleLineGraph, SciQLopWaterfallGraph, SciQLopColorMap
 
@@ -32,11 +32,9 @@ import weakref
 from SciQLop.core.source_kinds import VP
 from SciQLop.core.plot_hints import apply_plot_hints, combine_hints, merge_hints, PlotHints
 from SciQLop.core.property import SciQLopProperty
-from SciQLop.core.mime import decode_mime
 from SciQLop.components.plotting.drops import accept_drop_rules
 import SciQLop.components.plotting.core_kinds  # noqa: F401  plot_product needs the time-series plot kind
 from SciQLop.components.plotting.ui.diagnostic_overlay import overlay_of
-from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE, CATALOG_LIST_MIME_TYPE
 from SciQLop.components.plotting.backend.palette import Palette, make_color_list
 from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
 from SciQLop.components.plotting.ui.graph_context_menu import add_graph_context_actions

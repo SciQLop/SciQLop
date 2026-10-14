@@ -8,7 +8,7 @@ from SciQLop.core.product_kinds import BOUNDARY, PRODUCT_KIND_KEY, SCENE
 from SciQLop.core.models import ProductsModelNodeType, add_product_node
 from .model import resolve
 from .registry import BOUNDARIES, SCENES
-from .scene_plot import concrete_plot, scene_plot_for
+from .scene_plot import scene_plot_for
 
 log = getLogger(__name__)
 
