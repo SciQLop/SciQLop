@@ -5,6 +5,7 @@ QApplication (agents package __init__ -> chat_dock -> _builder ->
 ProductsModel), so every test takes pytest-qt's `qtbot` and imports inside
 the function, matching tests/test_agent_fetch_tool.py.
 """
+import pytest
 
 
 def test_to_epoch_accepts_iso_and_number(qtbot):
@@ -183,45 +184,59 @@ _TRANSFORM_PAYLOAD = {
 }
 
 
-def test_parse_transform_builds_matrix_variable(qtbot):
-    from SciQLop.components.agents.tools.orbits import parse_transform
-    var = parse_transform(_TRANSFORM_PAYLOAD)
-    assert var.shape == (2, 3, 3)
-    assert var.meta.get("from_frame") == "GSE" and var.meta.get("to_frame") == "HEEQ"
-    assert var.values[0].tolist() == _TRANSFORM_PAYLOAD["values"][0]["matrix"]
+@pytest.fixture
+def fake_3dview(monkeypatch):
+    from SciQLop.components.scenes import frames
+    calls = []
+
+    def fake(path, **params):
+        calls.append((path, params))
+        return _TRANSFORM_PAYLOAD
+
+    monkeypatch.setattr(frames, "_fetch_json", fake)
+    return calls
 
 
-def test_fetch_transform_binds_variable_and_summarizes(qtbot):
+def test_fetch_transform_binds_variable_and_summarizes(qtbot, fake_3dview):
     from SciQLop.components.agents.tools.orbits import fetch_transform
     ns = {}
-    captured = {}
-
-    def http_get(url, params):
-        captured["url"], captured["params"] = url, params
-        return _FakeResponse(True, _TRANSFORM_PAYLOAD)
-
-    out = fetch_transform("GSE", "HEEQ", 1767225600.0, 1767232800.0, 3600, "R", ns, http_get=http_get)
+    out = fetch_transform("GSE", "HEEQ", 1767225600.0, 1767232800.0, 3600, "R", ns)
     assert ns["R"].shape == (2, 3, 3)
+    assert ns["R"].meta.get("from_frame") == "GSE" and ns["R"].meta.get("to_frame") == "HEEQ"
+    assert ns["R"].values[0].tolist() == _TRANSFORM_PAYLOAD["values"][0]["matrix"]
     text = out["content"][0]["text"]
     assert "GSE" in text and "HEEQ" in text and "R" in text and "2 sample" in text
     assert "(n,3,3)" in text
-    assert captured["url"].endswith("/get_transform_matrices")
-    assert captured["params"]["fromframe"] == "GSE" and captured["params"]["toframe"] == "HEEQ"
+    path, params = fake_3dview[0]
+    assert path == "get_transform_matrices"
+    assert params["fromframe"] == "GSE" and params["toframe"] == "HEEQ"
+    assert params["start"] == "2026-01-01T00:00:00.000" and params["sampling"] == 3600
 
 
-def test_fetch_transform_error_response_returns_text_verbatim(qtbot):
+def test_fetch_transform_missing_frames_default_to_documented_ones(qtbot, fake_3dview):
     from SciQLop.components.agents.tools.orbits import fetch_transform
+    fetch_transform(None, None, 0.0, 1.0, None, "R", {})
+    params = fake_3dview[0][1]
+    assert (params["fromframe"], params["toframe"], params["sampling"]) == ("J2000", "ECLIPJ2000", 3600)
+
+
+def test_fetch_transform_error_is_returned_as_text(qtbot, monkeypatch):
+    from SciQLop.components.agents.tools.orbits import fetch_transform
+    from SciQLop.components.scenes import frames
+
+    def refuse(path, **params):
+        raise OSError("Frame id not recognized: NOPE")
+
+    monkeypatch.setattr(frames, "_fetch_json", refuse)
     ns = {}
-    out = fetch_transform("GSE", "NOPE", 0.0, 1.0, None, "R", ns,
-                          http_get=lambda url, params: _FakeResponse(False, text="Frame id not recognized: NOPE"))
+    out = fetch_transform("GSE", "NOPE", 0.0, 1.0, None, "R", ns)
     assert "R" not in ns
-    assert out["content"][0]["text"] == "Frame id not recognized: NOPE"
+    assert "GSE" in out["content"][0]["text"] and "Frame id not recognized: NOPE" in out["content"][0]["text"]
 
 
-def test_fetch_transform_respects_overwrite_guard(qtbot):
+def test_fetch_transform_respects_overwrite_guard(qtbot, fake_3dview):
     from SciQLop.components.agents.tools.orbits import fetch_transform
     ns = {"R": 123}
-    out = fetch_transform(None, None, 0.0, 1.0, None, "R", ns,
-                          http_get=lambda url, params: _FakeResponse(True, _TRANSFORM_PAYLOAD))
-    assert ns["R"] == 123
+    out = fetch_transform(None, None, 0.0, 1.0, None, "R", ns)
+    assert ns["R"] == 123 and not fake_3dview
     assert "already bound" in out["content"][0]["text"]

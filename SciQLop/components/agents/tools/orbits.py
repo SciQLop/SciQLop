@@ -1,7 +1,8 @@
 """Ephemeris and coordinate-transform lookups via the CDPP 3DView REST API.
 
 Pure logic: the HTTP GET is injected so this module is unit-tested offline.
-`_builder.py` wires the real `speasy.core.http.get` client.
+`_builder.py` wires the real `speasy.core.http.get` client for ephemeris;
+transform matrices come from `scenes.frames`, the single 3DView matrix client.
 """
 from __future__ import annotations
 
@@ -15,9 +16,12 @@ from speasy.core.cache import CacheCall
 from speasy.core.data_containers import DataContainer, VariableTimeAxis
 from speasy.products.variable import SpeasyVariable
 
+from SciQLop.components.scenes import frames
+
 from .fetch import _var_line
 
 BASE_URL = "https://3dview.irap.omp.eu/webresources"
+DEFAULT_FROM_FRAME, DEFAULT_TO_FRAME, DEFAULT_SAMPLING_S = "J2000", "ECLIPJ2000", 3600
 _BODIES_AND_FRAMES_RETENTION = 7 * 24 * 3600  # 1 week — body/frame lists change rarely
 
 
@@ -114,11 +118,8 @@ def fetch_ephemeris(body: str, frame: Optional[str], start, stop, sampling, name
     return {"content": [{"type": "text", "text": "\n".join(lines)}]}
 
 
-def parse_transform(payload: Dict[str, Any]) -> SpeasyVariable:
-    samples = payload["values"]
-    times = np.array([_iso_to_ns(s["time"]) for s in samples])
-    matrices = np.array([s["matrix"] for s in samples], dtype=float)
-    meta = {"from_frame": payload.get("fromframe", ""), "to_frame": payload.get("toframe", "")}
+def _matrix_variable(times: np.ndarray, matrices: np.ndarray, from_frame: str, to_frame: str) -> SpeasyVariable:
+    meta = {"from_frame": from_frame, "to_frame": to_frame}
     return SpeasyVariable(
         axes=[VariableTimeAxis(values=times)],
         values=DataContainer(matrices, meta=meta, name="matrix"),
@@ -127,24 +128,20 @@ def parse_transform(payload: Dict[str, Any]) -> SpeasyVariable:
 
 def fetch_transform(from_frame: Optional[str], to_frame: Optional[str], start, stop, sampling,
                     name: str, shell_ns: Dict[str, Any], *, overwrite: bool = False,
-                    http_get: Callable) -> Dict[str, Any]:
+                    http_get: Optional[Callable] = None) -> Dict[str, Any]:
+    """`http_get` is accepted for backward compatibility and ignored: `frames` owns the 3DView request."""
     blocked = _check_overwrite(name, shell_ns, overwrite)
     if blocked:
         return blocked
-    params = _time_range_params(start, stop, sampling)
-    if from_frame:
-        params["fromframe"] = from_frame
-    if to_frame:
-        params["toframe"] = to_frame
-    resp = http_get(f"{BASE_URL}/get_transform_matrices", params=params)
-    if not resp.ok:
-        return {"content": [{"type": "text", "text": resp.text}]}
-    var = parse_transform(resp.json())
+    from_frame, to_frame = from_frame or DEFAULT_FROM_FRAME, to_frame or DEFAULT_TO_FRAME
+    try:
+        times, matrices = frames.transform_matrices(from_frame, to_frame, _to_epoch(start), _to_epoch(stop),
+                                                    sampling or DEFAULT_SAMPLING_S)
+    except frames.FrameError as e:
+        return {"content": [{"type": "text", "text": str(e)}]}
+    var = _matrix_variable(times, matrices, from_frame, to_frame)
     shell_ns[name] = var
-    n = var.shape[0]
-    resolved_from = var.meta.get("from_frame", "") or from_frame or ""
-    resolved_to = var.meta.get("to_frame", "") or to_frame or ""
-    text = (f"fetched transform `{resolved_from}`→`{resolved_to}` into `{name}` "
-           f"— {n} sample(s)\n{_var_line('matrix', var)}"
-           f"\n\nbridges: `{name}.values` (shape (n,3,3)), `{name}.time`")
+    text = (f"fetched transform `{from_frame}`→`{to_frame}` into `{name}` "
+            f"— {var.shape[0]} sample(s)\n{_var_line('matrix', var)}"
+            f"\n\nbridges: `{name}.values` (shape (n,3,3)), `{name}.time`")
     return {"content": [{"type": "text", "text": text}]}

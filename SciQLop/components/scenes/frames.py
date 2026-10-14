@@ -44,6 +44,7 @@ def normalise_frame(name: str) -> str:
 
 
 def _check_same_centre(from_frame: str, to_frame: str) -> None:
+    # Rotation-only matrices across centres are valid for directions (a B vector GSE→HEEQ), not for positions.
     centres = frame_centres()
     unknown = [f for f in (from_frame, to_frame) if f not in centres]
     if unknown:
@@ -53,16 +54,21 @@ def _check_same_centre(from_frame: str, to_frame: str) -> None:
                          f"{centres[to_frame]}: 3DView matrices are rotations only")
 
 
-def _iso(epoch_s: int) -> str:
-    return str(np.datetime64(int(epoch_s), "s")) + ".000"
+def _iso(epoch_s: float) -> str:
+    return str(np.datetime64(round(epoch_s * 1000), "ms"))
 
 
-@functools.lru_cache(maxsize=128)
-def _day_rotations(from_frame: str, to_frame: str, day: int) -> tuple[np.ndarray, Rotation]:
-    start = day * _DAY_S
+def _parse_matrices(values: list[dict]) -> tuple[np.ndarray, np.ndarray]:
+    times = np.array([np.datetime64(v["time"].rstrip("Z"), "ns") for v in values], dtype="datetime64[ns]")
+    return times, np.array([v["matrix"] for v in values], dtype=float)
+
+
+def transform_matrices(from_frame: str, to_frame: str, start: float, stop: float,
+                       sampling: float) -> tuple[np.ndarray, np.ndarray]:
+    """Raw 3DView rotation matrices (times datetime64[ns], matrices (n,3,3)) over [start, stop] epoch seconds."""
     try:
         data = _fetch_json("get_transform_matrices", format="json", fromframe=from_frame, toframe=to_frame,
-                           start=_iso(start), stop=_iso(start + _DAY_S), sampling=_SAMPLING_S)
+                           start=_iso(start), stop=_iso(stop), sampling=int(sampling))
     except Exception as e:
         raise FrameError(f"could not get {from_frame} → {to_frame} matrices from 3DView: {e}") from e
     try:
@@ -71,9 +77,11 @@ def _day_rotations(from_frame: str, to_frame: str, day: int) -> tuple[np.ndarray
         raise FrameError(f"malformed {from_frame} → {to_frame} matrices from 3DView: {e!r}") from e
 
 
-def _parse_matrices(values: list[dict]) -> tuple[np.ndarray, Rotation]:
-    times = np.array([np.datetime64(v["time"].rstrip("Z"), "ns") for v in values]).astype("int64") / 1e9
-    return times, Rotation.from_matrix(np.array([v["matrix"] for v in values], dtype=float))
+@functools.lru_cache(maxsize=128)
+def _day_rotations(from_frame: str, to_frame: str, day: int) -> tuple[np.ndarray, Rotation]:
+    start = day * _DAY_S
+    times, matrices = transform_matrices(from_frame, to_frame, start, start + _DAY_S, _SAMPLING_S)
+    return times.astype("int64") / 1e9, Rotation.from_matrix(matrices)
 
 
 def _stitched(from_frame: str, to_frame: str, times: np.ndarray) -> tuple[np.ndarray, Rotation]:

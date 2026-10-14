@@ -99,3 +99,20 @@ def test_unknown_frame_is_refused():
         normalise_frame("RTN")
     with pytest.raises(FrameError, match="RTN"):
         rotation("RTN", "GSM", np.array([0.0]))
+
+
+def test_transform_matrices_serve_cross_centre_pairs_that_rotation_refuses(recorded_3dview):
+    times, matrices = frames.transform_matrices("GSE", "HEEQ", float(DAY), float(DAY + 3600), 600)
+    assert times.dtype == np.dtype("datetime64[ns]") and matrices.shape == (len(times), 3, 3)
+    assert recorded_3dview[0]["sampling"] == 600
+    with pytest.raises(FrameError, match="GSE.*Earth.*HEEQ.*Sun"):
+        rotation("GSE", "HEEQ", np.array([float(DAY)]))
+
+
+def test_transform_matrices_errors_name_both_frames(monkeypatch):
+    def down(path, **params):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(frames, "_fetch_json", down)
+    with pytest.raises(FrameError, match="GSE.*HEEQ.*connection refused"):
+        frames.transform_matrices("GSE", "HEEQ", 0.0, 1.0, 600)

@@ -683,7 +683,6 @@ def _ephemeris_tool() -> Dict[str, Any]:
 
 def _transform_tool() -> Dict[str, Any]:
     from . import orbits
-    from speasy.core import http
 
     def _run(payload: Dict[str, Any]) -> Any:
         km = _kernel_manager()
@@ -694,7 +693,6 @@ def _transform_tool() -> Dict[str, Any]:
             payload["start"], payload["stop"], payload.get("sampling"),
             str(payload["name"]), km.shell.user_ns,
             overwrite=bool(payload.get("overwrite", False)),
-            http_get=http.get,
         )
 
     return _text_tool(
