@@ -530,6 +530,15 @@ class TagListDelegate(SettingDelegate):
                     self._add_chip(t)
 
 
+def _load_problem(plugin_name: str) -> str:
+    """Why the plugin is not running in this process ("" when it is, or was never tried)."""
+    from SciQLop.components.plugins.backend.loader.context import STATES
+    state = STATES.get(plugin_name)
+    if state is None or state.status not in ("refused", "failed"):
+        return ""
+    return f"{state.status.capitalize()}: {state.reason}"
+
+
 @register_widget("plugins_dict")
 class PluginsDictDelegate(SettingDelegate):
     """Shows each plugin as a checkbox row with name and description."""
@@ -574,7 +583,9 @@ class PluginsDictDelegate(SettingDelegate):
         label = plugin_name.replace('_', ' ').title()
         if desc:
             label = f"{label} — {desc}"
-        cb = QCheckBox(label)
+        problem = _load_problem(plugin_name)
+        cb = QCheckBox(f"{label} — not loaded" if problem else label)
+        cb.setToolTip(problem)
         cb.setChecked(enabled)
         cb.toggled.connect(lambda _: self.value_changed.emit(self.get_value()))
         self._rows[plugin_name] = cb
