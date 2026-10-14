@@ -103,6 +103,9 @@ def _curve_label(model, which: str) -> str:
     return f"{model.label or model.name}{_CURVE_SUFFIX[which]}"
 
 
+# simplify: every boundary is summarised as if its sections were star-shaped around the origin
+# (median/mean over polar angle), so a non-radial model whose sections are not star-shaped gets a
+# wrong curve. Upgrade path: for non-radial models, plot each sampled section faintly instead.
 def _pane_curves(proj, scene, pane: int, model, colour: str) -> list:
     curves = ["centre", "low", "high"] if scene.envelope else ["centre"]
     lock = threading.Lock()
@@ -170,7 +173,9 @@ def _fetch(source: str, frame: str, start: float, stop: float):
     return v, normalise_frame(v.meta["COORDINATE_SYSTEM"])
 
 
-def _length_unit(unit: str):
+def _length_unit(unit: str, body):
+    if unit.strip() == body.symbol:
+        return body.radius
     if unit.strip() in _EARTH_RADII:
         return _EARTH_RADIUS
     try:
@@ -189,7 +194,7 @@ def _in_body_radii(v, body) -> np.ndarray:
         raise ValueError(f"{name} has no unit")
     if v.values.ndim != 2 or v.values.shape[1] < 3:
         raise ValueError(f"{name} is not a position: values of shape {v.values.shape}")
-    return (v.values[:, :3] * _length_unit(unit)).to_value(body.radius)
+    return (v.values[:, :3] * _length_unit(unit, body)).to_value(body.radius)
 
 
 def trajectory_source(source: str, resolved: ResolvedScene):

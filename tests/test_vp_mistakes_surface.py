@@ -91,3 +91,15 @@ def test_a_failing_callback_on_a_projection_says_why_on_its_first_pane(plot_pane
     reporter.attach(proj)
     reporter(0.0, 1.0)
     qtbot.waitUntil(lambda: "upstream archive unreachable" in proj.subplot(0).overlay().text(), timeout=5000)
+
+
+@pytest.mark.parametrize("attach_first", [True, False])
+def test_an_error_is_shown_whether_it_arrives_before_or_after_attach(plot_panel, qtbot, attach_first):
+    from SciQLop.components.plotting.ui.time_sync_panel import _PlotErrorReporter
+    plot, _ = _plot_vp(plot_panel, lambda start, stop: None)
+    reporter = _PlotErrorReporter("late")
+    steps = [lambda: reporter.attach(plot), lambda: reporter.report("boom")]
+    for step in (steps if attach_first else steps[::-1]):
+        step()
+    qtbot.waitUntil(lambda: "late: boom" in plot.overlay().text(), timeout=5000)
+

@@ -1,6 +1,7 @@
 from typing import Optional, List, Union
 
 import math
+import threading
 import time as _time
 import traceback
 import numpy as np
@@ -1023,6 +1024,7 @@ class _PlotErrorReporter(QObject):
     def __init__(self, name: str):
         super().__init__()
         self.name = name
+        self._lock = threading.Lock()
         self._plot = None
         self._pending: Optional[str] = None
         self._shown = False
@@ -1031,19 +1033,25 @@ class _PlotErrorReporter(QObject):
 
     def attach(self, plot) -> None:
         self.setParent(plot)
-        self._plot = plot
-        if self._pending is not None:
-            self._show(self._pending)
+        with self._lock:
+            self._plot = plot
+            pending = self._pending
+        if pending is not None:
+            self._show(pending)
 
     def report(self, message: str) -> None:
-        if self._plot is None:
-            self._pending = message
-        elif shiboken6.isValid(self):  # a fetch can finish after its plot closed
+        with self._lock:
+            held = self._plot is None
+            if held:
+                self._pending = message
+        if not held and shiboken6.isValid(self):  # a fetch can finish after its plot closed
             self._error.emit(message)
 
     def clear(self) -> None:
-        if (self._shown or self._pending is not None) and shiboken6.isValid(self):
+        with self._lock:
+            had_message = self._shown or self._pending is not None
             self._pending = None
+        if had_message and shiboken6.isValid(self):
             self._success.emit()
 
     def _show(self, message: str) -> None:

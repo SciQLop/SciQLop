@@ -16,7 +16,10 @@ class Plane:
 
 class Boundary(Protocol):
     """What a scene needs from a boundary model. RadialBoundary implements it; a
-    non-radial model implements sample_times and cross_section itself."""
+    non-radial model implements sample_times and cross_section itself.
+
+    Limitation: scenes summarise every section as if star-shaped around the origin, so a
+    non-radial model with non-star-shaped sections is drawn with a wrong curve."""
     name: str
     body: str
     kind: str
@@ -87,6 +90,8 @@ class RadialBoundary:
             return centre[:, None] + s[..., None] * rays
 
         lo, hi = np.zeros(rays.shape[:2]), np.full(rays.shape[:2], _FAR)
+        # simplify: radius() is re-evaluated on every bisection step although theta/phi are constant
+        # along a ray when the plane contains the focus. Upgrade path: evaluate it once per ray then.
         for _ in range(_BISECTIONS):
             mid = (lo + hi) / 2
             out = self._outside(point(mid), times)

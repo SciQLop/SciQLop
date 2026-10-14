@@ -86,6 +86,13 @@ def test_earth_radii_are_understood(monkeypatch, counted_rotations, unit):
     assert np.allclose(x, [2.0, 2.0])
 
 
+def test_the_scene_bodys_own_symbol_means_its_radius(monkeypatch, counted_rotations):
+    mars = ResolvedScene(SCENES_DATA[1], next(b for b in BODIES_DATA if b.symbol == "R_M"), {})
+    fake_variable_for_all(monkeypatch, FakeVariable([[1, 0, 0]] * 2, {"UNITS": "R_M", "COORDINATE_SYSTEM": "MSO"}))
+    t, x, y, z = scene_plot.trajectory_source("cda/X/pos", mars)(0.0, 600.0)
+    assert np.allclose(x, [1.0, 1.0])
+
+
 def test_a_product_without_frame_metadata_is_refused(fake_speasy):
     with pytest.raises(FrameError, match="no COORDINATE_SYSTEM"):
         scene_plot.trajectory_source("cda/X/mms1_pos", EARTH)(0.0, 600.0)
