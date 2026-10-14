@@ -38,3 +38,12 @@ def harvest_qactions(registry: CommandRegistry, main_window: QMainWindow) -> Non
                 id=action_id, name=text, description=f"Menu: {menu.title()}", callback=trigger,
             ))
             existing_names.add(text)
+
+
+def refresh_harvest(main_window) -> None:
+    """Harvest the menu bar into the palette; safe to repeat, so the loader calls it after every activation."""
+    from SciQLop.core.extensions import owned_by
+    if not hasattr(main_window, "menuBar"):
+        return
+    with owned_by("sciqlop"):
+        harvest_qactions(CommandRegistry(), main_window)

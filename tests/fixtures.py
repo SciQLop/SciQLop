@@ -35,7 +35,8 @@ def _build_main_window(qapp):
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
     from SciQLop.components.plugins import load_all, loaded_plugins
     from SciQLop.components.command_palette.commands import register_builtin_commands
-    from SciQLop.components.command_palette.backend.harvester import harvest_qactions
+    from SciQLop.components.command_palette.backend.harvester import refresh_harvest
+    from SciQLop.core.extensions import owned_by
 
     mw = SciQLopMainWindow()
     mw.show()
@@ -43,8 +44,9 @@ def _build_main_window(qapp):
     from SciQLop.components.extension_points import prepare_extension_points
     prepare_extension_points()
     load_all(mw)
-    register_builtin_commands(qapp.command_registry)
-    harvest_qactions(qapp.command_registry, mw)
+    with owned_by("sciqlop"):
+        register_builtin_commands(qapp.command_registry)
+    refresh_harvest(mw)
     mw.push_variables_to_console({"plugins": loaded_plugins})
     qapp.processEvents()
     return mw

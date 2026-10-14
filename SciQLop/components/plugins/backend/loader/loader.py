@@ -388,6 +388,16 @@ def _activate_fresh(entries, main_window, ep_plugins) -> None:
     for name in resolution.order:
         _ready(name)
     _warn_on_provides_drift(entries, resolution.order)
+    _refresh_palette(main_window)
+
+
+def _refresh_palette(main_window) -> None:
+    """Plugins add QActions to the menu bar in activate()/load(); the palette lists them (spec §9 issue 3)."""
+    from SciQLop.components.command_palette.backend.harvester import refresh_harvest
+    try:
+        refresh_harvest(main_window)
+    except Exception as e:
+        log.error(f"refreshing the command palette after plugin activation failed: {e}")
 
 
 def load_one(folder, name, main_window, ep_plugins=None):
