@@ -1,0 +1,746 @@
+{
+ "frames": [
+  {
+   "id": 1,
+   "id_provider": "NAIF",
+   "name": "J2000",
+   "desc": "Earth mean equator, dynamical equinox of J2000",
+   "center": "Sun"
+  },
+  {
+   "id": 17,
+   "id_provider": "NAIF",
+   "name": "ECLIPJ2000",
+   "desc": "Ecliptic coordinates based upon the J2000 frame",
+   "center": "Sun"
+  },
+  {
+   "id": 1600010,
+   "id_provider": "3DView",
+   "name": "HEE",
+   "desc": "Heliocentric Earth Ecliptic",
+   "center": "Sun"
+  },
+  {
+   "id": 1601010,
+   "id_provider": "3DView",
+   "name": "HEEQ",
+   "desc": "Heliocentric Earth Equatorial",
+   "center": "Sun"
+  },
+  {
+   "id": 1602010,
+   "id_provider": "3DView",
+   "name": "HCI",
+   "desc": "Heliocentric Inertial",
+   "center": "Sun"
+  },
+  {
+   "id": 10010,
+   "id_provider": "NAIF",
+   "name": "IAU_SUN",
+   "desc": "Body-Fixed Frame",
+   "center": "Sun"
+  },
+  {
+   "id": 1603199,
+   "id_provider": "3DView",
+   "name": "MESO",
+   "desc": "Mercury-centric Solar Orbital",
+   "center": "Mercury"
+  },
+  {
+   "id": 1600199,
+   "id_provider": "3DView",
+   "name": "MEME",
+   "desc": "EME2000 centered on Mercury",
+   "center": "Mercury"
+  },
+  {
+   "id": 1601199,
+   "id_provider": "3DView",
+   "name": "MECLIP",
+   "desc": "ECLIPJ2000 centered on Mercury",
+   "center": "Mercury"
+  },
+  {
+   "id": 1604199,
+   "id_provider": "3DView",
+   "name": "MESE",
+   "desc": "Mercury-centric Solar Ecliptic",
+   "center": "Mercury"
+  },
+  {
+   "id": 1605199,
+   "id_provider": "3DView",
+   "name": "MESEQ",
+   "desc": "Mercury-centric Solar Equatorial",
+   "center": "Mercury"
+  },
+  {
+   "id": 10011,
+   "id_provider": "NAIF",
+   "name": "IAU_MERCURY",
+   "desc": "Body-Fixed Frame",
+   "center": "Mercury"
+  },
+  {
+   "id": 1600299,
+   "id_provider": "3DView",
+   "name": "VSO",
+   "desc": "Venus-centric Solar Orbital",
+   "center": "Venus"
+  },
+  {
+   "id": 1601299,
+   "id_provider": "3DView",
+   "name": "VME",
+   "desc": "Venus Mean Equator",
+   "center": "Venus"
+  },
+  {
+   "id": 10012,
+   "id_provider": "NAIF",
+   "name": "IAU_VENUS",
+   "desc": "Body-Fixed Frame",
+   "center": "Venus"
+  },
+  {
+   "id": 1600399,
+   "id_provider": "3DView",
+   "name": "GSE",
+   "desc": "Geocentric Solar Ecliptic",
+   "center": "Earth"
+  },
+  {
+   "id": 1601399,
+   "id_provider": "3DView",
+   "name": "EME",
+   "desc": "Earth Mean Equator and Equinox",
+   "center": "Earth"
+  },
+  {
+   "id": 1602399,
+   "id_provider": "3DView",
+   "name": "GSEQ",
+   "desc": "Geocentric Solar Equatorial",
+   "center": "Earth"
+  },
+  {
+   "id": 1603399,
+   "id_provider": "3DView",
+   "name": "ECLIPDATE",
+   "desc": "Earth Mean Ecliptic and Equinox",
+   "center": "Earth"
+  },
+  {
+   "id": 1604399,
+   "id_provider": "3DView",
+   "name": "MAG",
+   "desc": "Geomagnetic coordinate system (definition not valid after 31/12/2014)",
+   "center": "Earth"
+  },
+  {
+   "id": 1605399,
+   "id_provider": "3DView",
+   "name": "GSM",
+   "desc": "Geocentric solar magnetospheric system  (definition not valid after 31/12/2014)",
+   "center": "Earth"
+  },
+  {
+   "id": 1606399,
+   "id_provider": "3DView",
+   "name": "SM",
+   "desc": "Solar magnetic coordinates (definition not valid after 31/12/2014)",
+   "center": "Earth"
+  },
+  {
+   "id": 10013,
+   "id_provider": "NAIF",
+   "name": "IAU_EARTH",
+   "desc": "Body-Fixed Frame",
+   "center": "Earth"
+  },
+  {
+   "id": 1600301,
+   "id_provider": "3DView",
+   "name": "LSE",
+   "desc": "Moon-centric Solar Ecliptic",
+   "center": "Moon"
+  },
+  {
+   "id": 1601301,
+   "id_provider": "3DView",
+   "name": "LME",
+   "desc": "Moon Mean Equator",
+   "center": "Moon"
+  },
+  {
+   "id": 10020,
+   "id_provider": "NAIF",
+   "name": "IAU_MOON",
+   "desc": "Body-Fixed Frame",
+   "center": "Moon"
+  },
+  {
+   "id": 1601499,
+   "id_provider": "3DView",
+   "name": "MSO",
+   "desc": "Mars-centric Solar Orbital",
+   "center": "Mars"
+  },
+  {
+   "id": 1600499,
+   "id_provider": "3DView",
+   "name": "MME",
+   "desc": "Mars Mean Equator",
+   "center": "Mars"
+  },
+  {
+   "id": 10014,
+   "id_provider": "NAIF",
+   "name": "IAU_MARS",
+   "desc": "Body-Fixed Frame",
+   "center": "Mars"
+  },
+  {
+   "id": 1600401,
+   "id_provider": "3DView",
+   "name": "PSE",
+   "desc": "Phobos-centric Solar Ecliptic",
+   "center": "Phobos"
+  },
+  {
+   "id": 1601401,
+   "id_provider": "3DView",
+   "name": "PME",
+   "desc": "Phobos Mean Equator",
+   "center": "Phobos"
+  },
+  {
+   "id": 1600402,
+   "id_provider": "3DView",
+   "name": "DSE",
+   "desc": "Deimos-centric Solar Ecliptic",
+   "center": "Deimos"
+  },
+  {
+   "id": 1601402,
+   "id_provider": "3DView",
+   "name": "DME",
+   "desc": "Deimos Mean Equator",
+   "center": "Deimos"
+  },
+  {
+   "id": 1603599,
+   "id_provider": "3DView",
+   "name": "JSO",
+   "desc": "Jovian Solar Orbital Coordinates",
+   "center": "Jupiter"
+  },
+  {
+   "id": 1600599,
+   "id_provider": "3DView",
+   "name": "JEME",
+   "desc": "EME2000 centered on Jupiter",
+   "center": "Jupiter"
+  },
+  {
+   "id": 1601599,
+   "id_provider": "3DView",
+   "name": "JECLIP",
+   "desc": "ECLIPJ2000 centered on Jupiter",
+   "center": "Jupiter"
+  },
+  {
+   "id": 1602599,
+   "id_provider": "3DView",
+   "name": "JSM",
+   "desc": "Jovian Solar Magnetospheric",
+   "center": "Jupiter"
+  },
+  {
+   "id": 1604599,
+   "id_provider": "3DView",
+   "name": "SYSTEM_3",
+   "desc": "System 3",
+   "center": "Jupiter"
+  },
+  {
+   "id": 10015,
+   "id_provider": "NAIF",
+   "name": "IAU_JUPITER",
+   "desc": "Body-Fixed Frame using IAU 2009 constants ",
+   "center": "Jupiter"
+  },
+  {
+   "id": 1600501,
+   "id_provider": "3DView",
+   "name": "IPHIO",
+   "desc": "Io phio",
+   "center": "Io"
+  },
+  {
+   "id": 1600502,
+   "id_provider": "3DView",
+   "name": "EPHIO",
+   "desc": "Europa phio",
+   "center": "Europa"
+  },
+  {
+   "id": 1600503,
+   "id_provider": "3DView",
+   "name": "GPHIO",
+   "desc": "Ganymede phio",
+   "center": "Ganymede"
+  },
+  {
+   "id": 1600504,
+   "id_provider": "3DView",
+   "name": "CPHIO",
+   "desc": "Callisto phio",
+   "center": "Callisto"
+  },
+  {
+   "id": 1603699,
+   "id_provider": "3DView",
+   "name": "KSO",
+   "desc": "Kronocentric Solar Orbital Coordinates",
+   "center": "Saturn"
+  },
+  {
+   "id": 1600699,
+   "id_provider": "3DView",
+   "name": "KEME",
+   "desc": "EME2000 centered on Saturn",
+   "center": "Saturn"
+  },
+  {
+   "id": 1601699,
+   "id_provider": "3DView",
+   "name": "KECLIP",
+   "desc": "ECLIPJ2000 centered on Saturn",
+   "center": "Saturn"
+  },
+  {
+   "id": 1602699,
+   "id_provider": "3DView",
+   "name": "KSM",
+   "desc": "Kronocentric Solar Magnetospheric",
+   "center": "Saturn"
+  },
+  {
+   "id": 10016,
+   "id_provider": "NAIF",
+   "name": "IAU_SATURN",
+   "desc": "Body-Fixed Frame",
+   "center": "Saturn"
+  },
+  {
+   "id": 1600601,
+   "id_provider": "3DView",
+   "name": "KMIEME",
+   "desc": "EME2000 centered on Mimas",
+   "center": "Mimas"
+  },
+  {
+   "id": 1601601,
+   "id_provider": "3DView",
+   "name": "KMIECLIP",
+   "desc": "ECLIPJ2000 centered on Mimas",
+   "center": "Mimas"
+  },
+  {
+   "id": 1602601,
+   "id_provider": "3DView",
+   "name": "MIIS",
+   "desc": "Mimas Inter-action coordinate System",
+   "center": "Mimas"
+  },
+  {
+   "id": 1600602,
+   "id_provider": "3DView",
+   "name": "KENEME",
+   "desc": "EME2000 centered on Enceladus",
+   "center": "Enceladus"
+  },
+  {
+   "id": 1601602,
+   "id_provider": "3DView",
+   "name": "KENECLIP",
+   "desc": "ECLIPJ2000 centered on Enceladus",
+   "center": "Enceladus"
+  },
+  {
+   "id": 1602602,
+   "id_provider": "3DView",
+   "name": "ENIS",
+   "desc": "Enceladus Inter-action coordinate System",
+   "center": "Enceladus"
+  },
+  {
+   "id": 1600603,
+   "id_provider": "3DView",
+   "name": "KTEEME",
+   "desc": "EME2000 centered on Tethys",
+   "center": "Tethys"
+  },
+  {
+   "id": 1601604,
+   "id_provider": "3DView",
+   "name": "KTEECLIP",
+   "desc": "ECLIPJ2000 centered on Tethys",
+   "center": "Tethys"
+  },
+  {
+   "id": 1602603,
+   "id_provider": "3DView",
+   "name": "TEIS",
+   "desc": "Tethys Inter-action coordinate System",
+   "center": "Tethys"
+  },
+  {
+   "id": 1600604,
+   "id_provider": "3DView",
+   "name": "KDIEME",
+   "desc": "EME2000 centered on Dione",
+   "center": "Dione"
+  },
+  {
+   "id": 1601604,
+   "id_provider": "3DView",
+   "name": "KDIECLIP",
+   "desc": "ECLIPJ2000 centered on Dione",
+   "center": "Dione"
+  },
+  {
+   "id": 1602604,
+   "id_provider": "3DView",
+   "name": "DIIS",
+   "desc": "Dione Inter-action coordinate System",
+   "center": "Dione"
+  },
+  {
+   "id": 1600605,
+   "id_provider": "3DView",
+   "name": "KRHEME",
+   "desc": "EME2000 centered on Rhea",
+   "center": "Rhea"
+  },
+  {
+   "id": 1601605,
+   "id_provider": "3DView",
+   "name": "KRHECLIP",
+   "desc": "ECLIPJ2000 centered on Rhea",
+   "center": "Rhea"
+  },
+  {
+   "id": 1602605,
+   "id_provider": "3DView",
+   "name": "RHIS",
+   "desc": "Rhea Inter-action coordinate System",
+   "center": "Rhea"
+  },
+  {
+   "id": 1600606,
+   "id_provider": "3DView",
+   "name": "KTIEME",
+   "desc": "EME2000 centered on TItan",
+   "center": "Titan"
+  },
+  {
+   "id": 1601606,
+   "id_provider": "3DView",
+   "name": "KTIECLIP",
+   "desc": "ECLIPJ2000 centered on TItan",
+   "center": "Titan"
+  },
+  {
+   "id": 1602606,
+   "id_provider": "3DView",
+   "name": "TIIS",
+   "desc": "TItan Inter-action coordinate System",
+   "center": "Titan"
+  },
+  {
+   "id": 1600607,
+   "id_provider": "3DView",
+   "name": "KHYEME",
+   "desc": "EME2000 centered on Hyperion",
+   "center": "Hyperion"
+  },
+  {
+   "id": 1601607,
+   "id_provider": "3DView",
+   "name": "KHYECLIP",
+   "desc": "ECLIPJ2000 centered on Hyperion",
+   "center": "Hyperion"
+  },
+  {
+   "id": 1602607,
+   "id_provider": "3DView",
+   "name": "HYIS",
+   "desc": "Hyperion Inter-action coordinate System",
+   "center": "Hyperion"
+  },
+  {
+   "id": 1600608,
+   "id_provider": "3DView",
+   "name": "KIAEME",
+   "desc": "EME2000 centered on Iapetus",
+   "center": "Iapetus"
+  },
+  {
+   "id": 1601608,
+   "id_provider": "3DView",
+   "name": "KIAECLIP",
+   "desc": "ECLIPJ2000 centered on Iapetus",
+   "center": "Iapetus"
+  },
+  {
+   "id": 1602608,
+   "id_provider": "3DView",
+   "name": "IAIS",
+   "desc": "Iapetus Inter-action coordinate System",
+   "center": "Iapetus"
+  },
+  {
+   "id": 1600609,
+   "id_provider": "3DView",
+   "name": "KPHEME",
+   "desc": "EME2000 centered on Phoebe",
+   "center": "Phoebe"
+  },
+  {
+   "id": 1601609,
+   "id_provider": "3DView",
+   "name": "KPHECLIP",
+   "desc": "ECLIPJ2000 centered on Phoebe",
+   "center": "Phoebe"
+  },
+  {
+   "id": 1602609,
+   "id_provider": "3DView",
+   "name": "PHIS",
+   "desc": "Phoebe Inter-action coordinate System",
+   "center": "Phoebe"
+  },
+  {
+   "id": 1600612,
+   "id_provider": "3DView",
+   "name": "KHEEME",
+   "desc": "EME2000 centered on Helene",
+   "center": "Helene"
+  },
+  {
+   "id": 1601612,
+   "id_provider": "3DView",
+   "name": "KHEECLIP",
+   "desc": "ECLIPJ2000 centered on Helene",
+   "center": "Helene"
+  },
+  {
+   "id": 1602612,
+   "id_provider": "3DView",
+   "name": "HEIS",
+   "desc": "Helene Inter-action coordinate System",
+   "center": "Helene"
+  },
+  {
+   "id": 1600613,
+   "id_provider": "3DView",
+   "name": "KTLEME",
+   "desc": "EME2000 centered on Telesto",
+   "center": "Telesto"
+  },
+  {
+   "id": 1601613,
+   "id_provider": "3DView",
+   "name": "KTLECLIP",
+   "desc": "ECLIPJ2000 centered on Telesto",
+   "center": "Telesto"
+  },
+  {
+   "id": 1602613,
+   "id_provider": "3DView",
+   "name": "TLIS",
+   "desc": "Telesto Inter-action coordinate System",
+   "center": "Telesto"
+  },
+  {
+   "id": 1600799,
+   "id_provider": "3DView",
+   "name": "UEME",
+   "desc": "EME2000 centered on Uranus",
+   "center": "Uranus"
+  },
+  {
+   "id": 1601799,
+   "id_provider": "3DView",
+   "name": "UECLIP",
+   "desc": "ECLIPJ2000 centered on Uranus",
+   "center": "Uranus"
+  },
+  {
+   "id": 1603799,
+   "id_provider": "3DView",
+   "name": "USO",
+   "desc": "Uranus-centric Solar Orbital Coordinates",
+   "center": "Uranus"
+  },
+  {
+   "id": 10017,
+   "id_provider": "NAIF",
+   "name": "IAU_URANUS",
+   "desc": "Body-Fixed Frame",
+   "center": "Uranus"
+  },
+  {
+   "id": 1600899,
+   "id_provider": "3DView",
+   "name": "NEME",
+   "desc": "EME2000 centered on Neptune",
+   "center": "Neptune"
+  },
+  {
+   "id": 1601899,
+   "id_provider": "3DView",
+   "name": "NECLIP",
+   "desc": "ECLIPJ2000 centered on Neptune",
+   "center": "Neptune"
+  },
+  {
+   "id": 1603899,
+   "id_provider": "3DView",
+   "name": "NSO",
+   "desc": "Neptune-centric Solar Orbital Coordinates",
+   "center": "Neptune"
+  },
+  {
+   "id": 10018,
+   "id_provider": "NAIF",
+   "name": "IAU_NEPTUNE",
+   "desc": "Body-Fixed Frame",
+   "center": "Neptune"
+  },
+  {
+   "id": 1600999,
+   "id_provider": "3DView",
+   "name": "PEME",
+   "desc": "EME2000 centered on Pluto",
+   "center": "Pluto"
+  },
+  {
+   "id": 1601999,
+   "id_provider": "3DView",
+   "name": "PECLIP",
+   "desc": "ECLIPJ2000 centered on Pluto",
+   "center": "Pluto"
+  },
+  {
+   "id": 1603999,
+   "id_provider": "3DView",
+   "name": "PSO",
+   "desc": "Pluto-centric Solar Orbital Coordinates",
+   "center": "Pluto"
+  },
+  {
+   "id": 10019,
+   "id_provider": "NAIF",
+   "name": "IAU_PLUTO",
+   "desc": "Body-Fixed Frame",
+   "center": "Pluto"
+  },
+  {
+   "id": 1601000012,
+   "id_provider": "3DView",
+   "name": "67PCG_EME",
+   "desc": "EME2000 centered on comet churyumov gerasimenko",
+   "center": "Churyumov-Gerasimenko"
+  },
+  {
+   "id": 1611000012,
+   "id_provider": "3DView",
+   "name": "67PCG_CSO",
+   "desc": "Comet solar oriented  centered on comet churyumov gerasimenko",
+   "center": "Churyumov-Gerasimenko"
+  },
+  {
+   "id": 1602000021,
+   "id_provider": "3DView",
+   "name": "LUTETIA_EME",
+   "desc": "EME2000 centered on asteroid LUTETIA",
+   "center": "Lutetia"
+  },
+  {
+   "id": 1612000021,
+   "id_provider": "3DView",
+   "name": "LUTETIA_CSO",
+   "desc": "Comet solar oriented  centered on asteroid LUTETIA",
+   "center": "Lutetia"
+  },
+  {
+   "id": 1602002867,
+   "id_provider": "3DView",
+   "name": "STEINS_EME",
+   "desc": "EME2000 centered on asteroid STEINS",
+   "center": "Steins"
+  },
+  {
+   "id": 1612002867,
+   "id_provider": "3DView",
+   "name": "STEINS_CSO",
+   "desc": "Comet solar oriented  centered on asteroid STEINS",
+   "center": "Steins"
+  },
+  {
+   "id": 1601000036,
+   "id_provider": "3DView",
+   "name": "HALLEY_EME",
+   "desc": "EME2000 centered on asteroid HALLEY",
+   "center": "Halley"
+  },
+  {
+   "id": 1611000036,
+   "id_provider": "3DView",
+   "name": "HALLEY_CSO",
+   "desc": "Comet solar oriented  centered on asteroid HALLEY",
+   "center": "Halley"
+  },
+  {
+   "id": 1601000034,
+   "id_provider": "3DView",
+   "name": "GRIGGSKELL_EME",
+   "desc": "EME2000 centered on asteroid GRIGG-SKJELLERUP",
+   "center": "Grigg-Skjellerup"
+  },
+  {
+   "id": 1611000034,
+   "id_provider": "3DView",
+   "name": "GRIGGSKELL_CSO",
+   "desc": "Comet solar oriented  centered on asteroid GRIGG-SKJELLERUP",
+   "center": "Grigg-Skjellerup"
+  },
+  {
+   "id": 10113,
+   "id_provider": "NAIF",
+   "name": "IAU_DIDYMOS",
+   "desc": "Body-Fixed Frame",
+   "center": "Didymos"
+  },
+  {
+   "id": 200658031,
+   "id_provider": "NAIF",
+   "name": "DIDYMOS_EME",
+   "desc": "EME2000 centered on asteroid DIDYMOS",
+   "center": "Didymos"
+  },
+  {
+   "id": 200658032,
+   "id_provider": "NAIF",
+   "name": "DIDYMOS_CSO",
+   "desc": "Comet solar oriented centered on asteroid DIDYMOS",
+   "center": "Didymos"
+  }
+ ]
+}
