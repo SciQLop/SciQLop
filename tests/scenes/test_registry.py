@@ -16,11 +16,7 @@ class Ball(RadialBoundary):
 
 
 @pytest.fixture
-def registries(monkeypatch):
-    for reg in (BODIES, BOUNDARIES, SCENES):
-        monkeypatch.setattr(reg, "_items", {})
-        monkeypatch.setattr(reg, "_owners", {})
-        monkeypatch.setattr(reg, "signals", type(reg.signals)())
+def registries(isolated_registries):
     BODIES.register(Body("earth", 6371.2 * u.km, "Earth", "R_E"))
     BOUNDARIES.register(Ball())
 

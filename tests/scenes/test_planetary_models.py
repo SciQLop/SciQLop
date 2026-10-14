@@ -43,12 +43,9 @@ def test_every_model_is_labelled_and_cited():
         assert m.label and m.reference.startswith("doi:") and m.frame in frame_centres()
 
 
-def test_register_all_makes_the_scenes_resolvable(monkeypatch):
-    from SciQLop.components.scenes import registry
+def test_register_all_makes_the_scenes_resolvable(isolated_registries):
     from SciQLop.components.scenes.model import resolve
     from SciQLop.plugins.planetary_scenes import register_all
-    for reg in (registry.BODIES, registry.BOUNDARIES, registry.SCENES):
-        monkeypatch.setattr(reg, "_items", {})
     register_all()
     for scene in SCENES_DATA:
         assert set(resolve(scene.name).boundaries) == set(scene.boundaries)

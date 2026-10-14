@@ -15,15 +15,22 @@ def private_matrix_disk_cache(monkeypatch, tmp_path):
 
 
 @pytest.fixture
-def earth(monkeypatch):
-    from scipy.spatial.transform import Rotation
-    from SciQLop.components.scenes import registry, scene_plot, summary
-    from SciQLop.components.scenes.boundary import RadialBoundary
-    from SciQLop.plugins.planetary_scenes import register_all
+def isolated_registries(monkeypatch):
+    """Fresh items, owners and signals on the scene registries: nothing leaks into the session
+    registries or, through their signals, into the session products tree."""
+    from SciQLop.components.scenes import registry
     for reg in (registry.BODIES, registry.BOUNDARIES, registry.SCENES):
         monkeypatch.setattr(reg, "_items", {})
         monkeypatch.setattr(reg, "_owners", {})
         monkeypatch.setattr(reg, "signals", type(reg.signals)())
+
+
+@pytest.fixture
+def earth(monkeypatch, isolated_registries):
+    from scipy.spatial.transform import Rotation
+    from SciQLop.components.scenes import registry, scene_plot, summary
+    from SciQLop.components.scenes.boundary import RadialBoundary
+    from SciQLop.plugins.planetary_scenes import register_all
     register_all()
     monkeypatch.setattr(summary, "rotation", lambda f, t, times: Rotation.identity(len(times)))
     monkeypatch.setattr(RadialBoundary, "n_samples", 10)   # 18 curves stay well inside the waits
