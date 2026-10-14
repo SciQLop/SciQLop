@@ -18,7 +18,8 @@ the installed `SciQLop.user_api` before relying on it.
 
 - A `DataProvider` registers itself on construction, owned by the plugin whose
   `activate` or `load` created it. Re-creating one under the same name replaces it.
-- `sciqlop.extensions.get("sciqlop.data_providers")` lists providers by name.
+- `from SciQLop.core import extensions`, then `extensions.get("sciqlop.data_providers")` returns the extension
+  point; its `.list()` lists the providers.
 - A plugin whose activation fails has its providers removed.
 
 ## Product kinds
@@ -40,8 +41,9 @@ A plugin tags its product-tree nodes with the `product_kind` metadata key:
 add_product_node(path, name, provider.name, {PRODUCT_KIND_KEY: "vdf.distribution", ...}, ...)
 ```
 
-Rendering of a plugin kind arrives with plot kinds (plan 1c). Until then a node whose kind is not a
-core one does not plot.
+Today a plugin kind plots by its `arity`, through the provider's `get_data`: arity 2 plots as a line time
+series, arity 3 as a colour map, and arity 0 does not plot. Plot kinds (plan 1c) will let a kind choose its
+plot through `default_plot_kind`.
 
 ## Source kinds
 
@@ -52,7 +54,8 @@ source line, templates and Export & Share all read them.
 - `SourceKind(id, tooltip, inspector_line, product_path=<returns "">, shareable=False)`.
   `tooltip` and `inspector_line` take the `GraphContext` and return text.
   `product_path` returns the `a//b//c` path templates re-plot from, or `""`.
-  `shareable=True` lets Export & Share send the graph to the Speasy proxy.
+  `shareable=True` lets Export & Share send the graph to the Speasy proxy. It only works for Speasy graphs,
+  because sharing also needs a speasy id. Plugin kinds leave it `False`.
 - Core ids: `sciqlop.speasy`, `sciqlop.vp`, `sciqlop.function`, `sciqlop.static`,
   `sciqlop.provider`. Import the constants from `SciQLop.core.source_kinds`.
 - A third-party `DataProvider` gets `sciqlop.provider` unless it sets a
@@ -60,7 +63,7 @@ source line, templates and Export & Share all read them.
 - Old saved values (`speasy`, `vp`, `function`, `static`) are still read and
   become the `sciqlop.*` ids. Plugin code comparing `ctx.kind == "speasy"` must
   compare to `SciQLop.core.source_kinds.SPEASY` instead.
-- A plugin contributes one with `sciqlop.extensions.get("sciqlop.source_kinds").contribute(SourceKind("myplugin.cdf", ...))`.
+- A plugin contributes one with `ctx.contribute("sciqlop.source_kinds", SourceKind("myplugin.cdf", ...))`.
   Its id is `<plugin id>.<name>`.
 - If the plugin that provides a kind is not loaded, its graphs still open.
   The inspector shows the kind id with "(plugin not loaded)".

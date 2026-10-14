@@ -55,6 +55,8 @@ A `MimeType(id, decoder, encoder=None, obj_type=None, nested_type=None)` is keye
 `decoder(QMimeData)` returns the object. `encoder(obj)` returns a `QMimeData`. `encode_mime(obj)` finds the encoder
 by the exact `type(obj)`; for a list it uses `obj_type=list` and `nested_type` for the item type.
 `SciQLop.core.mime.register_mime(...)` still works and contributes a `MimeType` too.
+When two MIME types encode the same object type, the first registered wins. Register a new object type rather than
+re-registering `TimeRange` under another MIME id.
 
 ```python
 from SciQLop.core.mime import MimeType
@@ -77,6 +79,12 @@ Field details: data providers, source kinds and product kinds in
 [products-and-data.md](products-and-data.md), MIME types above.
 
 ```python
+from SciQLop.components.plotting.backend.data_provider import DataProvider
+from SciQLop.core.enums import ParameterType
+from SciQLop.core.models import ProductsModelNodeType, add_product_node
+from SciQLop.core.product_kinds import PRODUCT_KIND_KEY, ProductKind
+from SciQLop.core.source_kinds import SourceKind
+
 class VdfProvider(DataProvider):
     source_kind = "vdf.instrument"
 
@@ -84,7 +92,8 @@ def activate(ctx):
     ctx.contribute("sciqlop.product_kinds", ProductKind("vdf.distribution", "VDF", 3, "vdf.slice_plot"))
     ctx.contribute("sciqlop.source_kinds", SourceKind("vdf.instrument", tooltip, inspector_line))
     provider = VdfProvider("vdf")
-    add_product_node("vdf//f", "f", provider.name, {PRODUCT_KIND_KEY: "vdf.distribution"}, ...)
+    add_product_node(["vdf"], "f", provider.name, {PRODUCT_KIND_KEY: "vdf.distribution"},
+                     ProductsModelNodeType.PARAMETER, ParameterType.Scalar)
 ```
 
 - A failed `activate()` withdraws everything the plugin contributed.
