@@ -1,18 +1,27 @@
-from PySide6.QtCore import QMimeData, QByteArray, QDataStream, QIODevice
-from typing import Any, Callable, Dict, List
+from dataclasses import dataclass
+from typing import Any, Callable, List, Optional
 
-_MIME_ENCODERS_: Dict[type, Callable[[Any], QMimeData] or Dict[type, Callable[[Any], QMimeData]]] = {list: {}}
-_MIME_DECODERS_: Dict[str, Callable[[QMimeData], Any]] = {"": lambda _: None}
+from PySide6.QtCore import QByteArray, QDataStream, QIODevice, QMimeData
+
+from SciQLop.core.extensions import ExtensionPoint, declare
+
+
+@dataclass(frozen=True)
+class MimeType:
+    id: str
+    decoder: Callable[[QMimeData], Any]
+    encoder: Optional[Callable[[Any], QMimeData]] = None
+    obj_type: Optional[type] = None
+    nested_type: Optional[type] = None
+
+
+MIME_TYPES = declare(ExtensionPoint("sciqlop.mime_types", MimeType, what="MIME type",
+                                    doc="Drag-and-drop payloads: how each MIME type is encoded and decoded."))
 
 
 def register_mime(obj_type: type, mime_type: str, encoder: Callable[[Any], QMimeData],
-                  decoder: Callable[[QMimeData], Any],
-                  nested_type: type = None):
-    if obj_type is list:
-        _MIME_ENCODERS_[obj_type][nested_type] = encoder
-    else:
-        _MIME_ENCODERS_[obj_type] = encoder
-    _MIME_DECODERS_[mime_type] = decoder
+                  decoder: Callable[[QMimeData], Any], nested_type: type = None, owner: str = None):
+    MIME_TYPES.contribute(MimeType(mime_type, decoder, encoder, obj_type, nested_type), owner=owner, replace=True)
 
 
 def encode(data: Any) -> QByteArray:
@@ -28,28 +37,32 @@ def decode(data: QByteArray) -> Any:
     return decoded
 
 
+def _encoder_key(obj) -> tuple:
+    return (list, type(obj[0])) if type(obj) is list else (type(obj), None)
+
+
 def encode_mime(object_to_encode: Any) -> QMimeData:
-    if type(object_to_encode) is list:
-        if len(object_to_encode):
-            return _MIME_ENCODERS_[type(object_to_encode)][type(object_to_encode[0])](object_to_encode)
-    else:
-        return _MIME_ENCODERS_[type(object_to_encode)](object_to_encode)
+    if type(object_to_encode) is list and not object_to_encode:
+        return None
+    key = _encoder_key(object_to_encode)
+    found = next((m for m in MIME_TYPES.list() if m.encoder and (m.obj_type, m.nested_type) == key), None)
+    if found is None:
+        raise KeyError(f"no MIME type encodes {key[0].__name__}")
+    return found.encoder(object_to_encode)
 
 
 def decode_mime(mime_data: QMimeData, preferred_formats: List[str] = None) -> Any:
-    if preferred_formats is not None:
-        for f in preferred_formats:
-            if mime_data.hasFormat(f):
-                return _MIME_DECODERS_[f](mime_data)
-    for f in mime_data.formats():
-        if f in _MIME_DECODERS_:
-            return _MIME_DECODERS_[f](mime_data)
+    for f in [*(preferred_formats or []), *mime_data.formats()]:
+        if f in MIME_TYPES and mime_data.hasFormat(f):
+            return MIME_TYPES.get(f).decoder(mime_data)
     return None
+
 
 def _register_product_list_decoder():
     from .types import PRODUCT_LIST_MIME_TYPE
-    from  SciQLopPlots import ProductsModel
-    _MIME_DECODERS_[PRODUCT_LIST_MIME_TYPE] = ProductsModel.decode_mime_data
+    from SciQLopPlots import ProductsModel
+    MIME_TYPES.contribute(MimeType(PRODUCT_LIST_MIME_TYPE, ProductsModel.decode_mime_data), owner="sciqlop")
+
 
 _register_product_list_decoder()
 
@@ -93,6 +106,6 @@ def _register_time_range_codec():
             return None
         return TimeRange(start, stop)
 
-    register_mime(TimeRange, TIME_RANGE_MIME_TYPE, _encode, _decode)
+    register_mime(TimeRange, TIME_RANGE_MIME_TYPE, _encode, _decode, owner="sciqlop")
 
 _register_time_range_codec()

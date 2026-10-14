@@ -40,4 +40,5 @@ register_mime(
     encoder=_encode_catalog_list,
     decoder=_decode_catalog_list,
     nested_type=Catalog,
+    owner="sciqlop",
 )

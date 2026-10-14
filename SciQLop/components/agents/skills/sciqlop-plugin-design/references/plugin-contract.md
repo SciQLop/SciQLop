@@ -49,6 +49,21 @@ def activate(ctx):
 If you keep a list built from an extension point (a menu, a cache), also connect to
 `extensions.get(ep_id).signals.added`: a plugin installed later contributes after your `ready`.
 
+## Drag-and-drop payloads (`sciqlop.mime_types`)
+
+A `MimeType(id, decoder, encoder=None, obj_type=None, nested_type=None)` is keyed by `id`, the MIME type string.
+`decoder(QMimeData)` returns the object. `encoder(obj)` returns a `QMimeData`. `encode_mime(obj)` finds the encoder
+by the exact `type(obj)`; for a list it uses `obj_type=list` and `nested_type` for the item type.
+`SciQLop.core.mime.register_mime(...)` still works and contributes a `MimeType` too.
+
+```python
+from SciQLop.core.mime import MimeType
+
+def activate(ctx):
+    ctx.contribute("sciqlop.mime_types",
+                   MimeType("application/x.vdf.slice", decode_slice, encode_slice, obj_type=Slice))
+```
+
 ## When a plugin does not load
 
 The log says why: `Plugin study not loaded: needs plugin vdf>=1.2,<2, but vdf 2.0.0 is installed`.

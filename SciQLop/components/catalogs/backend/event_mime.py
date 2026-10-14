@@ -6,6 +6,7 @@ from typing import Iterable
 
 from PySide6.QtCore import QMimeData
 
+from SciQLop.core.mime import MIME_TYPES, MimeType
 from SciQLop.core.mime.types import EVENT_LIST_MIME_TYPE
 from .provider import CatalogEvent
 
@@ -53,3 +54,6 @@ def decode_event_list(mime: QMimeData) -> EventDropPayload | None:
         catalog_uuid=data.get("catalog_uuid"),
         event_uuids=list(data.get("event_uuids", [])),
     )
+
+
+MIME_TYPES.contribute(MimeType(EVENT_LIST_MIME_TYPE, decode_event_list), owner="sciqlop")

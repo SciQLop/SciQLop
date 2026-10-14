@@ -1276,7 +1276,7 @@ class ProductDnDCallback(PlotDragNDropCallback):
 
     def call(self, plot, mime_data: QMimeData):
         from SciQLop.components.scenes.tree import drop
-        for product in decode_mime(mime_data):
+        for product in decode_mime(mime_data, [PRODUCT_LIST_MIME_TYPE]):
             drop(plot, product, self.parent())
 
 
@@ -1285,7 +1285,7 @@ class TimeRangeDnDCallback(PlotDragNDropCallback):
         super().__init__(TIME_RANGE_MIME_TYPE, False, parent)
 
     def call(self, plot, mime_data: QMimeData):
-        time_range = decode_mime(mime_data)
+        time_range = decode_mime(mime_data, [TIME_RANGE_MIME_TYPE])
         if time_range is None:
             return
         plot.time_axis().set_range(time_range)
@@ -1296,7 +1296,7 @@ class CatalogDnDCallback(PlotDragNDropCallback):
         super().__init__(CATALOG_LIST_MIME_TYPE, False, parent)
 
     def call(self, plot, mime_data: QMimeData):
-        catalogs = decode_mime(mime_data)
+        catalogs = decode_mime(mime_data, [CATALOG_LIST_MIME_TYPE])
         if not catalogs:
             return
         manager = self.parent().catalog_manager

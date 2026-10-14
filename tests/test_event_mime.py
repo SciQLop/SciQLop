@@ -101,7 +101,7 @@ def test_event_table_drag_also_carries_a_time_range(qtbot, qapp):
     md = model.mimeData([model.index(0, 0), model.index(1, 0)])
     assert md.hasFormat(TIME_RANGE_MIME_TYPE)
     assert md.hasFormat(EVENT_LIST_MIME_TYPE)
-    decoded = decode_mime(md)
+    decoded = decode_mime(md, [TIME_RANGE_MIME_TYPE])
     assert decoded.start() == e1.start.timestamp()
     assert decoded.stop() == e2.stop.timestamp()
 
