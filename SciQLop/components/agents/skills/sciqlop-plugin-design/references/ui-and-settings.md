@@ -154,6 +154,21 @@ def activate(ctx):
 
 `register_panel_menu` (dynamic submenus on the panel menu) is unchanged and keeps working.
 
+## Keyboard shortcuts
+
+A shortcut is a contribution to `sciqlop.shortcuts`. It is listed in the help panel and in Settings, and the
+user can rebind it. Use `register_shortcut` in `activate(ctx)`, or `ctx.contribute("sciqlop.shortcuts", Shortcut(...))`.
+The id is `<plugin id>.<name>`.
+
+```python
+from SciQLop.components.shortcuts.registry import Shortcut, register_shortcut
+
+def activate(ctx):
+    register_shortcut(Shortcut("my_plugin.fit", "VDF", "Fit the distribution", "Ctrl+Alt+F"))
+```
+
+A shortcut registered while the help panel or Settings is open shows up there at once.
+
 ## Drop rules
 
 What a drop on a plot does is a contribution to `sciqlop.drop_rules`

@@ -62,6 +62,22 @@ class ShortcutsEditor(SettingDelegate):
         self._edits: dict[str, QKeySequenceEdit] = {}
         self._resets: dict[str, QToolButton] = {}
         self._unlisted: dict[str, str] = {}
+        self._current: dict[str, str] = {}
+        on_shortcuts_changed(self, lambda owner: owner._sync_rows())
+
+    def _sync_rows(self):
+        # Rows are rebuilt only when the registered set changes: a rebuild on every
+        # key edit would destroy the key field that is emitting the edit.
+        if {s.id for s in registered_shortcuts()} == self._items.keys():
+            return
+        self._rebuild_rows()
+        self.set_value(self._current)
+
+    def _rebuild_rows(self):
+        self._tree.clear()
+        self._items.clear()
+        self._edits.clear()
+        self._resets.clear()
         for group, shortcuts in _grouped().items():
             group_item = _group_item(self._tree, group)
             for shortcut in shortcuts:
@@ -105,6 +121,7 @@ class ShortcutsEditor(SettingDelegate):
 
     def set_value(self, value) -> None:
         overrides = value if isinstance(value, dict) else {}
+        self._current = overrides
         # Kept as-is: e.g. a disabled plugin's shortcut, not registered this session.
         self._unlisted = {sid: key for sid, key in overrides.items() if sid not in self._edits}
         for sid, edit in self._edits.items():
@@ -115,6 +132,7 @@ class ShortcutsEditor(SettingDelegate):
 
     def _on_edited(self, _sequence):
         value = self.get_value()
+        self._current = value
         self._show_conflicts(value)
         self.value_changed.emit(value)
 

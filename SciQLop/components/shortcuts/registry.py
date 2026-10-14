@@ -9,6 +9,7 @@ from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
 from SciQLop.components.settings.backend.entry import ConfigEntry, SettingsCategory
+from SciQLop.core.extensions import ExtensionPoint, declare
 from SciQLop.core.ui.shortcuts import native_shortcut_text
 from SciQLop.core.ui.tooltips import rich_tooltip
 
@@ -44,17 +45,26 @@ _BUILTIN = [
     Shortcut("profiling.open_last", "Profiling", "Open the last trace in Perfetto", "Ctrl+Alt+O"),
 ]
 
-_registry: dict[str, Shortcut] = {s.id: s for s in _BUILTIN}
+SHORTCUTS = declare(ExtensionPoint("sciqlop.shortcuts", Shortcut, what="keyboard shortcut",
+                                   doc="Configurable keyboard shortcuts, listed in the help panel and settings."))
+for _shortcut in _BUILTIN:
+    SHORTCUTS.contribute(_shortcut, owner="sciqlop")
 
 
 def register_shortcut(shortcut: Shortcut) -> Shortcut:
     """For plugins: make a shortcut configurable and listed in the help panel."""
-    _registry[shortcut.id] = shortcut
-    return shortcut
+    return SHORTCUTS.contribute(shortcut, replace=True)
 
 
 def registered_shortcuts() -> list[Shortcut]:
-    return list(_registry.values())
+    return SHORTCUTS.list()
+
+
+def _shortcut(shortcut_id: str) -> Shortcut:
+    # ExtensionPoint.get raises NotRegistered (a LookupError), but key_for's contract is KeyError.
+    if shortcut_id not in SHORTCUTS:
+        raise KeyError(shortcut_id)
+    return SHORTCUTS.get(shortcut_id)
 
 
 class KeyboardShortcutsSettings(ConfigEntry):
@@ -97,7 +107,7 @@ def _current_overrides() -> dict[str, str]:
 def key_for(shortcut_id: str, overrides: dict[str, str] | None = None) -> str:
     """The key bound to *shortcut_id*: the user's choice, else the default.
     An empty string means the user disabled it."""
-    shortcut = _registry[shortcut_id]
+    shortcut = _shortcut(shortcut_id)
     if shortcut.fixed:
         return shortcut.default
     chosen = _current_overrides() if overrides is None else overrides
@@ -116,7 +126,7 @@ def _normalized(key: str) -> str:
 def conflicts(overrides: dict[str, str]) -> dict[str, list[str]]:
     """Shortcut ids that share a key with others, given *overrides*."""
     by_key: dict[str, list[str]] = {}
-    for shortcut in _registry.values():
+    for shortcut in SHORTCUTS.list():
         key = _normalized(key_for(shortcut.id, overrides))
         if key and not shortcut.fixed:
             by_key.setdefault(key, []).append(shortcut.id)
@@ -141,6 +151,8 @@ def _refresh_bindings() -> None:
 
 
 shortcuts_changed.connect(_refresh_bindings)
+SHORTCUTS.signals.added.connect(lambda _item: shortcuts_changed.emit())
+SHORTCUTS.signals.removed.connect(lambda _item: shortcuts_changed.emit())
 
 
 def on_shortcuts_changed(owner: QObject, refresh: Callable[[QObject], None]) -> None:
