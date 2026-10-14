@@ -1,4 +1,5 @@
-"""Core contributions of the scenes component: the projection plot kind (and, from Task 2, the scenes drop rules)."""
+"""Core contributions of the scenes component: the projection plot kind (with its template persistence) and the
+scenes drop rules."""
 from SciQLop.core.drop_rules import DROP_RULES, DropRule
 from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE
 from SciQLop.core.plot_kinds import PLOT_KINDS, PROJECTION, PlotKind
@@ -25,7 +26,28 @@ def _owns(plot) -> bool:
         return False
 
 
-PLOT_KINDS.contribute(PlotKind(PROJECTION, "Scene", plot_product=_plot_scene_item, owns=_owns), owner="sciqlop")
+def _scene_config(plot) -> dict:
+    from SciQLop.components.scenes.scene_plot import scene_plot_for
+    sp = scene_plot_for(plot)
+    return {"scene": sp.scene.name,
+            "boundaries": {kind: model.name for kind, model in sp._resolved.boundaries.items()},
+            "trajectories": list(sp._trajectories)}
+
+
+def _scene_from_config(panel, config: dict):
+    """simplify: only registered scenes and boundaries round-trip (by name); an ad-hoc Scene object is saved by
+    name and restores as a placeholder. Save full scene definitions if users plot unregistered scenes."""
+    from SciQLop.user_api.plot import PlotPanel
+    sp = PlotPanel(panel).plot_scene(config["scene"])
+    for kind, name in config.get("boundaries", {}).items():
+        sp.set_boundary(kind, name)
+    for source in config.get("trajectories", []):
+        sp.add_trajectory(source)
+    return sp
+
+
+PLOT_KINDS.contribute(PlotKind(PROJECTION, "Scene", plot_product=_plot_scene_item, owns=_owns,
+                               to_config=_scene_config, from_config=_scene_from_config), owner="sciqlop")
 
 
 def _scene_rules():

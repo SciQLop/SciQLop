@@ -139,6 +139,9 @@ ctx.contribute("sciqlop.drop_rules", DropRule("my_plugin.show_vdf", PRODUCT_LIST
 
 Contribute through `ctx` in `activate(ctx)` so the rule goes away with the plugin.
 
+Scene plots are saved in panel templates and restored by name, but only registered scenes and boundaries:
+an ad-hoc `Scene` object comes back as a placeholder.
+
 ## Settings
 
 ```python

@@ -46,6 +46,7 @@ class ScenePlot(GuardedImpl):
         self._impl = proj
         self._resolved = resolved
         self._boundary_graphs = {}
+        self._trajectories: list[str] = []
         proj.destroyed.connect(self._on_destroyed)
         _scene_plot.remember_scene_plot(proj, self)
 
@@ -83,4 +84,6 @@ class ScenePlot(GuardedImpl):
 
         source: a 3DView body name ("MMS1"), a speasy id, or a SciQLop product path ("speasy//...").
         Products must declare COORDINATE_SYSTEM and a position unit; others are refused on the plot."""
-        return to_plottable(_scene_plot.add_trajectory(self._get_impl_or_raise(), self._resolved, source))
+        graph = _scene_plot.add_trajectory(self._get_impl_or_raise(), self._resolved, source)
+        self._trajectories.append(source)
+        return to_plottable(graph)
