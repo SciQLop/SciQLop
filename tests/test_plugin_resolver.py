@@ -69,3 +69,27 @@ def test_already_active_plugins_satisfy_dependencies():
 def test_invalid_specifier_is_refused():
     r = resolve({"study": _c("study", deps=["vdf >>> 1"])})
     assert r.refused["study"].startswith("invalid dependency 'vdf >>> 1'")
+
+
+def test_dependency_name_matches_across_dash_underscore_and_case():
+    from SciQLop.components.plugins.backend.loader.resolver import Candidate, resolve
+    r = resolve({"planetary_scenes": Candidate("planetary_scenes", "1.0.0"),
+                 "study": Candidate("study", "1.0.0", ("Planetary-Scenes>=1",))})
+    assert r.refused == {}
+    assert r.order == ("planetary_scenes", "study")
+    assert r.declared["study"] == frozenset({"planetary_scenes"})
+
+
+def test_normalized_name_also_matches_an_active_plugin():
+    from SciQLop.components.plugins.backend.loader.resolver import Candidate, resolve
+    r = resolve({"study": Candidate("study", "1.0.0", ("my-dep",))}, active={"my_dep": "2.0"})
+    assert r.refused == {} and r.order == ("study",)
+
+
+def test_loosening_an_optional_cycle_keeps_edges_to_plugins_outside_it():
+    from SciQLop.components.plugins.backend.loader.resolver import Candidate, resolve
+    r = resolve({"a": Candidate("a", "1", (), ("b", "z")),
+                 "b": Candidate("b", "1", (), ("a",)),
+                 "z": Candidate("z", "1")})
+    assert r.refused == {}
+    assert r.order.index("z") < r.order.index("a")
