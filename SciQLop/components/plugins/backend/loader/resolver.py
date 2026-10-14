@@ -68,16 +68,21 @@ def _refuse_unsatisfied(candidates, active, reqs, refused) -> None:
                 changed = True
 
 
-def _edges(cid, candidates, reqs, refused) -> set[str]:
-    required, optional = reqs[cid]
-    present = {r.name for r in optional if r.name in candidates and r.name not in refused
+def _edges(cid, candidates, reqs, refused, optional=True) -> set[str]:
+    required, wanted = reqs[cid]
+    present = {r.name for r in wanted if optional and r.name in candidates and r.name not in refused
                and _in_range(r, candidates[r.name].version)}
     return {r.name for r in required if r.name in candidates} | present
 
 
-def _topological(candidates, reqs, refused) -> list[str]:
+def _topological(candidates, reqs, refused, loose) -> list[str]:
+    """Kahn's sort; the optional edges of *loose* plugins are ignored.
+
+    simplify: each pop scans every alive plugin, O(n²); fine for the tens of plugins a user installs.
+    Upgrade path: keep reverse edges and in-degree counts, pushing in-degree-zero nodes on the heap.
+    """
     alive = sorted(set(candidates) - set(refused))
-    deps = {c: _edges(c, candidates, reqs, refused) & set(alive) for c in alive}
+    deps = {c: _edges(c, candidates, reqs, refused, c not in loose) & set(alive) for c in alive}
     ready = [c for c in alive if not deps[c]]
     heapq.heapify(ready)
     order = []
@@ -103,16 +108,25 @@ def _reachable(start: str, edges: dict[str, set[str]]) -> set[str]:
     return seen
 
 
-def _refuse_cycles(stuck: set[str], candidates, reqs, refused) -> None:
-    """Refuse only the plugins that lie on a cycle; their dependents cascade on the next pass.
+def _on_cycle(stuck: set[str], candidates, reqs, refused, optional: bool) -> list[str]:
+    """simplify: a per-node DFS, O(n * (n + e)) over the stuck set; fine for the few dozen plugins a user installs."""
+    edges = {c: _edges(c, candidates, reqs, refused, optional) & stuck for c in stuck}
+    return [c for c in sorted(stuck) if c in _reachable(c, edges)]
 
-    simplify: a per-node DFS, O(n * (n + e)) over the stuck set; fine for the few dozen plugins a user installs.
-    """
-    edges = {c: _edges(c, candidates, reqs, refused) & stuck for c in stuck}
-    members = [c for c in sorted(stuck) if c in _reachable(c, edges)]
+
+def _refuse_cycles(stuck: set[str], candidates, reqs, refused) -> bool:
+    """Refuse only the plugins on a cycle of required edges; their dependents cascade on the next pass."""
+    members = _on_cycle(stuck, candidates, reqs, refused, optional=False)
     message = f"dependency cycle between {', '.join(members)}"
     for cid in members:
         refused[cid] = message
+    return bool(members)
+
+
+def _loosen_optional_cycles(stuck: set[str], candidates, reqs, refused, loose: set[str]) -> None:
+    """With no required cycle left, every cycle has an optional edge: drop the optional edges of its members.
+    An optional edge only orders when it can, so `ctx.has()` across such a pair is reliable only in ready()."""
+    loose.update(_on_cycle(stuck, candidates, reqs, refused, optional=True))
 
 
 def resolve(candidates: dict[str, Candidate], active: dict[str, str] | None = None) -> Resolution:
@@ -125,13 +139,15 @@ def resolve(candidates: dict[str, Candidate], active: dict[str, str] | None = No
         except InvalidRequirement as e:
             refused[cid] = str(e).splitlines()[0]
             reqs[cid] = ([], [])
+    loose: set[str] = set()
     while True:
         _refuse_unsatisfied(candidates, active, reqs, refused)
-        order = _topological(candidates, reqs, refused)
+        order = _topological(candidates, reqs, refused, loose)
         stuck = set(candidates) - set(refused) - set(order)
         if not stuck:
             break
-        _refuse_cycles(stuck, candidates, reqs, refused)
+        if not _refuse_cycles(stuck, candidates, reqs, refused):
+            _loosen_optional_cycles(stuck, candidates, reqs, refused, loose)
     return Resolution(
         order=tuple(order), refused=refused,
         required={c: frozenset(r.name for r in reqs[c][0]) for c in candidates},

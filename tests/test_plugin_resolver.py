@@ -46,6 +46,21 @@ def test_dependents_of_a_cycle_get_the_cascade_message():
     assert r.refused["d"] == "needs plugin 'a', which was refused: dependency cycle between a, b"
 
 
+def test_optional_edge_against_a_required_one_is_not_a_cycle():
+    r = resolve({"vdf": _c("vdf", opt=["mars"]), "mars": _c("mars", deps=["vdf"])})
+    assert r.order == ("vdf", "mars") and r.refused == {}
+
+
+def test_mutual_optional_dependencies_are_not_a_cycle():
+    r = resolve({"b": _c("b", opt=["a"]), "a": _c("a", opt=["b"])})
+    assert r.order == ("a", "b") and r.refused == {}
+
+
+def test_optional_cycle_keeps_other_optional_orderings():
+    r = resolve({"a": _c("a", opt=["b"]), "b": _c("b", opt=["a"]), "c": _c("c", opt=["z"]), "z": _c("z")})
+    assert r.order.index("z") < r.order.index("c") and r.refused == {}
+
+
 def test_already_active_plugins_satisfy_dependencies():
     r = resolve({"study": _c("study", deps=["vdf>=1"])}, active={"vdf": "1.3.0"})
     assert r.order == ("study",)

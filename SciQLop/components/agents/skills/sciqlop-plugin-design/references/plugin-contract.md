@@ -12,7 +12,7 @@
 |---|---|
 | `name`, `version` | display name, and the version other plugins' specifiers check (semver: a breaking API change is a major bump) |
 | `dependencies` | plugins you need, by plugin id (folder or entry-point name) with PEP 440 ranges: `["vdf>=1.2,<2"]` |
-| `optional_dependencies` | plugins you use when present; they load before you |
+| `optional_dependencies` | plugins you use when present; they load before you when they can. Inside a mutual pair (each optional to the other, or optional one way and required the other) one of you loads first, so `ctx.has(other)` is reliable only in `ready()` |
 | `provides` | `{extension point id: [contribution ids]}` plus `"extension_points": [ids you declare]`; shown by the app store |
 | `python_dependencies` | pip packages (numpy…); never other plugins |
 
