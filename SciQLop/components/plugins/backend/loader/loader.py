@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.extensions import owned_by
 from .context import STATES, PluginContext, PluginState, active_versions
+from .provides import provides_drift
 
 # Re-exported: plugins_folders lives in a Qt-free module so the launcher can
 # reach it without importing this one, which pulls in the GUI stack.
@@ -292,13 +293,28 @@ def _blocked_by(required) -> Optional[str]:
     return f"needs plugin {failed[0]!r}, which {state.status}: {state.reason}"
 
 
+def _checked_for_drift(name: str, entries) -> bool:
+    """Only activate() plugins with a plugin.json have a provides claim to check."""
+    state = STATES[name]
+    return state.status == "active" and hasattr(state.module, "activate") and entries[name].desc is not None
+
+
+def _report_drift(name: str, provides) -> None:
+    """Warn-only diagnostic: a failing check is logged for this plugin and never aborts loading."""
+    try:
+        problems = provides_drift(name, provides)
+    except Exception as e:
+        log.error(f"Plugin {name}: provides check failed, skipped: {e}")
+        log.error(f"Traceback: {traceback.format_exc()}")
+        return
+    for problem in problems:
+        log.warning(f"Plugin {name}: {problem}")
+
+
 def _warn_on_provides_drift(entries, order) -> None:
-    from .provides import provides_drift
     for name in order:
-        state = STATES[name]
-        if state.status == "active" and hasattr(state.module, "activate") and entries[name].desc is not None:
-            for problem in provides_drift(name, entries[name].desc.provides):
-                log.warning(f"Plugin {name}: {problem}")
+        if _checked_for_drift(name, entries):
+            _report_drift(name, entries[name].desc.provides)
 
 
 def activate_all(plugin_list, main_window, ep_plugins=None) -> dict:
