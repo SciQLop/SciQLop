@@ -64,6 +64,33 @@ def activate(ctx):
                    MimeType("application/x.vdf.slice", decode_slice, encode_slice, obj_type=Slice))
 ```
 
+## Data contracts (extension points in SciQLop 1b)
+
+| Extension point | Contribution | Key | How a plugin contributes |
+|---|---|---|---|
+| `sciqlop.data_providers` | `DataProvider` | provider name | `MyProvider("myplugin")` registers itself, owned by the active plugin |
+| `sciqlop.mime_types` | `MimeType` | MIME string | `ctx.contribute(...)`, or `register_mime(...)` |
+| `sciqlop.source_kinds` | `SourceKind` | `id` | `ctx.contribute(...)`; a provider points at it with its `source_kind` attribute |
+| `sciqlop.product_kinds` | `ProductKind` | `id` | `ctx.contribute(...)`; tag product-tree nodes with `PRODUCT_KIND_KEY` |
+
+Field details: data providers, source kinds and product kinds in
+[products-and-data.md](products-and-data.md), MIME types above.
+
+```python
+class VdfProvider(DataProvider):
+    source_kind = "vdf.instrument"
+
+def activate(ctx):
+    ctx.contribute("sciqlop.product_kinds", ProductKind("vdf.distribution", "VDF", 3, "vdf.slice_plot"))
+    ctx.contribute("sciqlop.source_kinds", SourceKind("vdf.instrument", tooltip, inspector_line))
+    provider = VdfProvider("vdf")
+    add_product_node("vdf//f", "f", provider.name, {PRODUCT_KIND_KEY: "vdf.distribution"}, ...)
+```
+
+- A failed `activate()` withdraws everything the plugin contributed.
+- Dependency names match across case, dash and underscore: `io-vdf`, `io_vdf` and `Io_Vdf` are one plugin.
+- Plot kinds, which make a plugin's product kind plottable, come with plan 1c.
+
 ## When a plugin does not load
 
 The log says why: `Plugin study not loaded: needs plugin vdf>=1.2,<2, but vdf 2.0.0 is installed`.
