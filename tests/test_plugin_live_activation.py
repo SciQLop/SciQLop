@@ -32,6 +32,41 @@ def test_live_plugin_reaches_an_already_active_dependency(tmp_path, fresh):  # n
     assert sys.modules["live_late"].GOT == [7] and context.STATES["live_late"].status == "active"
 
 
+def test_refused_plugin_loads_once_its_dependency_is_enabled(tmp_path, fresh):  # noqa: F811
+    late = _plugin(tmp_path, "retry_late", """
+        GOT = []
+        def activate(ctx):
+            GOT.append(ctx.plugin("retry_base"))
+    """, deps=["retry_base"])
+    loader.activate_all([late], main_window=object(), ep_plugins={})
+    assert context.STATES["retry_late"].status == "refused"
+    assert "retry_late" not in loader._attempted
+    base = _plugin(tmp_path, "retry_base", "def activate(ctx):\n    return 5\n")
+    loader.activate_all([base], main_window=object(), ep_plugins={})
+    from SciQLop.components.plugins.backend.live_loader import PluginsLiveLoader
+    PluginsLiveLoader._load(SimpleNamespace(_main_window=object()), [late])
+    import sys
+    assert sys.modules["retry_late"].GOT == [5] and context.STATES["retry_late"].status == "active"
+
+
+def test_an_active_plugin_is_never_activated_twice(tmp_path, fresh):  # noqa: F811
+    once = _plugin(tmp_path, "once_p", """
+        from dataclasses import dataclass
+        CALLS = []
+        @dataclass(frozen=True)
+        class Thing:
+            id: str
+        def activate(ctx):
+            CALLS.append(1)
+            ctx.extension_point("once_p.things", Thing)
+            return "api"
+    """)
+    loader.activate_all([once], main_window=object(), ep_plugins={})
+    assert loader.activate_all([once], main_window=object(), ep_plugins={}) == {"once_p": "api"}
+    import sys
+    assert sys.modules["once_p"].CALLS == [1] and context.STATES["once_p"].status == "active"
+
+
 def _broken_activate(ctx):
     raise RuntimeError("no luck")
 

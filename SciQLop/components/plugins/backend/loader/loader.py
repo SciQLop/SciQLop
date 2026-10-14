@@ -149,8 +149,8 @@ def entry_point_host_compatible(ep: importlib.metadata.EntryPoint) -> bool:
     return False
 
 
-# Names load_all() or live loading already tried: a plugin is loaded at most once
-# per process, whether its load() returned something or not.
+# Names whose activation ran (active or failed): a plugin is loaded at most once
+# per process, whether its load() returned something or not. Refused ones are not here.
 _attempted: set = set()
 
 
@@ -317,12 +317,23 @@ def _warn_on_provides_drift(entries, order) -> None:
             _report_drift(name, entries[name].desc.provides)
 
 
+def _already_ran(name: str) -> bool:
+    """Its activation ran: running code cannot be unloaded, so it is never activated again.
+    A refused plugin never ran and is retried, e.g. once its missing dependency is enabled."""
+    return name in STATES and STATES[name].status in ("active", "failed")
+
+
 def activate_all(plugin_list, main_window, ep_plugins=None) -> dict:
     """Activate *plugin_list* [(folder or None, name)] in dependency order, then run their ready() hooks."""
-    from .resolver import resolve
     ep_plugins = ep_plugins if ep_plugins is not None else _discover_entry_point_plugins()
-    entries = {name: _Entry(folder, name, _desc(folder, name, ep_plugins)) for folder, name in plugin_list}
-    _attempted.update(entries)
+    fresh = [(folder, name) for folder, name in plugin_list if not _already_ran(name)]
+    _activate_fresh({name: _Entry(folder, name, _desc(folder, name, ep_plugins)) for folder, name in fresh},
+                    main_window, ep_plugins)
+    return {name: STATES[name].api for _, name in plugin_list}
+
+
+def _activate_fresh(entries, main_window, ep_plugins) -> None:
+    from .resolver import resolve
     resolution = resolve({n: e.candidate for n, e in entries.items()}, active_versions())
     for name, reason in resolution.refused.items():
         _refuse(name, entries[name].candidate.version, reason)
@@ -332,10 +343,10 @@ def activate_all(plugin_list, main_window, ep_plugins=None) -> dict:
             _refuse(name, entries[name].candidate.version, blocked)
         else:
             STATES[name] = _activate_one(entries[name], main_window, resolution.declared[name], ep_plugins)
+    _attempted.update(name for name in entries if _already_ran(name))
     for name in resolution.order:
         _ready(name)
     _warn_on_provides_drift(entries, resolution.order)
-    return {name: STATES[name].api for name in entries}
 
 
 def load_one(folder, name, main_window, ep_plugins=None):
