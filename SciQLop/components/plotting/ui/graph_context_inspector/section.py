@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from SciQLop.core.graph_context import context_of, provider_for, _last_fetch_line
+from SciQLop.core.source_kinds import source_kind
 
 
 class _MetadataDialog(QDialog):
@@ -214,11 +215,4 @@ class GraphContextSection(QWidget):
 
 
 def _source_line(ctx) -> str:
-    if ctx.kind == "speasy":
-        return f"Speasy: {ctx.speasy_id}"
-    if ctx.kind == "vp":
-        return f"Virtual: {ctx.vp_path}"
-    if ctx.kind == "function":
-        cb = f"{ctx.callback_module}.{ctx.callback_qualname}".strip(".")
-        return f"Function: {cb}"
-    return "Static data"
+    return source_kind(ctx.kind).inspector_line(ctx)

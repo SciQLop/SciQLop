@@ -21,6 +21,26 @@ the installed `SciQLop.user_api` before relying on it.
 - `sciqlop.extensions.get("sciqlop.data_providers")` lists providers by name.
 - A plugin whose activation fails has its providers removed.
 
+## Source kinds
+
+Every graph's `GraphContext.kind` says where its data comes from. Kinds are
+contributions to `sciqlop.source_kinds`; the inspector tooltip, the inspector
+source line, templates and Export & Share all read them.
+
+- `SourceKind(id, tooltip, inspector_line, product_path=<returns "">, shareable=False)`.
+  `tooltip` and `inspector_line` take the `GraphContext` and return text.
+  `product_path` returns the `a//b//c` path templates re-plot from, or `""`.
+  `shareable=True` lets Export & Share send the graph to the Speasy proxy.
+- Core ids: `sciqlop.speasy`, `sciqlop.vp`, `sciqlop.function`, `sciqlop.static`,
+  `sciqlop.provider`. Import the constants from `SciQLop.core.source_kinds`.
+- Old saved values (`speasy`, `vp`, `function`, `static`) are still read and
+  become the `sciqlop.*` ids. Plugin code comparing `ctx.kind == "speasy"` must
+  compare to `SciQLop.core.source_kinds.SPEASY` instead.
+- A plugin contributes one with `sciqlop.extensions.get("sciqlop.source_kinds").contribute(SourceKind("myplugin.cdf", ...))`.
+  Its id is `<plugin id>.<name>`.
+- If the plugin that provides a kind is not loaded, its graphs still open.
+  The inspector shows the kind id with "(plugin not loaded)".
+
 ## Virtual products: the default way to add products
 
 ```python

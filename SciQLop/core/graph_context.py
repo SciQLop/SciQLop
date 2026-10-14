@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import importlib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Literal, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import shiboken6
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from SciQLop.components import sciqlop_logging
+from SciQLop.core.source_kinds import FUNCTION, SPEASY, STATIC, VP, canonical_id, source_kind
 
 if TYPE_CHECKING:
     from SciQLop.components.plotting.backend.data_provider import DataProvider
@@ -17,13 +18,10 @@ log = sciqlop_logging.getLogger(__name__)
 
 _RICH: dict[int, GraphRichRefs] = {}  # keyed by _rich_key(graph)
 
-GraphKind = Literal["speasy", "vp", "static", "function"]
-
-
 class GraphContext(BaseModel):
     """Per-graph metadata envelope. Single schema, two stores."""
 
-    kind: GraphKind
+    kind: str
     graph_id: str
     panel_name: str
     plot_index: int
@@ -43,6 +41,12 @@ class GraphContext(BaseModel):
     data_meta: dict[str, Any] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
+
+    @field_validator("kind", mode="before")
+    @classmethod
+    def _canonical_kind(cls, kind):
+        """Saved contexts may hold the pre-extension-point values ("speasy", "vp", ...)."""
+        return canonical_id(kind) if isinstance(kind, str) else kind
 
     def to_meta_data(self) -> dict[str, Any]:
         return self.model_dump(exclude_none=True)
@@ -191,7 +195,7 @@ def build_speasy_ctx(graph, *, panel_name: str, plot_index: int,
                      product_path: Optional[list] = None,
                      knobs: Optional[dict] = None) -> GraphContext:
     return GraphContext(
-        kind="speasy",
+        kind=SPEASY,
         graph_id=graph.objectName(),
         panel_name=panel_name,
         plot_index=plot_index,
@@ -212,7 +216,7 @@ def build_vp_ctx(graph, *, panel_name: str, plot_index: int,
     vp_path_list = list(vp_path) if isinstance(vp_path, (list, tuple)) else [str(vp_path)]
     vp_path_str = "/".join(vp_path_list)
     return GraphContext(
-        kind="vp",
+        kind=VP,
         graph_id=graph.objectName(),
         panel_name=panel_name,
         plot_index=plot_index,
@@ -229,7 +233,7 @@ def build_vp_ctx(graph, *, panel_name: str, plot_index: int,
 def build_function_ctx(graph, *, panel_name: str, plot_index: int,
                        callback: Callable, graph_type: str) -> GraphContext:
     return GraphContext(
-        kind="function",
+        kind=FUNCTION,
         graph_id=graph.objectName(),
         panel_name=panel_name,
         plot_index=plot_index,
@@ -243,7 +247,7 @@ def build_function_ctx(graph, *, panel_name: str, plot_index: int,
 def build_static_ctx(graph, *, panel_name: str, plot_index: int,
                      graph_type: str) -> GraphContext:
     return GraphContext(
-        kind="static",
+        kind=STATIC,
         graph_id=graph.objectName(),
         panel_name=panel_name,
         plot_index=plot_index,
@@ -313,15 +317,7 @@ def graph_tooltip(graph) -> str:
     if ctx is None:
         return ""
     name = graph_name(graph)
-    if ctx.kind == "speasy":
-        title = f"{name}: {ctx.speasy_id} — Speasy"
-    elif ctx.kind == "vp":
-        title = f"{name}: {ctx.vp_path} — Virtual"
-    elif ctx.kind == "function":
-        cb = f"{ctx.callback_module}.{ctx.callback_qualname}".strip(".")
-        title = f"{name}: function {cb}"
-    else:
-        title = f"{name}: static data"
+    title = f"{name}: {source_kind(ctx.kind).tooltip(ctx)}"
     lines = [title]
     if ctx.knobs:
         knob_str = ", ".join(f"{k}={v!r}" for k, v in ctx.knobs.items())

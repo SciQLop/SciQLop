@@ -22,6 +22,7 @@ from SciQLop.components.plotting.backend.dependencies import (
 from SciQLop.core import tracing
 from SciQLop.core.istp_hints import istp_metadata_to_hints
 from SciQLop.core.plot_hints import PlotHints
+from SciQLop.core.source_kinds import VP
 from SciQLop.core.speasy_hints import variable_as_istp_meta
 from SciQLop.components.theming import register_icon
 from SciQLop.components import sciqlop_logging
@@ -334,7 +335,7 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
         return node.metadata().get("components", "").split(';')
 
     def python_snippets(self, ctx, graph=None) -> dict:
-        if ctx.kind != "vp" or self._callback is None:
+        if ctx.kind != VP or self._callback is None:
             return {}
         cb = self._callback
         mod_name = getattr(cb, "__module__", None)

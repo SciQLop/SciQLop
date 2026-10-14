@@ -20,6 +20,7 @@ from urllib.parse import parse_qs, urlsplit
 from SciQLopPlots import ProductsModel
 
 from SciQLop.components import sciqlop_logging
+from SciQLop.core.source_kinds import SPEASY, source_kind
 from SciQLop.components.plotting.panel_template import (
     AxisModel, PanelTemplate, PlotModel, ProductModel, TimeRangeModel,
 )
@@ -49,7 +50,7 @@ def proxy_config_from_template(template: PanelTemplate) -> Optional[dict]:
 
 
 def _plot_config(plot: PlotModel) -> Optional[dict]:
-    products = [_product_config(p) for p in plot.products if p.kind == "speasy" and p.speasy_id]
+    products = [_product_config(p) for p in plot.products if source_kind(p.kind or "").shareable and p.speasy_id]
     if not products:
         return None
     has_colormap = any(p.is_colormap for p in plot.products)
@@ -175,4 +176,4 @@ def _product_model(product: dict, path: list[str]) -> ProductModel:
     knobs = {**{k: product[k] for k in _PROXY_PRODUCT_FIELDS if k in product},
              **(product.get("product_inputs") or {})}
     return ProductModel(path="//".join(path), label=product.get("label") or product["path"],
-                        kind="speasy", speasy_id=product["path"], knobs=knobs)
+                        kind=SPEASY, speasy_id=product["path"], knobs=knobs)

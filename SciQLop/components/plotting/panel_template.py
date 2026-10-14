@@ -10,10 +10,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel, PrivateAttr, field_validator
 
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.graph_context import GraphContext, context_of, graph_name
+from SciQLop.core.source_kinds import canonical_id, source_kind
 
 log = getLogger(__name__)
 
@@ -34,6 +35,12 @@ class ProductModel(BaseModel):
     graph_type: str = ""
     knobs: dict[str, Any] = {}
     y_axis: Optional[Literal["y", "y2"]] = None  # None: where the graph type draws by default
+
+    @field_validator("kind", mode="before")
+    @classmethod
+    def _canonical_kind(cls, kind):
+        """Saved templates may hold the pre-extension-point values ("speasy", "vp", ...)."""
+        return canonical_id(kind) if isinstance(kind, str) else kind
 
     @property
     def is_colormap(self) -> bool:
@@ -287,14 +294,7 @@ def product_model(graph) -> ProductModel:
 def context_product_path(ctx: GraphContext) -> str:
     """Product-tree path (``a//b//c``, no implicit ``root``) a graph can be
     re-plotted from, or "" for function/static graphs."""
-    from SciQLop.core.snippets import format_product_path
-    if ctx.kind == "speasy":
-        return format_product_path(ctx.product_path) or (ctx.speasy_id or "")
-    if ctx.kind == "vp":
-        if ctx.product_path:
-            return format_product_path(ctx.product_path)
-        return format_product_path(ctx.vp_path.split("/")) if ctx.vp_path else ""
-    return ""
+    return source_kind(ctx.kind).product_path(ctx)
 
 
 _TEMPLATE_EXTENSIONS = ('.json', '.yaml', '.yml')

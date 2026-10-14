@@ -28,6 +28,7 @@ from SciQLop.core.graph_context import (
 from SciQLop.user_api.threading import on_main_thread
 import weakref
 
+from SciQLop.core.source_kinds import VP
 from SciQLop.core.plot_hints import apply_plot_hints, combine_hints, merge_hints, PlotHints
 from SciQLop.core.property import SciQLopProperty
 from SciQLop.core.mime import decode_mime
@@ -527,7 +528,7 @@ def refetch_graphs_for_vp(vp_path: str) -> None:
         for plot in panel.plots():
             for graph in plot.plottables():
                 ctx = context_of(graph)
-                if ctx is not None and ctx.kind == "vp" and ctx.vp_path == vp_path:
+                if ctx is not None and ctx.kind == VP and ctx.vp_path == vp_path:
                     _trigger_refetch(graph)
 
 

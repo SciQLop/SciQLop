@@ -3,6 +3,7 @@ import pytest
 from pydantic import ValidationError
 from PySide6.QtCore import QObject
 
+from SciQLop.core.source_kinds import FUNCTION, SPEASY, STATIC, VP
 from SciQLop.core.graph_context import (
     GraphContext, GraphRichRefs, _is_importable, attach_data_meta, context_of,
 )
@@ -13,7 +14,7 @@ def test_speasy_context_minimal():
         kind="speasy", graph_id="g1", panel_name="P", plot_index=0,
         graph_type="Line", speasy_id="amda/imf", provider_name="Speasy",
     )
-    assert ctx.kind == "speasy"
+    assert ctx.kind == SPEASY
     assert ctx.knobs == {}
     assert ctx.vp_path is None
 
@@ -42,7 +43,7 @@ def test_to_meta_data_drops_none_fields():
         graph_type="Line", speasy_id="amda/imf", provider_name="Speasy",
     )
     md = ctx.to_meta_data()
-    assert md["kind"] == "speasy"
+    assert md["kind"] == SPEASY
     assert md["speasy_id"] == "amda/imf"
     assert "vp_path" not in md
 
@@ -138,7 +139,7 @@ def test_attach_context_writes_meta_data(qtbot):
         graph_type="Line", speasy_id="amda/imf", provider_name="Speasy",
     )
     attach_context(g, ctx)
-    assert g.meta_data()["kind"] == "speasy"
+    assert g.meta_data()["kind"] == SPEASY
     assert g.meta_data()["speasy_id"] == "amda/imf"
 
 
@@ -153,7 +154,7 @@ def test_context_of_round_trip(qtbot):
     attach_context(g, ctx)
     out = context_of(g)
     assert out is not None
-    assert out.kind == "vp"
+    assert out.kind == VP
     assert out.vp_path == "my/vp"
 
 
@@ -251,7 +252,7 @@ def test_build_speasy_ctx():
     ctx = build_speasy_ctx(g, panel_name="P", plot_index=2,
                            speasy_id="amda/imf", graph_type="Line",
                            knobs={"k": 1})
-    assert ctx.kind == "speasy"
+    assert ctx.kind == SPEASY
     assert ctx.graph_id == "g_speasy"
     assert ctx.panel_name == "P"
     assert ctx.plot_index == 2
@@ -269,7 +270,7 @@ def test_build_vp_ctx():
     ctx = build_vp_ctx(g, panel_name="P", plot_index=0,
                        vp_path=["root", "x"], provider_name="my_vp-1",
                        callback=my_cb, graph_type="Line", knobs={})
-    assert ctx.kind == "vp"
+    assert ctx.kind == VP
     assert ctx.vp_path == "root/x"
     assert ctx.callback_qualname == my_cb.__qualname__
     assert ctx.callback_module == my_cb.__module__
@@ -284,7 +285,7 @@ def test_build_function_ctx():
 
     ctx = build_function_ctx(g, panel_name="P", plot_index=1,
                              callback=fn, graph_type="Line")
-    assert ctx.kind == "function"
+    assert ctx.kind == FUNCTION
     assert ctx.provider_name is None
     assert ctx.callback_qualname == fn.__qualname__
 
@@ -294,7 +295,7 @@ def test_build_static_ctx():
     g = _FakeGraph("g_static")
     ctx = build_static_ctx(g, panel_name="P", plot_index=0,
                            graph_type="Line")
-    assert ctx.kind == "static"
+    assert ctx.kind == STATIC
     assert ctx.provider_name is None
     assert ctx.speasy_id is None
 

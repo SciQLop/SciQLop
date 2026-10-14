@@ -6,6 +6,8 @@ paths.
 """
 import pytest
 
+from SciQLop.core.source_kinds import FUNCTION, SPEASY, STATIC, VP
+
 
 def test_post_plot_invokes_attach_context_for_speasy(qtbot, monkeypatch):
     """When _post_plot runs on a speasy provider, attach_context is called
@@ -58,7 +60,7 @@ def test_post_plot_invokes_attach_context_for_speasy(qtbot, monkeypatch):
                    callback, _FakeTarget(),
                    "amda//imf", existing_plot=None)
 
-    assert captured["ctx"].kind == "speasy"
+    assert captured["ctx"].kind == SPEASY
     assert captured["ctx"].speasy_id == "amda/imf"
     assert captured["ctx"].provider_name == "Speasy"
 
@@ -106,7 +108,7 @@ def test_post_plot_attaches_context_for_bare_graph_drop_target(qtbot, monkeypatc
                    "amda//imf", existing_plot=None)
 
     assert "ctx" in captured, "no context attached for bare-graph drop target"
-    assert captured["ctx"].kind == "speasy"
+    assert captured["ctx"].kind == SPEASY
     assert captured["ctx"].speasy_id == "amda/imf"
 
 
@@ -234,7 +236,7 @@ def test_post_plot_invokes_attach_context_for_vp(qtbot, monkeypatch):
                    callback, _FakeTarget(),
                    "root//my_vp", existing_plot=None)
 
-    assert captured["ctx"].kind == "vp"
+    assert captured["ctx"].kind == VP
     assert captured["ctx"].vp_path == "root/my_vp"
     assert captured["ctx"].provider_name == "my_vp_callback-1"
     assert captured["ctx"].callback_qualname == my_vp_callback.__qualname__
@@ -270,7 +272,7 @@ def test_plot_static_data_attaches_static_context(qtbot, monkeypatch):
 
     tsp.plot_static_data(None, [1, 2, 3], [4, 5, 6])
     assert len(captured) == 1
-    assert captured[0].kind == "static"
+    assert captured[0].kind == STATIC
     assert captured[0].provider_name is None
 
 
@@ -305,7 +307,7 @@ def test_plot_function_attaches_function_context(qtbot, monkeypatch):
 
     assert len(captured) == 1
     ctx, rich = captured[0]
-    assert ctx.kind == "function"
+    assert ctx.kind == FUNCTION
     # qualname will be "test_plot_function_attaches_function_context.<locals>.my_func"
     assert "my_func" in ctx.callback_qualname
     assert rich is not None

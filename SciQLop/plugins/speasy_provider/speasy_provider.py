@@ -13,6 +13,7 @@ from SciQLop.core.enums import ParameterType, GraphType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder
 from SciQLop.core import tracing, TimeRange
 from SciQLop.core.plot_hints import PlotHints
+from SciQLop.core.source_kinds import SPEASY
 from SciQLop.core.istp_hints import istp_metadata_to_hints
 from SciQLop.core.speasy_hints import variable_as_istp_meta, jsonable_meta
 from SciQLop import __version__ as sciqlop_version
@@ -550,7 +551,7 @@ class SpeasyPlugin(DataProvider):
             return {}
 
     def python_snippets(self, ctx, graph=None) -> dict:
-        if ctx.kind != "speasy" or not ctx.speasy_id:
+        if ctx.kind != SPEASY or not ctx.speasy_id:
             return {}
         return {
             "Reproduce in SciQLop": _speasy_sciqlop_snippet(ctx, graph),
@@ -558,7 +559,7 @@ class SpeasyPlugin(DataProvider):
         }
 
     def extended_metadata(self, ctx) -> dict:
-        if ctx.kind != "speasy" or not ctx.speasy_id:
+        if ctx.kind != SPEASY or not ctx.speasy_id:
             return {}
         index = self._resolve_index(ctx.speasy_id)
         if index is None and not ctx.data_meta:
