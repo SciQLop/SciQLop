@@ -2,9 +2,13 @@ import importlib
 import importlib.metadata
 import os
 import traceback
+from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 from types import SimpleNamespace
 from SciQLop.components.sciqlop_logging import getLogger
+from SciQLop.core.extensions import owned_by
+from .context import STATES, PluginContext, PluginState, active_versions
 
 # Re-exported: plugins_folders lives in a Qt-free module so the launcher can
 # reach it without importing this one, which pulls in the GUI stack.
@@ -69,19 +73,7 @@ def load_module(path, name):
 
 
 def load_plugin(path, name, main_window):
-    mod = load_module(path, name)
-    if mod:
-        try:
-            log.info(f"Loading {name}")
-            r = mod.load(main_window)
-            if r:
-                loaded_plugins.__dict__[name] = r
-            return r
-        except Exception as e:
-            log.error(f"Oups can't load {name} from {mod} , {e}")
-            log.error(f"Traceback: {traceback.format_exc()}")
-    else:
-        log.error(f"Oups can't load {name} , {mod}")
+    return load_one(path, name, main_window)
 
 
 def list_plugins_as_modules(plugin_path):
@@ -156,20 +148,6 @@ def entry_point_host_compatible(ep: importlib.metadata.EntryPoint) -> bool:
     return False
 
 
-def _load_entry_point_plugin(ep: importlib.metadata.EntryPoint, main_window):
-    try:
-        mod = ep.load()
-        log.info(f"Loading entry-point plugin {ep.name}")
-        r = mod.load(main_window)
-        if r:
-            loaded_plugins.__dict__[ep.name] = r
-        return r
-    except Exception as e:
-        log.error(f"Failed to load entry-point plugin {ep.name}: {e}")
-        log.error(f"Traceback: {traceback.format_exc()}")
-        return None
-
-
 # Names load_all() or live loading already tried: a plugin is loaded at most once
 # per process, whether its load() returned something or not.
 _attempted: set = set()
@@ -210,12 +188,132 @@ def _enabled_plugins(settings, ep_plugins) -> list:
     return plugin_list
 
 
-def load_one(folder, name, main_window, ep_plugins=None):
-    _attempted.add(name)
+@dataclass(frozen=True)
+class _Entry:
+    folder: Optional[str]
+    name: str
+    desc: object  # PluginDesc or None
+
+    @property
+    def candidate(self):
+        from .resolver import Candidate
+        if self.desc is None:
+            return Candidate(self.name, "0")
+        return Candidate(self.name, self.desc.version, tuple(self.desc.dependencies),
+                         tuple(self.desc.optional_dependencies))
+
+
+def _read_desc(path) -> object:
+    from .plugin_desc import PluginDesc
+    if path is None or not os.path.isfile(path):
+        return None
+    try:
+        return PluginDesc.from_json(str(path))
+    except Exception as e:
+        log.warning(f"Ignoring {path}: {e}")
+        return None
+
+
+def _entry_point_desc_path(ep) -> Optional[Path]:
+    """plugin.json shipped next to the entry point's module, found in the distribution's file list.
+
+    simplify: editable installs often list no package files, so their plugin.json is not found and the
+    plugin loads without dependencies. Upgrade path: fall back to importlib.util.find_spec(ep.module)."""
+    files = getattr(getattr(ep, "dist", None), "files", None)
+    module = getattr(ep, "module", "")
+    if not files or not module:
+        return None
+    parts = module.split(".")
+    wanted = {"/".join(parts + ["plugin.json"]), "/".join(parts[:-1] + ["plugin.json"])}
+    found = next((f for f in files if f.as_posix() in wanted), None)
+    return Path(ep.dist.locate_file(found)) if found is not None else None
+
+
+def _desc(folder, name, ep_plugins):
     if folder is None:
-        ep_plugins = ep_plugins if ep_plugins is not None else _discover_entry_point_plugins()
-        return _load_entry_point_plugin(ep_plugins[name], main_window)
-    return load_plugin(folder, name, main_window)
+        return _read_desc(_entry_point_desc_path(ep_plugins[name]))
+    return _read_desc(os.path.join(folder, name, "plugin.json"))
+
+
+def _import(entry: _Entry, ep_plugins):
+    mod = ep_plugins[entry.name].load() if entry.folder is None else load_module(entry.folder, entry.name)
+    if mod is None:
+        raise ImportError(f"could not import plugin {entry.name} (see the log)")
+    return mod
+
+
+def _call_entry_function(mod, ctx, main_window):
+    if hasattr(mod, "activate"):
+        with owned_by(ctx.name):
+            return mod.activate(ctx)
+    with owned_by(f"legacy:{ctx.name}"):
+        return mod.load(main_window)
+
+
+def _activate_one(entry: _Entry, main_window, declared, ep_plugins) -> PluginState:
+    version = entry.candidate.version
+    ctx = PluginContext(entry.name, version, main_window, declared)
+    try:
+        mod = _import(entry, ep_plugins)
+        log.info(f"Loading {entry.name}")
+        api = _call_entry_function(mod, ctx, main_window)
+    except Exception as e:
+        log.error(f"Plugin {entry.name} failed to load: {e}")
+        log.error(f"Traceback: {traceback.format_exc()}")
+        return PluginState("failed", version, reason=f"{type(e).__name__}: {e}")
+    if api is not None:
+        loaded_plugins.__dict__[entry.name] = api
+    return PluginState("active", version, api=api, module=mod, context=ctx)
+
+
+def _ready(name: str) -> None:
+    state = STATES[name]
+    ready = getattr(state.module, "ready", None)
+    if state.status != "active" or ready is None or not hasattr(state.module, "activate"):
+        return
+    try:
+        with owned_by(name):
+            ready(state.context)
+    except Exception as e:
+        log.error(f"Plugin {name}: ready() failed, its activate() contributions stay: {e}")
+        log.error(f"Traceback: {traceback.format_exc()}")
+
+
+def _refuse(name: str, version: str, reason: str) -> None:
+    STATES[name] = PluginState("refused", version, reason=reason)
+    log.warning(f"Plugin {name} not loaded: {reason}")
+
+
+def _blocked_by(required) -> Optional[str]:
+    failed = sorted(d for d in required if d in STATES and STATES[d].status != "active")
+    if not failed:
+        return None
+    state = STATES[failed[0]]
+    return f"needs plugin {failed[0]!r}, which {state.status}: {state.reason}"
+
+
+def activate_all(plugin_list, main_window, ep_plugins=None) -> dict:
+    """Activate *plugin_list* [(folder or None, name)] in dependency order, then run their ready() hooks."""
+    from .resolver import resolve
+    ep_plugins = ep_plugins if ep_plugins is not None else _discover_entry_point_plugins()
+    entries = {name: _Entry(folder, name, _desc(folder, name, ep_plugins)) for folder, name in plugin_list}
+    _attempted.update(entries)
+    resolution = resolve({n: e.candidate for n, e in entries.items()}, active_versions())
+    for name, reason in resolution.refused.items():
+        _refuse(name, entries[name].candidate.version, reason)
+    for name in resolution.order:
+        blocked = _blocked_by(resolution.required[name])
+        if blocked:
+            _refuse(name, entries[name].candidate.version, blocked)
+        else:
+            STATES[name] = _activate_one(entries[name], main_window, resolution.declared[name], ep_plugins)
+    for name in resolution.order:
+        _ready(name)
+    return {name: STATES[name].api for name in entries}
+
+
+def load_one(folder, name, main_window, ep_plugins=None):
+    return activate_all([(folder, name)], main_window, ep_plugins).get(name)
 
 
 def load_all(main_window):
@@ -223,7 +321,7 @@ def load_all(main_window):
     ep_plugins = _discover_entry_point_plugins()
     with SciQLopPluginsSettings() as settings:
         plugin_list = _enabled_plugins(settings, ep_plugins)
-    return {plugin: load_one(folder, plugin, main_window, ep_plugins) for folder, plugin in plugin_list}
+    return activate_all(plugin_list, main_window, ep_plugins)
 
 
 def new_enabled_plugins() -> list:
