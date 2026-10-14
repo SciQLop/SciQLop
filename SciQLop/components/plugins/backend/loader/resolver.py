@@ -92,6 +92,29 @@ def _topological(candidates, reqs, refused) -> list[str]:
     return order
 
 
+def _reachable(start: str, edges: dict[str, set[str]]) -> set[str]:
+    seen: set[str] = set()
+    todo = list(edges[start])
+    while todo:
+        node = todo.pop()
+        if node not in seen:
+            seen.add(node)
+            todo.extend(edges[node])
+    return seen
+
+
+def _refuse_cycles(stuck: set[str], candidates, reqs, refused) -> None:
+    """Refuse only the plugins that lie on a cycle; their dependents cascade on the next pass.
+
+    simplify: a per-node DFS, O(n * (n + e)) over the stuck set; fine for the few dozen plugins a user installs.
+    """
+    edges = {c: _edges(c, candidates, reqs, refused) & stuck for c in stuck}
+    members = [c for c in sorted(stuck) if c in _reachable(c, edges)]
+    message = f"dependency cycle between {', '.join(members)}"
+    for cid in members:
+        refused[cid] = message
+
+
 def resolve(candidates: dict[str, Candidate], active: dict[str, str] | None = None) -> Resolution:
     active = active or {}
     refused: dict[str, str] = {}
@@ -105,11 +128,10 @@ def resolve(candidates: dict[str, Candidate], active: dict[str, str] | None = No
     while True:
         _refuse_unsatisfied(candidates, active, reqs, refused)
         order = _topological(candidates, reqs, refused)
-        stuck = sorted(set(candidates) - set(refused) - set(order))
+        stuck = set(candidates) - set(refused) - set(order)
         if not stuck:
             break
-        for cid in stuck:
-            refused[cid] = f"dependency cycle between {', '.join(stuck)}"
+        _refuse_cycles(stuck, candidates, reqs, refused)
     return Resolution(
         order=tuple(order), refused=refused,
         required={c: frozenset(r.name for r in reqs[c][0]) for c in candidates},

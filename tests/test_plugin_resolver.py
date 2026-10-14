@@ -39,6 +39,13 @@ def test_cycle_members_are_refused():
     assert r.refused["a"] == r.refused["b"] == "dependency cycle between a, b"
 
 
+def test_dependents_of_a_cycle_get_the_cascade_message():
+    r = resolve({"a": _c("a", deps=["b"]), "b": _c("b", deps=["a"]), "d": _c("d", deps=["a"])})
+    assert r.order == ()
+    assert r.refused["a"] == r.refused["b"] == "dependency cycle between a, b"
+    assert r.refused["d"] == "needs plugin 'a', which was refused: dependency cycle between a, b"
+
+
 def test_already_active_plugins_satisfy_dependencies():
     r = resolve({"study": _c("study", deps=["vdf>=1"])}, active={"vdf": "1.3.0"})
     assert r.order == ("study",)
