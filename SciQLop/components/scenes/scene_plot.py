@@ -18,7 +18,7 @@ from .model import ResolvedScene
 from .summary import PANES, pane_summary
 
 _AXES = "XYZ"
-_THREEDVIEW_SAMPLING_S = 60
+_THREEDVIEW_SAMPLING_S = 600   # 3DView answers at 600 s whatever finer value is asked (measured 2026-10-13)
 _EARTH_RADII = {"Re", "R_E", "RE"}
 _EARTH_RADIUS = 6371.2 * u.km
 _KIND_COLOURS = {"magnetopause": "#4FC3F7", "bow_shock": "#FFB74D", "mpb": "#BA68C8"}

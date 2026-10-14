@@ -121,7 +121,7 @@ def test_a_trajectory_is_drawn_with_time_colouring(plot_panel, earth, fake_speas
     xy_pane = proj.subplot(0).plottables()[-1]   # the projection's own graph keeps no data, its panes do
     wait_for_data(qtbot, xy_pane)
     assert np.allclose(xy_pane.data()[0], [1.0, 2.0])
-    assert ("cdpp3dview/MMS1", {"coordinate_frame": "GSM", "sampling": "60"}) in fake_speasy
+    assert ("cdpp3dview/MMS1", {"coordinate_frame": "GSM", "sampling": "600"}) in fake_speasy
 
 
 def test_a_refused_trajectory_shows_on_the_overlay(plot_panel, earth, fake_speasy, qtbot):
