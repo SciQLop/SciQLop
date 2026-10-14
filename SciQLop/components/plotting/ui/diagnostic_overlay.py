@@ -16,6 +16,11 @@ _COMPACT = OverlaySizeMode(0)
 _TOP = OverlayPosition(0)
 
 
+def overlay_of(plot):
+    """A projection plot has no overlay of its own: its first pane shows its messages."""
+    return plot.overlay() if hasattr(plot, "overlay") else plot.subplot(0).overlay()
+
+
 class _DiagnosticDispatcher(QObject):
     """Thread-safe dispatcher: emit signals from any thread, overlay updates in GUI thread."""
     diagnostics_ready = Signal(list)
@@ -92,7 +97,7 @@ class DiagnosticOverlay:
         self._visible = True
         size_mode = OverlaySizeMode.FullWidget if level == OverlayLevel.Error else OverlaySizeMode.FitContent
         for plot in self._plots():
-            ov = plot.overlay()
+            ov = overlay_of(plot)
             ov.set_collapsible(True)
             ov.show_message(text, level, size_mode, _TOP)
 
@@ -102,17 +107,17 @@ class DiagnosticOverlay:
         self._visible = True
         plots = self._plots()
         if plots:
-            ov = plots[0].overlay()
+            ov = overlay_of(plots[0])
             ov.set_collapsible(True)
             ov.show_message(text, _INFO, OverlaySizeMode.FitContent, _TOP)
             for plot in plots[1:]:
-                plot.overlay().clear_message()
+                overlay_of(plot).clear_message()
 
     def _on_clear(self):
         self._last_text = ""
         self._visible = False
         for plot in self._plots():
-            plot.overlay().clear_message()
+            overlay_of(plot).clear_message()
 
     def isVisible(self):
         return self._visible

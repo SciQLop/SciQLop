@@ -61,3 +61,21 @@ def test_overlay_clears(qtbot):
     overlay.clear()
     QApplication.processEvents()
     assert not overlay.isVisible()
+
+
+def test_diagnostics_on_a_panel_with_a_projection_show_on_its_first_pane(plot_panel, qtbot):
+    import numpy as np
+    from SciQLopPlots import GraphType, PlotType
+    from SciQLop.components.plotting.ui.diagnostic_overlay import DiagnosticOverlay
+    from SciQLop.user_api.virtual_products.validation import Diagnostic
+    z = np.zeros(1)
+    panel = plot_panel._get_impl_or_raise()
+    proj, _ = panel.plot([z, z, z, z], plot_type=PlotType.Projections,
+                         graph_type=GraphType.ParametricCurve, labels=["", "", ""])
+    overlay = DiagnosticOverlay(panel)
+    overlay.show_diagnostics([Diagnostic("error", "ZeroDivisionError in f")])
+    qtbot.waitUntil(lambda: "ZeroDivisionError" in proj.subplot(0).overlay().text(), timeout=5000)
+    overlay.show_success(10, (10, 3), "float64", 0.1)
+    qtbot.waitUntil(lambda: "10 points" in proj.subplot(0).overlay().text(), timeout=5000)
+    overlay.clear()
+    qtbot.waitUntil(lambda: proj.subplot(0).overlay().text() == "", timeout=5000)

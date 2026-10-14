@@ -31,6 +31,7 @@ from SciQLop.core.plot_hints import apply_plot_hints, combine_hints, merge_hints
 from SciQLop.core.property import SciQLopProperty
 from SciQLop.core.mime import decode_mime
 from SciQLop.components.plotting.ui.coverage_notice import offer_jump_to_data
+from SciQLop.components.plotting.ui.diagnostic_overlay import overlay_of
 from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE, CATALOG_LIST_MIME_TYPE
 from SciQLop.components.plotting.backend.palette import Palette, make_color_list
 from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
@@ -1036,19 +1037,15 @@ class _PlotErrorReporter(QObject):
         self._pending = None
         self._shown = True
         if self._plot is not None:
-            _overlay_of(self._plot).show_message(
+            overlay_of(self._plot).show_message(
                 f"{self.name}: {message}", OverlayLevel.Error,
                 OverlaySizeMode.FitContent, OverlayPosition.Top)
 
     def _clear(self) -> None:
         if self._shown and self._plot is not None:
             self._shown = False
-            _overlay_of(self._plot).clear_message()
+            overlay_of(self._plot).clear_message()
 
-
-def _overlay_of(plot):
-    """A projection plot has no overlay of its own: its first pane shows its messages."""
-    return plot.overlay() if hasattr(plot, "overlay") else plot.subplot(0).overlay()
 
 
 class _CallbackErrorOverlay(_PlotErrorReporter):
