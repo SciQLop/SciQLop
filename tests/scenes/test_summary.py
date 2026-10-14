@@ -55,11 +55,40 @@ class TiltedSphereInGSE(RadialBoundary):
         return np.full(np.shape(theta), 2.0)
 
 
-def test_rotation_happens_before_reduction(monkeypatch):
+def _stub_rotation(monkeypatch, rotvec_per_time):
     from scipy.spatial.transform import Rotation
-    angles = np.deg2rad([0.0, 10.0, 20.0])
     monkeypatch.setattr(summary, "rotation",
-                        lambda f, t, times: Rotation.from_rotvec(np.stack([angles[: len(times)], 0 * angles[: len(times)], 0 * angles[: len(times)]], axis=1)))
+                        lambda f, t, times: Rotation.from_rotvec(np.asarray(rotvec_per_time(len(times)))))
+
+
+def test_rotation_happens_before_reduction(monkeypatch):
+    angles = np.deg2rad([0.0, 10.0, 20.0])
+    _stub_rotation(monkeypatch, lambda n: np.stack([angles[:n], 0 * angles[:n], 0 * angles[:n]], axis=1))
     s = pane_summary(TiltedSphereInGSE(), "GSM", pane=0, start=0.0, stop=2.0, how="median")
     assert np.allclose(s.centre, 2.0, atol=1e-6)   # a sphere at the origin is rotation-invariant
     assert s.origin.shape == (3,)
+
+
+class OffsetBallInGSE(RadialBoundary):
+    name, body, kind, frame = "ball", "earth", "test", "GSE"
+    focus = (3.0, 0.0, 0.0)
+    n_samples = 3
+    theta_max = np.pi
+
+    def radius(self, theta, phi, times):
+        return np.ones(np.shape(theta))
+
+
+def test_off_centre_boundary_lands_where_the_inverse_rotation_puts_it(monkeypatch):
+    """scene->model is +90 deg about z, so model (3,0,0) is scene (0,-3,0)."""
+    _stub_rotation(monkeypatch, lambda n: np.tile([0, 0, np.pi / 2], (n, 1)))
+    s = pane_summary(OffsetBallInGSE(), "GSM", pane=0, start=0.0, stop=2.0, how="median")
+    x, y = s.curve("centre")
+    assert np.allclose(s.origin, [0, -3, 0], atol=1e-9)
+    assert (x.min(), x.max()) == pytest.approx((-1.0, 1.0), abs=1e-3)
+    assert (y.min(), y.max()) == pytest.approx((-4.0, -2.0), abs=1e-3)
+
+
+def test_bad_reducer_names_the_allowed_ones():
+    with pytest.raises(ValueError, match="median.*mean"):
+        summarise(circle(1.0)[None], pane=0, origin=np.zeros(3), how="mode")

@@ -1,6 +1,7 @@
 """Summarise a boundary's sections over an interval, per pane, in the scene frame."""
 import warnings
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 
@@ -28,7 +29,7 @@ class SectionSummary:
     origin: np.ndarray   # pane origin of the polar coordinates, scene frame (3,)
     pane: int
 
-    def curve(self, which: str) -> tuple[np.ndarray, np.ndarray]:
+    def curve(self, which: Literal["centre", "low", "high"]) -> tuple[np.ndarray, np.ndarray]:
         e1, e2, _ = pane_basis(self.pane)
         r = getattr(self, which)
         closed = np.append(r, r[0])
@@ -53,7 +54,10 @@ def _resample(angles: np.ndarray, radii: np.ndarray, grid: np.ndarray) -> np.nda
     return np.where(gap, np.nan, out)
 
 
-def summarise(sections: np.ndarray, pane: int, origin: np.ndarray, how: str) -> SectionSummary:
+def summarise(sections: np.ndarray, pane: int, origin: np.ndarray,
+              how: Literal["median", "mean"]) -> SectionSummary:
+    if how not in _REDUCERS:
+        raise ValueError(f"how must be one of {list(_REDUCERS)}, got {how!r}")
     e1, e2, _ = pane_basis(pane)
     grid = np.linspace(-np.pi, np.pi, N_ANGLES, endpoint=False)
     resampled = np.stack([_resample(*_polar(s, e1, e2, origin), grid) for s in sections])
@@ -63,7 +67,8 @@ def summarise(sections: np.ndarray, pane: int, origin: np.ndarray, how: str) -> 
                               np.nanmax(resampled, axis=0), origin, pane)
 
 
-def pane_summary(model, scene_frame: str, pane: int, start: float, stop: float, how: str) -> SectionSummary:
+def pane_summary(model, scene_frame: str, pane: int, start: float, stop: float,
+                 how: Literal["median", "mean"]) -> SectionSummary:
     times = model.sample_times(start, stop)
     to_model = rotation(scene_frame, model.frame, times)
     _, _, normal = pane_basis(pane)
