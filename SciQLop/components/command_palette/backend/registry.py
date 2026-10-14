@@ -5,6 +5,7 @@ from typing import Callable
 from PySide6.QtGui import QIcon
 
 from SciQLop.core.extensions import ExtensionPoint, declare
+from SciQLop.user_api.threading import on_main_thread
 
 
 @dataclass
@@ -46,9 +47,11 @@ COMMANDS = declare(ExtensionPoint("sciqlop.commands", PaletteCommand, what="comm
 class CommandRegistry:
     """The published registry API, a view onto sciqlop.commands: every instance sees the same commands."""
 
+    @on_main_thread
     def register(self, command: PaletteCommand) -> None:
         COMMANDS.contribute(command, replace=True)
 
+    @on_main_thread
     def unregister(self, command_id: str) -> None:
         if command_id in COMMANDS:
             COMMANDS.remove(command_id)

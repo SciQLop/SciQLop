@@ -9,9 +9,13 @@ from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
 from SciQLop.components.settings.backend.entry import ConfigEntry, SettingsCategory
+from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.extensions import ExtensionPoint, declare
 from SciQLop.core.ui.shortcuts import native_shortcut_text
 from SciQLop.core.ui.tooltips import rich_tooltip
+from SciQLop.user_api.threading import on_main_thread
+
+log = getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -51,6 +55,7 @@ for _shortcut in _BUILTIN:
     SHORTCUTS.contribute(_shortcut, owner="sciqlop")
 
 
+@on_main_thread
 def register_shortcut(shortcut: Shortcut) -> Shortcut:
     """For plugins: make a shortcut configurable and listed in the help panel."""
     return SHORTCUTS.contribute(shortcut, replace=True)
@@ -147,7 +152,10 @@ def _live_bindings() -> list[tuple[QObject, Callable[[QObject], None]]]:
 
 def _refresh_bindings() -> None:
     for owner, refresh in _live_bindings():
-        refresh(owner)
+        try:
+            refresh(owner)
+        except Exception as e:
+            log.error(f"shortcut binding refresh failed: {e}", exc_info=True)
 
 
 shortcuts_changed.connect(_refresh_bindings)
@@ -163,7 +171,7 @@ def on_shortcuts_changed(owner: QObject, refresh: Callable[[QObject], None]) -> 
 
 
 def on_shortcut_changed(owner: QObject, shortcut_id: str, apply: Callable[[QObject, str], None]) -> None:
-    on_shortcuts_changed(owner, lambda o: apply(o, key_for(shortcut_id)))
+    on_shortcuts_changed(owner, lambda o: apply(o, key_for(shortcut_id) if shortcut_id in SHORTCUTS else ""))
 
 
 def _set_key(target: QShortcut | QAction, key: str) -> None:
