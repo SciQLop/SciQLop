@@ -98,7 +98,69 @@ def activate(ctx):
 
 - A failed `activate()` withdraws everything the plugin contributed.
 - Dependency names match across case, dash and underscore: `io-vdf`, `io_vdf` and `Io_Vdf` are one plugin.
-- Plot kinds, which make a plugin's product kind plottable, come with plan 1c.
+- Plot kinds, which make a plugin's product kind plottable, are in the next section.
+
+## Plot kinds, drop rules and saved panels
+
+| Extension point | Contribution | Key |
+|---|---|---|
+| `sciqlop.plot_kinds` | `PlotKind(id, label, plot_product, owns, to_config, from_config)` | `id` |
+| `sciqlop.drop_rules` | `DropRule(id, mime_type, drop, product_kind, target, creates_plot)` | `id` |
+
+`PlotKind` contracts:
+- `plot_product(target, product, kwargs)` puts a product on a panel or plot and returns `(plot, graph)`, or None.
+- `owns(plot)` says whether an existing plot is yours. A plot no plugin claims is a time-series plot.
+- `to_config(plot)` returns JSON-friendly values only (str, number, bool, list, dict). None means "not saved".
+- `from_config(panel, config)` builds the plot on the panel and returns the user-facing object.
+
+`DropRule.drop(plot, payload, panel)` gets one product path for product drops. `plot` is None for a drop between
+plots. Rules are matched on MIME type, then weighted: a matching `product_kind` counts 2, a matching `target`
+(plot kind id) counts 1. The heaviest wins, ties go to the smallest id. `None` matches anything.
+`creates_plot=True` makes a drop between plots create a placeholder plot first.
+
+A saved panel is a tree (template v3). Each plot is its kind id plus the config `to_config` returned:
+
+```yaml
+version: 3
+panel:
+  kind: sciqlop.time_panel
+  config: {time_range: ...}
+  slots:
+    plots:
+      - {kind: vdf.slice_plot, id: ..., config: {product: vdf//mms1/dis, plane: XY}, slots: {}}
+```
+
+When a kind is unknown (plugin gone or disabled) or its `from_config` fails, the panel gets a placeholder that
+names the plugin from the id prefix. The placeholder keeps the node, so saving the panel again writes it back
+unchanged and the plugin can restore it later.
+
+`PlotPanel.add(kind, **config)` builds a plot through the same `from_config`, so
+`panel.add("vdf.slice_plot", product="vdf//mms1/dis", plane="XY")` and a restored template take one path.
+Drop-rule behaviour and scene plots: see ui-and-settings.md. Plot dispatch by product kind: products-and-data.md.
+
+```python
+from SciQLopPlots import PlotType
+from SciQLop.core.drop_rules import DropRule
+from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE
+from SciQLop.core.plot_kinds import PlotKind
+from SciQLop.core.product_kinds import ProductKind
+
+SEEN = {}                                         # plot name -> config
+
+def from_config(panel, config):
+    plot = panel.create_plot(len(panel.plots()), PlotType.TimeSeries)
+    SEEN[plot.objectName()] = dict(config)
+    return plot
+
+def activate(ctx):
+    kind = PlotKind("vdf.slice_plot", "VDF slice", lambda panel, product, kw: (from_config(panel, {"product": "//".join(product)}), None),
+                    lambda plot: plot.objectName() in SEEN, lambda plot: SEEN[plot.objectName()], from_config)
+    ctx.contribute("sciqlop.product_kinds", ProductKind("vdf.distribution", "VDF", 0, "vdf.slice_plot"))
+    ctx.contribute("sciqlop.plot_kinds", kind)
+    ctx.contribute("sciqlop.drop_rules", DropRule("vdf.drop", PRODUCT_LIST_MIME_TYPE,
+        lambda plot, product, panel: from_config(panel, {"product": "//".join(product)}),
+        product_kind="vdf.distribution", creates_plot=True))
+```
 
 ## When a plugin does not load
 

@@ -66,6 +66,7 @@ at shutdown. Packaging, `plugin.json` fields, version pins and tests:
 Dependencies, `ctx` and extension points:
 [references/plugin-contract.md](references/plugin-contract.md).
 Providers, MIME types, source kinds and product kinds: the "Data contracts" section of the same file.
+Plot kinds, drop rules, saved panels and `panel.add`: the "Plot kinds, drop rules and saved panels" section.
 
 ## Traps that make a plugin show nothing
 

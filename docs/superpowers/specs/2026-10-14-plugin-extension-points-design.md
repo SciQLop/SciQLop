@@ -174,7 +174,8 @@ Tier 1 is implemented as three plans: 1a plugin contract + extension-point base 
 (docs/superpowers/plans/2026-10-14-plugin-contract-and-extension-points.md), 1b data contracts, implemented
 (product kinds, source kinds, data providers, MIME types, the `sciqlop.provider` fallback;
 docs/superpowers/plans/2026-10-14-plugin-data-contracts.md), 1c plot kinds,
-drop rules and the panel tree format. Tier 2 follows with this contract. Tier 3 is a list of
+drop rules and the panel tree format, implemented
+(docs/superpowers/plans/2026-10-14-plot-kinds-drop-rules-panel-tree.md). Tier 2 follows with this contract. Tier 3 is a list of
 candidates migrated only when a plugin needs one or when the cleanup is touched anyway.
 
 | Tier | EP | Replaces |
