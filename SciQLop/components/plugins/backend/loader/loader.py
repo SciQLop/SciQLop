@@ -292,6 +292,15 @@ def _blocked_by(required) -> Optional[str]:
     return f"needs plugin {failed[0]!r}, which {state.status}: {state.reason}"
 
 
+def _warn_on_provides_drift(entries, order) -> None:
+    from .provides import provides_drift
+    for name in order:
+        state = STATES[name]
+        if state.status == "active" and hasattr(state.module, "activate") and entries[name].desc is not None:
+            for problem in provides_drift(name, entries[name].desc.provides):
+                log.warning(f"Plugin {name}: {problem}")
+
+
 def activate_all(plugin_list, main_window, ep_plugins=None) -> dict:
     """Activate *plugin_list* [(folder or None, name)] in dependency order, then run their ready() hooks."""
     from .resolver import resolve
@@ -309,6 +318,7 @@ def activate_all(plugin_list, main_window, ep_plugins=None) -> dict:
             STATES[name] = _activate_one(entries[name], main_window, resolution.declared[name], ep_plugins)
     for name in resolution.order:
         _ready(name)
+    _warn_on_provides_drift(entries, resolution.order)
     return {name: STATES[name].api for name in entries}
 
 
