@@ -4,6 +4,7 @@ import math
 import threading
 from dataclasses import dataclass
 
+import astropy.units as u
 import numpy as np
 import shiboken6
 from PySide6.QtCore import Qt
@@ -11,10 +12,12 @@ from PySide6.QtGui import QColor, QPen
 from SciQLopPlots import GraphType, PlotType
 
 from SciQLop.components.plotting.ui.time_sync_panel import _CallbackErrorOverlay
+from .frames import FrameError, normalise_frame, rotation
 from .model import ResolvedScene
 from .summary import PANES, pane_summary
 
 _AXES = "XYZ"
+_THREEDVIEW_SAMPLING_S = 60
 _KIND_COLOURS = {"magnetopause": "#4FC3F7", "bow_shock": "#FFB74D", "mpb": "#BA68C8"}
 _DEFAULT_COLOUR = "#B0BEC5"
 _CURVE_SUFFIX = {"centre": "", "low": " min", "high": " max"}
@@ -121,6 +124,68 @@ def remove_boundary(proj, curves: BoundaryCurves) -> None:
     for reporter in curves.reporters:
         reporter.clear()
         reporter.deleteLater()
+
+
+def _speasy_id(source: str) -> str:
+    if source.startswith("speasy//"):
+        from SciQLopPlots import ProductsModel
+        node = ProductsModel.node(source.split("//"))
+        if node is None or not node.metadata("speasy_id"):
+            raise ValueError(f"{source!r} is not a speasy product")
+        return node.metadata("speasy_id")
+    return source
+
+
+def _fetch(source: str, frame: str, start: float, stop: float):
+    """The variable (None when the range has no data) and the frame its values are in."""
+    import speasy
+    start, stop = (np.datetime64(int(s * 1e9), "ns") for s in (start, stop))
+    if "/" not in source:
+        v = speasy.get_data(f"cdpp3dview/{source}", start, stop, coordinate_frame=frame,
+                            sampling=str(_THREEDVIEW_SAMPLING_S))
+        return v, frame
+    v = speasy.get_data(_speasy_id(source), start, stop)
+    if v is None:
+        return None, None
+    if "COORDINATE_SYSTEM" not in v.meta:
+        raise FrameError(f"{source!r} has no COORDINATE_SYSTEM: its frame is unknown")
+    return v, normalise_frame(v.meta["COORDINATE_SYSTEM"])
+
+
+def _in_body_radii(v, body) -> np.ndarray:
+    name = v.meta.get("FIELDNAM", "the product")
+    unit = v.unit or v.meta.get("UNITS")
+    if not unit:
+        raise ValueError(f"{name} has no unit")
+    if v.values.ndim != 2 or v.values.shape[1] < 3:
+        raise ValueError(f"{name} is not a position: values of shape {v.values.shape}")
+    return (v.values[:, :3] * u.Unit(unit)).to_value(body.radius)
+
+
+def trajectory_source(source: str, resolved: ResolvedScene):
+    """A plot callback giving ``[t, x, y, z]`` of *source* in the scene's frame and body radii."""
+    frame = resolved.scene.frame
+
+    def fetch(start, stop):
+        v, data_frame = _fetch(source, frame, float(start), float(stop))
+        if v is None:
+            return None
+        t = v.time.astype("datetime64[ns]").astype("int64") / 1e9
+        xyz = rotation(data_frame, frame, t).apply(_in_body_radii(v, resolved.body))
+        return [t] + [np.ascontiguousarray(xyz[:, i]) for i in range(3)]
+
+    fetch.__name__ = source
+    return fetch
+
+
+def add_trajectory(proj, resolved: ResolvedScene, source: str):
+    reporter = _CallbackErrorOverlay(trajectory_source(source, resolved))
+    name = source.split("/")[-1]
+    graph = proj.plot(reporter, labels=[name] * 3, graph_type=GraphType.ParametricCurve)
+    graph = graph[1] if isinstance(graph, tuple) else graph
+    reporter.attach(proj)
+    proj.set_time_color_enabled(True)
+    return graph
 
 
 def create_scene_plot(panel_impl, resolved: ResolvedScene):

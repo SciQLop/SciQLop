@@ -7,6 +7,7 @@ from SciQLop.components.scenes.boundary import Boundary, Plane, RadialBoundary
 from SciQLop.components.scenes.frames import FrameError
 from SciQLop.components.scenes.model import Body, Scene, resolve
 from SciQLop.components.scenes.registry import BODIES, BOUNDARIES, SCENES, NotRegistered
+from SciQLop.user_api.plot._graphs import Graph, to_plottable
 from SciQLop.user_api.plot._plots import ProjectionPlot
 from SciQLop.user_api.plot._thread_safety import GuardedImpl
 from SciQLop.user_api.threading import on_main_thread
@@ -72,3 +73,11 @@ class ScenePlot(GuardedImpl):
             _scene_plot.remove_boundary(proj, self._boundary_graphs.pop(kind))
         self._boundary_graphs[kind] = _scene_plot.add_boundary(proj, resolved, kind, resolved.boundaries[kind])
         self._resolved = resolved
+
+    @on_main_thread
+    def add_trajectory(self, source: str) -> Graph:
+        """Draw a spacecraft orbit in the scene's frame and unit.
+
+        source: a 3DView body name ("MMS1"), a speasy id, or a SciQLop product path ("speasy//...").
+        Products must declare COORDINATE_SYSTEM and a position unit; others are refused on the plot."""
+        return to_plottable(_scene_plot.add_trajectory(self._get_impl_or_raise(), self._resolved, source))
