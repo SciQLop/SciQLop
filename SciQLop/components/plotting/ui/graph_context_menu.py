@@ -14,10 +14,14 @@
 Aggregate items (Panel/Plot) only appear when there is at least one
 source-bound graph to reproduce. Per-graph items only appear when the graph's
 provider supplies snippets.
+
+A separate "Graphs" submenu holds the `graph` menu entries, one submenu per
+graph that has some, whatever its provider.
 """
 from __future__ import annotations
 
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtWidgets import QMenu
 
 from SciQLop.components.command_palette.menu_entries import add_menu_entries
 from SciQLop.core.menus import GRAPH
@@ -52,10 +56,26 @@ def _plot_label(plot_model, plot_index: int) -> str:
 
 
 def add_graph_context_actions(menu, panel) -> None:
-    """Append a 'Copy Python code ▶' submenu to ``menu`` for ``panel``.
+    """Append the 'Copy Python code ▶' and 'Graphs ▶' submenus to ``menu`` for ``panel``."""
+    _add_snippet_menu(menu, panel)
+    _add_graph_entries_menu(menu, panel)
 
-    No-op if the panel has no graphs eligible for any snippet.
-    """
+
+def _add_graph_entries_menu(menu, panel) -> None:
+    """A 'Graphs ▶' submenu with one submenu per graph that has menu entries; absent when none has."""
+    graphs = QMenu("Graphs", menu)
+    for plot in ordered_plots(panel):
+        for g in plot_graphs(plot):
+            sub = graphs.addMenu(graph_name(g))
+            if not add_menu_entries(sub, GRAPH, {"panel": panel.name, "graph": graph_name(g)}):
+                graphs.removeAction(sub.menuAction())
+    if graphs.actions():
+        menu.addSeparator()
+        menu.addMenu(graphs)
+
+
+def _add_snippet_menu(menu, panel) -> None:
+    """Append a 'Copy Python code ▶' submenu; no-op if no graph is eligible for any snippet."""
     plots = timeseries_plots(PanelTemplate.from_panel(panel))
 
     panel_snippet = panel_reproducer_snippet(panel)
@@ -98,4 +118,3 @@ def add_graph_context_actions(menu, panel) -> None:
                 continue
             a = graph_sub.addAction(label)
             a.triggered.connect(lambda _checked=False, s=snippet: _copy(s))
-        add_menu_entries(graph_sub, GRAPH, {"panel": panel.name, "graph": graph_name(graph)})

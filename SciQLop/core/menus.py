@@ -23,6 +23,10 @@ class MenuEntry:
     when: Callable[[dict], bool] = _always
     order: int = 0
 
+    def __post_init__(self):
+        if not isinstance(self.order, int):
+            raise TypeError(f"menu entry {self.id}: order must be an int, got {self.order!r}")
+
 
 MENUS = declare(ExtensionPoint("sciqlop.menus", MenuEntry, what="menu entry",
                                doc="Commands placed in menus: location, label, order and a when(context) predicate."))

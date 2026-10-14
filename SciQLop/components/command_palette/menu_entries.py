@@ -5,6 +5,9 @@ from SciQLop.core.menus import MENUS
 
 log = getLogger(__name__)
 
+# Marks actions made here, so the menu-bar harvest does not turn them into duplicate palette commands.
+MENU_ENTRY_PROPERTY = "sciqlop_menu_entry"
+
 
 def _shown(entry, context) -> bool:
     # simplify: problems are logged on every menu build, not once; menus are built on demand so it stays quiet enough.
@@ -26,15 +29,16 @@ def _run(command, context: dict) -> None:
         log.error(f"command {command.id} failed: {e}", exc_info=True)
 
 
-def add_menu_entries(menu, location: str, context: dict, separator: bool = True) -> list:
-    """Append the entries; with ``separator``, a separator goes first, but only if something was added."""
+def add_menu_entries(menu, location: str, context: dict) -> list:
+    """Append the entries. A separator goes first, but only if something was added and the menu already has items."""
     entries = sorted((e for e in MENUS.list(location=location) if _shown(e, context)), key=lambda e: (e.order, e.id))
-    if separator and entries:
+    if entries and menu.actions():
         menu.addSeparator()
     actions = []
     for entry in entries:
         command = COMMANDS.get(entry.command)
         action = menu.addAction(entry.label or command.name)
+        action.setProperty(MENU_ENTRY_PROPERTY, True)
         action.triggered.connect(lambda _checked=False, c=command: _run(c, context))
         actions.append(action)
     return actions

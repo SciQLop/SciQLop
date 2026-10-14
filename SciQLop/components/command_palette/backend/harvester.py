@@ -1,12 +1,13 @@
 from __future__ import annotations
 from PySide6.QtWidgets import QMainWindow, QMenu
 from SciQLop.components.command_palette.backend.registry import (CommandRegistry, PaletteCommand)
+from SciQLop.components.command_palette.menu_entries import MENU_ENTRY_PROPERTY
 
 
 def _collect_menu_actions(menu: QMenu, path: str) -> list[tuple[str, str, callable]]:
     results = []
     for action in menu.actions():
-        if action.isSeparator():
+        if action.isSeparator() or action.property(MENU_ENTRY_PROPERTY):
             continue
         submenu = action.menu()
         if submenu:

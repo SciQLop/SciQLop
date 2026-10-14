@@ -101,6 +101,61 @@ def test_the_product_menu_shows_entries_with_the_product_path(qtbot, demo):
     assert demo == ["amda//ace//b"]
 
 
+def _submenu_actions(menu):
+    return [a for m in (a.menu() for a in menu.actions()) if m for a in _submenu_actions(m)] + menu.actions()
+
+
+def test_graph_entries_show_for_a_graph_without_python_snippets(qtbot, demo):
+    import numpy as np
+    from SciQLop.components.command_palette.backend.registry import CommandArg
+    from SciQLop.components.plotting.ui.graph_context_menu import add_graph_context_actions
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel, plot_static_data
+    from SciQLop.core.graph_context import graph_name
+    from SciQLop.core.menus import GRAPH
+
+    class GraphArg(CommandArg):
+        def completions(self, context):
+            return []
+
+    with owned_by("mn_demo"):
+        COMMANDS.contribute(PaletteCommand(id="mn_demo.graph", name="Graph cmd", description="",
+                                           callback=lambda graph="": demo.append(graph), args=[GraphArg("graph")]))
+        MENUS.contribute(MenuEntry("mn_demo.on_graph", GRAPH, "mn_demo.graph"))
+    panel = TimeSyncPanel("mn_graph_panel", show_search_overlay=False)
+    qtbot.addWidget(panel)
+    _, graph = plot_static_data(panel, np.array([0.0, 1.0]), np.array([0.0, 1.0]))
+    menu = QMenu()
+    add_graph_context_actions(menu, panel)
+    next(a for a in _submenu_actions(menu) if a.text() == "Graph cmd").trigger()
+    assert demo == [graph_name(graph)]
+
+
+def test_a_non_integer_order_is_refused_when_the_entry_is_built(demo):
+    for bad in (None, "1"):
+        with pytest.raises(TypeError):
+            MenuEntry("mn_demo.bad_order", PANEL, "mn_demo.zoom", order=bad)
+
+
+def test_the_harvest_skips_actions_made_by_menu_entries(qtbot, demo):
+    from PySide6.QtWidgets import QMainWindow
+    from SciQLop.components.command_palette.backend.harvester import refresh_harvest
+    window = QMainWindow()
+    qtbot.addWidget(window)
+    tools = window.menuBar().addMenu("Tools")
+    tools.addAction("Plain tool")
+    with owned_by("mn_demo"):
+        MENUS.contribute(MenuEntry("mn_demo.tool_entry", PANEL, "mn_demo.zoom", label="Entry tool"))
+    add_menu_entries(tools, PANEL, {})
+    ids = {c.id for c in COMMANDS.list()}
+    try:
+        refresh_harvest(window)
+        harvested = {c.name for c in COMMANDS.list() if c.id not in ids and c.id.startswith("qaction.Tools.")}
+        assert harvested == {"Plain tool"}
+    finally:
+        for c in [c for c in COMMANDS.list() if c.id not in ids]:
+            COMMANDS.remove(c.id)
+
+
 def test_the_panel_value_follows_a_rename(qtbot, demo):
     from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
     with owned_by("mn_demo"):
