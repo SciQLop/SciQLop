@@ -35,6 +35,7 @@ from SciQLop.components.workspaces.backend.live_install import (
 )
 from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
 from SciQLop.components.workspaces.backend.uv import find_uv
+from tests.test_plugin_activation import fresh  # noqa: F401  (fixture)
 
 
 @pytest.mark.skipif(find_uv() is None, reason="uv binary not available")
@@ -163,6 +164,12 @@ class TestInstalledPackagesStableKeys:
         assert settings.installed_packages["my-cool-plugin"].pip == "my_cool_plugin==2.0.0"
 
 
+def _fake_entry_point(name, dist_name, requires, loaded):
+    module = SimpleNamespace(load=lambda main_window: loaded.append(name))
+    return SimpleNamespace(name=name, module=name, load=lambda: module,
+                           dist=SimpleNamespace(name=dist_name, requires=requires, files=None))
+
+
 class TestTryLoadPluginSettingsBookkeeping:
     """Compatibility must never affect enable/disable state -- the settings
     entry for a freshly-installed entry-point plugin must exist regardless of
@@ -174,19 +181,12 @@ class TestTryLoadPluginSettingsBookkeeping:
     ):
         monkeypatch.setattr(SciQLop, "__version__", "0.13.0.dev0")
 
-        ep = SimpleNamespace(
-            name="future_plugin",
-            dist=SimpleNamespace(name="future-plugin", requires=["SciQLop>=0.20"]),
-        )
+        loaded = []
+        ep = _fake_entry_point("future_plugin", "future-plugin", ["SciQLop>=0.20"], loaded)
         monkeypatch.setattr("importlib.metadata.entry_points", lambda group=None: [ep])
         monkeypatch.setattr(
             "SciQLop.core.sciqlop_application.sciqlop_app",
             lambda: SimpleNamespace(main_window=object()),
-        )
-        loaded = []
-        monkeypatch.setattr(
-            "SciQLop.components.plugins.backend.loader.loader._load_entry_point_plugin",
-            lambda ep, main_window: loaded.append(ep.name),
         )
 
         reason = _try_load_plugin("future-plugin")
@@ -198,22 +198,15 @@ class TestTryLoadPluginSettingsBookkeeping:
         assert reason is not None
         assert "SciQLop" in reason
 
-    def test_compatible_plugin_loads_and_returns_none(self, tmp_config_dir, monkeypatch):
+    def test_compatible_plugin_loads_and_returns_none(self, tmp_config_dir, monkeypatch, fresh):
         monkeypatch.setattr(SciQLop, "__version__", "0.13.0.dev0")
 
-        ep = SimpleNamespace(
-            name="ok_plugin",
-            dist=SimpleNamespace(name="ok-plugin", requires=["SciQLop>=0.13.0,<0.14.0"]),
-        )
+        loaded = []
+        ep = _fake_entry_point("ok_plugin", "ok-plugin", ["SciQLop>=0.13.0,<0.14.0"], loaded)
         monkeypatch.setattr("importlib.metadata.entry_points", lambda group=None: [ep])
         monkeypatch.setattr(
             "SciQLop.core.sciqlop_application.sciqlop_app",
             lambda: SimpleNamespace(main_window=object()),
-        )
-        loaded = []
-        monkeypatch.setattr(
-            "SciQLop.components.plugins.backend.loader.loader._load_entry_point_plugin",
-            lambda ep, main_window: loaded.append(ep.name),
         )
 
         reason = _try_load_plugin("ok-plugin")
@@ -222,7 +215,7 @@ class TestTryLoadPluginSettingsBookkeeping:
         assert reason is None
 
     def test_a_hot_loaded_plugin_is_not_loaded_again_by_live_loading(
-        self, tmp_config_dir, monkeypatch
+        self, tmp_config_dir, monkeypatch, fresh
     ):
         """The store's hot-load must mark the plugin loaded: otherwise the next
         plugin-settings change makes PluginsLiveLoader find it enabled and
@@ -230,16 +223,13 @@ class TestTryLoadPluginSettingsBookkeeping:
         from SciQLop.components.plugins.backend.loader import loader
         monkeypatch.setattr(SciQLop, "__version__", "0.13.0.dev0")
         monkeypatch.setattr(loader, "_attempted", set())
-        ep = SimpleNamespace(
-            name="ok_plugin",
-            dist=SimpleNamespace(name="ok-plugin", requires=["SciQLop>=0.13.0,<0.14.0"]),
-        )
+        loaded = []
+        ep = _fake_entry_point("ok_plugin", "ok-plugin", ["SciQLop>=0.13.0,<0.14.0"], loaded)
         monkeypatch.setattr("importlib.metadata.entry_points", lambda group=None: [ep])
         monkeypatch.setattr(
             "SciQLop.core.sciqlop_application.sciqlop_app",
             lambda: SimpleNamespace(main_window=object()),
         )
-        monkeypatch.setattr(loader, "_load_entry_point_plugin", lambda ep, main_window: None)
         monkeypatch.setattr(loader, "_discover_entry_point_plugins", lambda: {"ok_plugin": ep})
         monkeypatch.setattr(loader, "entry_point_host_compatible", lambda ep: True)
 

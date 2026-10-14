@@ -132,6 +132,13 @@ def _incompatibility_reason(ep) -> str:
     return f"needs SciQLop {spec}, this workspace has {host_version()}"
 
 
+def _dist_name(ep) -> str | None:
+    try:
+        return ep.dist.name if ep.dist else None
+    except Exception:
+        return None
+
+
 def _try_load_plugin(dist_name: str) -> str | None:
     """Attempt to hot-load a newly installed entry-point plugin.
 
@@ -143,8 +150,9 @@ def _try_load_plugin(dist_name: str) -> str | None:
     """
     import importlib.metadata
     from SciQLop.components.plugins.backend.loader.loader import (
-        ENTRY_POINT_GROUP, entry_point_host_compatible, load_one,
+        ENTRY_POINT_GROUP, entry_point_host_compatible, activate_all,
     )
+    from SciQLop.components.plugins.backend.loader.context import STATES
     from SciQLop.components.plugins.backend.settings import (
         SciQLopPluginsSettings, PluginConfig, canonical_package_name,
     )
@@ -155,20 +163,20 @@ def _try_load_plugin(dist_name: str) -> str | None:
         return None
 
     canonical_dist_name = canonical_package_name(dist_name)
-    for ep in importlib.metadata.entry_points(group=ENTRY_POINT_GROUP):
-        try:
-            ep_dist = ep.dist.name if ep.dist else None
-        except Exception:
-            ep_dist = None
-        if ep_dist and canonical_package_name(ep_dist) == canonical_dist_name:
-            with SciQLopPluginsSettings() as settings:
-                if ep.name not in settings.plugins:
-                    settings.plugins[ep.name] = PluginConfig()
-            if not entry_point_host_compatible(ep):
-                return _incompatibility_reason(ep)
-            load_one(None, ep.name, main_window, {ep.name: ep})
-            log.info(f"Hot-loaded plugin {ep.name} from {dist_name}")
-    return None
+    matching = {ep.name: ep for ep in importlib.metadata.entry_points(group=ENTRY_POINT_GROUP)
+                if _dist_name(ep) and canonical_package_name(_dist_name(ep)) == canonical_dist_name}
+    with SciQLopPluginsSettings() as settings:
+        for name in matching:
+            settings.plugins.setdefault(name, PluginConfig())
+    for ep in matching.values():
+        if not entry_point_host_compatible(ep):
+            return _incompatibility_reason(ep)
+    if not matching:
+        return None
+    activate_all([(None, name) for name in matching], main_window, matching)
+    log.info(f"Hot-loaded plugins {', '.join(matching)} from {dist_name}")
+    reasons = [f"{name}: {STATES[name].reason}" for name in matching if STATES[name].status != "active"]
+    return "; ".join(reasons) or None
 
 
 class AppStoreBackend(QObject):

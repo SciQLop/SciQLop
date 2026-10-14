@@ -59,8 +59,7 @@ class PluginsLiveLoader(QObject):
 
     @Slot(object)
     def _load(self, ready):
-        for folder, name in ready:
-            if name in loader._attempted:
-                continue
-            log.info(f"Loading plugin {name} without restart")
-            loader.load_one(folder, name, self._main_window)
+        fresh = [(folder, name) for folder, name in ready if name not in loader._attempted]
+        if fresh:
+            log.info(f"Loading plugins without restart: {', '.join(name for _, name in fresh)}")
+            loader.activate_all(fresh, self._main_window)
