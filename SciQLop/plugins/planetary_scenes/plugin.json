@@ -1,0 +1,14 @@
+{
+  "name": "Planetary scenes",
+  "version": "1.0.0",
+  "description": "Earth, Mars and Mercury scenes with magnetopause and bow shock models",
+  "authors": [
+    {
+      "name": "Alexis Jeandet",
+      "email": "alexis.jeandet@member.fsf.org",
+      "organization": "LPP"
+    }
+  ],
+  "license": "MIT",
+  "python_dependencies": []
+}
