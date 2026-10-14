@@ -142,6 +142,49 @@ def test_extension_point_id_must_start_with_the_plugin_id(tmp_path, fresh):
     assert "must start with 'badid_p.'" in context.STATES["badid_p"].reason
 
 
+class _UnreadableDist:
+    version = "1.0.0"
+
+    @property
+    def files(self):
+        raise OSError("RECORD unreadable")
+
+
+def _ep(name, dist, code="def activate(ctx):\n    return 'ep'\n"):
+    from types import ModuleType, SimpleNamespace
+    mod = ModuleType(name)
+    exec(code, mod.__dict__)
+    return SimpleNamespace(name=name, module=name, load=lambda: mod, dist=dist)
+
+
+def test_unreadable_entry_point_metadata_does_not_stop_other_plugins(tmp_path, fresh):
+    plugins = [(None, "unreadable_ep"), _plugin(tmp_path, "readable_p", "def activate(ctx):\n    return 1\n", _desc())]
+    loader.activate_all(plugins, main_window=object(), ep_plugins={"unreadable_ep": _ep("unreadable_ep",
+                                                                                        _UnreadableDist())})
+    assert context.STATES["readable_p"].status == "active"
+    assert context.STATES["unreadable_ep"].status == "active"
+
+
+def test_entry_point_without_plugin_json_takes_its_distribution_version(fresh):
+    from types import SimpleNamespace
+    ep = _ep("versioned_ep", SimpleNamespace(files=None, version="2.3.0"))
+    loader.activate_all([(None, "versioned_ep")], main_window=object(), ep_plugins={"versioned_ep": ep})
+    assert context.STATES["versioned_ep"].version == "2.3.0"
+
+
+def test_entry_point_shadowing_a_folder_plugin_is_warned(tmp_path, fresh, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+    spy = MagicMock()
+    monkeypatch.setattr(loader, "log", spy)
+    folder = _plugin(tmp_path, "twin_p", "def activate(ctx):\n    return 'folder'\n", _desc())
+    ep = _ep("twin_p", SimpleNamespace(files=None, version="1.0.0"))
+    result = loader.activate_all([folder, (None, "twin_p")], main_window=object(), ep_plugins={"twin_p": ep})
+    assert result["twin_p"] == "ep"
+    warned = [c.args[0] for c in spy.warning.call_args_list if "twin_p" in c.args[0]]
+    assert len(warned) == 1 and str(tmp_path) in warned[0] and "entry point" in warned[0]
+
+
 def test_has_reports_present_optional_dependency(tmp_path, fresh):
     plugins = [
         _plugin(tmp_path, "opt_mars", "def activate(ctx):\n    return 1\n", _desc()),

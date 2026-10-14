@@ -194,12 +194,13 @@ class _Entry:
     folder: Optional[str]
     name: str
     desc: object  # PluginDesc or None
+    fallback_version: str = "0"
 
     @property
     def candidate(self):
         from .resolver import Candidate
         if self.desc is None:
-            return Candidate(self.name, "0")
+            return Candidate(self.name, self.fallback_version)
         return Candidate(self.name, self.desc.version, tuple(self.desc.dependencies),
                          tuple(self.desc.optional_dependencies))
 
@@ -231,9 +232,40 @@ def _entry_point_desc_path(ep) -> Optional[Path]:
 
 
 def _desc(folder, name, ep_plugins):
-    if folder is None:
-        return _read_desc(_entry_point_desc_path(ep_plugins[name]))
-    return _read_desc(os.path.join(folder, name, "plugin.json"))
+    """One unreadable package (broken RECORD, odd metadata) must not stop every other plugin."""
+    try:
+        if folder is None:
+            return _read_desc(_entry_point_desc_path(ep_plugins[name]))
+        return _read_desc(os.path.join(folder, name, "plugin.json"))
+    except Exception as e:
+        log.warning(f"Plugin {name}: cannot read plugin.json: {e}")
+        return None
+
+
+def _fallback_version(folder, name, ep_plugins) -> str:
+    """Without a plugin.json, a packaged plugin's distribution version is the best API version we have."""
+    if folder is not None:
+        return "0"
+    try:
+        return str(ep_plugins[name].dist.version or "0")
+    except Exception:
+        return "0"
+
+
+def _source(folder, name) -> str:
+    return f"entry point {name!r}" if folder is None else f"folder plugin {os.path.join(folder, name)}"
+
+
+def _entries(plugin_list, ep_plugins) -> dict:
+    """The last of several plugins sharing an id wins: entry points are listed after folders."""
+    entries = {}
+    for folder, name in plugin_list:
+        if name in entries:
+            log.warning(f"Plugin id {name!r} is used by {_source(entries[name].folder, name)} and "
+                        f"{_source(folder, name)}; loading the {_source(folder, name)}")
+        entries[name] = _Entry(folder, name, _desc(folder, name, ep_plugins),
+                               _fallback_version(folder, name, ep_plugins))
+    return entries
 
 
 def _import(entry: _Entry, ep_plugins):
@@ -327,8 +359,7 @@ def activate_all(plugin_list, main_window, ep_plugins=None) -> dict:
     """Activate *plugin_list* [(folder or None, name)] in dependency order, then run their ready() hooks."""
     ep_plugins = ep_plugins if ep_plugins is not None else _discover_entry_point_plugins()
     fresh = [(folder, name) for folder, name in plugin_list if not _already_ran(name)]
-    _activate_fresh({name: _Entry(folder, name, _desc(folder, name, ep_plugins)) for folder, name in fresh},
-                    main_window, ep_plugins)
+    _activate_fresh(_entries(fresh, ep_plugins), main_window, ep_plugins)
     return {name: STATES[name].api for _, name in plugin_list}
 
 
