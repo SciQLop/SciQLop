@@ -91,6 +91,17 @@ class ExtensionPoint(Generic[T]):
             raise NotRegistered(f"no {self._what} named {key!r}; available: {', '.join(sorted(self._items))}")
         return self._items[key]
 
+    def __contains__(self, key: str) -> bool:
+        return key in self._items
+
+    def remove(self, key: str) -> T:
+        _require_main_thread(f"removing from {self.id}")
+        item = self.get(key)
+        del self._items[key]
+        self._owners.pop(key, None)
+        self.signals.removed.emit(item)
+        return item
+
     def list(self, **filters) -> list[T]:
         return [i for i in self._items.values() if all(getattr(i, k, None) == v for k, v in filters.items())]
 

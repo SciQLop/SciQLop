@@ -1,3 +1,5 @@
+from collections.abc import MutableMapping
+from operator import attrgetter
 from typing import Optional, Tuple, List, Union
 
 import numpy as np
@@ -9,7 +11,9 @@ from SciQLop.core import tracing
 from SciQLop.components import sciqlop_logging
 from speasy.products import SpeasyVariable, VariableAxis
 from speasy.core import datetime64_to_epoch
+from SciQLop.core.extensions import ExtensionPoint, current_owner, declare
 from SciQLop.user_api.data_types import Colored
+from SciQLop.user_api.threading import on_main_thread
 from .color_axis import ColorAxis
 
 log = sciqlop_logging.getLogger(__name__)
@@ -17,7 +21,48 @@ log = sciqlop_logging.getLogger(__name__)
 DataProviderReturnType = Union[
     SpeasyVariable, Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray], List[np.ndarray]]
 
-providers = {}
+DATA_PROVIDERS = declare(ExtensionPoint(
+    "sciqlop.data_providers", object, what="data provider", key=attrgetter("name"),
+    doc="Data providers by name; a product-tree node names its provider."))
+
+
+class _ProvidersView(MutableMapping):
+    """The historical `providers` dict, read and written through sciqlop.data_providers."""
+
+    def __getitem__(self, name):
+        if name not in DATA_PROVIDERS:
+            raise KeyError(name)
+        return DATA_PROVIDERS.get(name)
+
+    def __setitem__(self, name, provider):
+        if getattr(provider, "name", None) != name:
+            raise ValueError(f"provider {provider!r} is named {getattr(provider, 'name', None)!r}, not {name!r}")
+        register_provider(provider)
+
+    def __delitem__(self, name):
+        if name not in DATA_PROVIDERS:
+            raise KeyError(name)
+        DATA_PROVIDERS.remove(name)
+
+    def __iter__(self):
+        return iter([p.name for p in DATA_PROVIDERS.list()])
+
+    def __len__(self):
+        return len(DATA_PROVIDERS.list())
+
+
+providers = _ProvidersView()
+
+
+@on_main_thread
+def register_provider(provider) -> None:
+    """A provider re-created under its name replaces the old one, as the `providers` dict always did (spec §7);
+    taking over another owner's name is logged, because the spec's raise would break virtual-product re-runs."""
+    owner = current_owner()
+    previous = DATA_PROVIDERS.owner_of(provider.name) if provider.name in DATA_PROVIDERS else None
+    if previous not in (None, owner):
+        log.warning(f"data provider {provider.name!r} of {previous} is replaced by one from {owner}")
+    DATA_PROVIDERS.contribute(provider, owner=owner, replace=True)
 
 
 def _ensure_contiguous(v):
@@ -102,8 +147,6 @@ def _sort_variable_by_time(variable: SpeasyVariable) -> SpeasyVariable:
 class DataProvider:
     def __init__(self, name: str, data_order: DataOrder = DataOrder.X_FIRST, cacheable: bool = False,
                  owns_fetched_variables: bool = False):
-        global providers  # noqa: F824
-        providers[name] = self
         self._name = name
         self._data_order = data_order
         self._cacheable = cacheable
@@ -111,6 +154,7 @@ class DataProvider:
         # may be reused (the time array becomes the epoch array). A virtual product may
         # return a variable it keeps, hence the default.
         self._owns_fetched_variables = owns_fetched_variables
+        register_provider(self)
 
     @property
     def name(self) -> str:

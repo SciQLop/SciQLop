@@ -105,3 +105,14 @@ def test_declare_and_lookup(clean_registry):
         extensions.declare(ExtensionPoint("test.declared", Kind))
     with pytest.raises(NotRegistered, match="no extension point named 'test.nope'"):
         extensions.get("test.nope")
+
+
+def test_remove_one_key_emits_removed(ep, qapp):
+    seen = []
+    ep.signals.removed.connect(seen.append)
+    ep.contribute(Kind("a.x"), owner="a")
+    assert "a.x" in ep
+    assert ep.remove("a.x") == Kind("a.x")
+    assert "a.x" not in ep and seen == [Kind("a.x")]
+    with pytest.raises(NotRegistered):
+        ep.remove("a.x")

@@ -45,6 +45,8 @@ def test_path_dependency_resolves_through_provider(monkeypatch):
             return "FakeProv"
 
     class FakeProv:
+        name = "FakeProv"
+
         def get_data(self, node, start, stop):
             captured["call"] = (start, stop)
             return ("DATA",)

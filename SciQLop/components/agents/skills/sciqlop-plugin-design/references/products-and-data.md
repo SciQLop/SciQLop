@@ -14,6 +14,13 @@ the installed `SciQLop.user_api` before relying on it.
 - Pick a top-level segment named after the plugin, so its products are easy to
   find and never collide with another plugin's.
 
+## Data providers
+
+- A `DataProvider` registers itself on construction, owned by the plugin whose
+  `activate` or `load` created it. Re-creating one under the same name replaces it.
+- `sciqlop.extensions.get("sciqlop.data_providers")` lists providers by name.
+- A plugin whose activation fails has its providers removed.
+
 ## Virtual products: the default way to add products
 
 ```python
