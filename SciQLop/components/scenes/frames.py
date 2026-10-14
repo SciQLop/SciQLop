@@ -77,6 +77,9 @@ def _parse_matrices(values: list[dict]) -> tuple[np.ndarray, Rotation]:
 
 
 def _stitched(from_frame: str, to_frame: str, times: np.ndarray) -> tuple[np.ndarray, Rotation]:
+    """simplify: one 3DView request per day, in sequence, with a 128-day cache. A one-year view
+    makes hundreds of requests per pane and the next range change refetches them. Upgrade path:
+    above a few days, one request for the whole span at a coarser sampling (multiple of 600 s)."""
     days = np.unique(np.floor(times / _DAY_S).astype(int))
     parts = [_day_rotations(from_frame, to_frame, int(d)) for d in days]
     stamps = np.concatenate([p[0] for p in parts])
