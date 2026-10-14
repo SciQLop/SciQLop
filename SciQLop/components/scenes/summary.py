@@ -1,5 +1,4 @@
 """Summarise a boundary's sections over an interval, per pane, in the scene frame."""
-import warnings
 from dataclasses import dataclass
 from typing import Literal
 
@@ -42,6 +41,13 @@ def _polar(section: np.ndarray, e1, e2, origin) -> tuple[np.ndarray, np.ndarray]
     return np.arctan2(rel @ e2, rel @ e1), np.hypot(rel @ e1, rel @ e2)
 
 
+def _nearest_distance(grid: np.ndarray, sorted_angles: np.ndarray) -> np.ndarray:
+    """Circular distance from each grid angle to the nearest of sorted_angles, all in [-π, π]."""
+    ext = np.concatenate([sorted_angles[-1:] - 2 * np.pi, sorted_angles, sorted_angles[:1] + 2 * np.pi])
+    i = np.searchsorted(ext, grid)
+    return np.minimum(grid - ext[i - 1], ext[i] - grid)
+
+
 def _resample(angles: np.ndarray, radii: np.ndarray, grid: np.ndarray) -> np.ndarray:
     keep = np.isfinite(radii)
     if keep.sum() < 2:
@@ -50,8 +56,15 @@ def _resample(angles: np.ndarray, radii: np.ndarray, grid: np.ndarray) -> np.nda
     a, r = angles[keep][order], radii[keep][order]
     out = np.interp(grid, a, r, period=2 * np.pi)
     step = 2 * np.pi / len(angles)
-    gap = np.abs(np.angle(np.exp(1j * (grid[:, None] - a[None, :])))).min(axis=1) > _GAP * step
-    return np.where(gap, np.nan, out)
+    return np.where(_nearest_distance(grid, a) > _GAP * step, np.nan, out)
+
+
+def _reduce(reducer, resampled: np.ndarray) -> np.ndarray:
+    """Reduce per angle; an angle no section reaches stays NaN (and raises no all-NaN warning)."""
+    out = np.full(resampled.shape[1], np.nan)
+    reached = np.isfinite(resampled).any(axis=0)
+    out[reached] = reducer(resampled[:, reached], axis=0)
+    return out
 
 
 def summarise(sections: np.ndarray, pane: int, origin: np.ndarray,
@@ -61,10 +74,8 @@ def summarise(sections: np.ndarray, pane: int, origin: np.ndarray,
     e1, e2, _ = pane_basis(pane)
     grid = np.linspace(-np.pi, np.pi, N_ANGLES, endpoint=False)
     resampled = np.stack([_resample(*_polar(s, e1, e2, origin), grid) for s in sections])
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)   # all-NaN angles stay NaN
-        return SectionSummary(grid, _REDUCERS[how](resampled, axis=0), np.nanmin(resampled, axis=0),
-                              np.nanmax(resampled, axis=0), origin, pane)
+    return SectionSummary(grid, _reduce(_REDUCERS[how], resampled), _reduce(np.nanmin, resampled),
+                          _reduce(np.nanmax, resampled), origin, pane)
 
 
 def pane_summary(model, scene_frame: str, pane: int, start: float, stop: float,

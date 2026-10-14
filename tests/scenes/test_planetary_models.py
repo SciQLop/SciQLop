@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pytest
 
@@ -50,3 +52,11 @@ def test_register_all_makes_the_scenes_resolvable(monkeypatch):
     register_all()
     for scene in SCENES_DATA:
         assert set(resolve(scene.name).boundaries) == set(scene.boundaries)
+
+
+@pytest.mark.parametrize("model", MODELS, ids=lambda m: m.name)
+def test_radius_at_the_tail_axis_raises_no_warning(model):
+    t = np.array([[np.pi]])
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        model.radius(t, np.zeros_like(t), np.zeros_like(t))

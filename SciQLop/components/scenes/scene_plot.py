@@ -2,6 +2,7 @@
 import functools
 import math
 import threading
+from dataclasses import dataclass
 
 import numpy as np
 import shiboken6
@@ -20,6 +21,14 @@ _CURVE_SUFFIX = {"centre": "", "low": " min", "high": " max"}
 _SCENE_PLOTS: dict[int, object] = {}
 
 
+@dataclass(frozen=True)
+class BoundaryCurves:
+    graphs: list      # per pane: centre (+ low, high when the scene has an envelope)
+    reporters: list   # the graphs' error overlays, deleted with them
+
+
+# simplify: lru_cache does not cache failures, so during a 3DView outage every curve retries
+# on every range change. Upgrade path: a short-lived negative cache keyed like this one.
 @functools.lru_cache(maxsize=64)
 def _cached_summary(model, frame, pane, start, stop, how):
     return pane_summary(model, frame, pane, start, stop, how)
@@ -81,34 +90,37 @@ def _pane_graph(proj, pane: int, curve: _PaneCurve, label: str):
     rng = proj.time_axis().range()
     if math.isfinite(rng.start()) and math.isfinite(rng.stop()):
         graph.set_range(rng)
-    return graph
+    return graph, reporter
 
 
 def _curve_label(model, which: str) -> str:
     return f"{model.label or model.name}{_CURVE_SUFFIX[which]}"
 
 
-def add_boundary(proj, resolved: ResolvedScene, kind: str, model) -> list:
-    scene = resolved.scene
+def _pane_curves(proj, scene, pane: int, model, colour: str) -> list:
     curves = ["centre", "low", "high"] if scene.envelope else ["centre"]
+    lock = threading.Lock()
+    made = [_pane_graph(proj, pane, _PaneCurve(model, scene.frame, pane, which, scene.summary, lock),
+                        _curve_label(model, which)) for which in curves]
+    for (graph, _), which in zip(made, curves):
+        _style(graph, colour, dashed=which != "centre")
+    return made
+
+
+def add_boundary(proj, resolved: ResolvedScene, kind: str, model) -> BoundaryCurves:
     colour = _KIND_COLOURS.get(kind, _DEFAULT_COLOUR)
-    graphs = []
-    for pane in range(len(PANES)):
-        pane_graphs = []
-        lock = threading.Lock()
-        for which in curves:
-            g = _pane_graph(proj, pane, _PaneCurve(model, scene.frame, pane, which, scene.summary, lock),
-                            _curve_label(model, which))
-            _style(g, colour, dashed=which != "centre")
-            pane_graphs.append(g)
-        graphs.append(pane_graphs)
-    return graphs
+    panes = [_pane_curves(proj, resolved.scene, pane, model, colour) for pane in range(len(PANES))]
+    return BoundaryCurves(graphs=[[g for g, _ in made] for made in panes],
+                          reporters=[r for made in panes for _, r in made])
 
 
-def remove_boundary(proj, graphs: list) -> None:
-    for pane, pane_graphs in enumerate(graphs):
+def remove_boundary(proj, curves: BoundaryCurves) -> None:
+    for pane, pane_graphs in enumerate(curves.graphs):
         for g in pane_graphs:
             proj.subplot(pane).remove_plottable(g)
+    for reporter in curves.reporters:
+        reporter.clear()
+        reporter.deleteLater()
 
 
 def create_scene_plot(panel_impl, resolved: ResolvedScene):

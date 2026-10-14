@@ -28,7 +28,8 @@ class Jelinek2012BowShock(RadialBoundary):
 
     def radius(self, theta, phi, times):
         r0 = 2 * 15.02 * _DP ** (-1 / 6.55)
-        return r0 / (np.cos(theta) + np.sqrt(np.cos(theta) ** 2 + 1.17 ** 2 * np.sin(theta) ** 2))
+        with np.errstate(divide="ignore"):   # diverges at theta = 180 deg, cut by theta_max anyway
+            return r0 / (np.cos(theta) + np.sqrt(np.cos(theta) ** 2 + 1.17 ** 2 * np.sin(theta) ** 2))
 
 
 class _Conic(RadialBoundary):
