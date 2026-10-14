@@ -43,9 +43,9 @@ def _build_main_window(qapp):
     qapp.processEvents()
     from SciQLop.components.extension_points import prepare_extension_points
     prepare_extension_points()
-    load_all(mw)
     with owned_by("sciqlop"):
         register_builtin_commands(qapp.command_registry)
+    load_all(mw)
     refresh_harvest(mw)
     mw.push_variables_to_console({"plugins": loaded_plugins})
     qapp.processEvents()

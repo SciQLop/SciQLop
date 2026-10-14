@@ -203,15 +203,14 @@ def build_sciqlop():
     app.processEvents()
     from SciQLop.components.extension_points import prepare_extension_points
     prepare_extension_points()
-    load_all(main_windows)
-    from SciQLop.components.plugins.backend.live_loader import PluginsLiveLoader
-    main_windows._plugins_live_loader = PluginsLiveLoader(main_windows, parent=main_windows)
-
     from SciQLop.components.command_palette.commands import register_builtin_commands
     from SciQLop.components.command_palette.backend.harvester import refresh_harvest
     from SciQLop.core.extensions import owned_by
     with owned_by("sciqlop"):
         register_builtin_commands(app.command_registry)
+    load_all(main_windows)
+    from SciQLop.components.plugins.backend.live_loader import PluginsLiveLoader
+    main_windows._plugins_live_loader = PluginsLiveLoader(main_windows, parent=main_windows)
     refresh_harvest(main_windows)
 
     main_windows.push_variables_to_console({"plugins": kernel_plugins_view()})

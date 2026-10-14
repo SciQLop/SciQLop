@@ -61,3 +61,27 @@ def test_refreshing_twice_adds_nothing(qtbot, fresh):
 def test_main_windows_without_a_menu_bar_are_ignored(qapp):
     from SciQLop.components.command_palette.backend.harvester import refresh_harvest
     refresh_harvest(object())
+
+
+def _replaced_action_window(qtbot):
+    from SciQLop.components.command_palette.backend.registry import CommandRegistry, PaletteCommand
+    CommandRegistry().register(PaletteCommand(
+        id="test.replacer", name="Replacement", description="", callback=lambda: None,
+        replaces_qaction="Replaced action"))
+    window = QMainWindow()
+    qtbot.addWidget(window)
+    window.menuBar().addMenu("Tools").addAction("Replaced action")
+    return window
+
+
+def test_actions_replaced_by_a_command_are_not_harvested(qtbot, fresh):
+    from SciQLop.components.command_palette.backend.harvester import refresh_harvest
+    refresh_harvest(_replaced_action_window(qtbot))
+    assert "Replaced action" not in [c.name for c in COMMANDS.list()]
+
+
+def test_actions_replaced_by_a_command_are_not_harvested_after_activation(qtbot, tmp_path, fresh):
+    window = _replaced_action_window(qtbot)
+    plugin = _plugin(tmp_path, "hv_noop", "def load(main_window):\n    pass\n")
+    loader.activate_all([plugin], main_window=window, ep_plugins={})
+    assert "Replaced action" not in [c.name for c in COMMANDS.list()]
