@@ -12,7 +12,6 @@ from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 log = _getLogger(__name__)
 
 _LAYERS_ROOT = "Layers"
-LAYER_META_KEY = "sciqlop_layer"
 
 _layer_providers: dict[str, "LayerProvider"] = {}
 
@@ -30,7 +29,7 @@ class LayerProvider:
         metadata = {
             "description": f"Annotation layer: {self.name}",
             "stable_id": f"{_LAYERS_ROOT}/{path}",
-            LAYER_META_KEY: "true",
+            "sciqlop_kind": "layer",
         }
         product_path = self._path[:-1]
         add_product_node(

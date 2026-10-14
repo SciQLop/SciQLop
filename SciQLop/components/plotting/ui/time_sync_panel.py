@@ -1254,17 +1254,18 @@ class ProductDnDCallback(PlotDragNDropCallback):
         super().__init__(PRODUCT_LIST_MIME_TYPE, True, parent)
 
     def call(self, plot, mime_data: QMimeData):
-        log.debug(f"ProductDnDCallback: {mime_data}")
+        from SciQLop.components.scenes.tree import KIND_KEY, drop_handler, show_drop_error
+        from SciQLop.components.scenes.scene_plot import scene_plot_for
         for product in decode_mime(mime_data):
-            log.debug(f"ProductDnDCallback: {product}")
             node = ProductsModel.node(product)
-            if node is not None:
-                log.debug(f"ProductDnDCallback: {node}")
-                from SciQLop.user_api.layers._provider import LAYER_META_KEY
-                if node.metadata().get(LAYER_META_KEY) == "true":
-                    attach_layer(plot, product, panel=self.parent())
-                else:
-                    plot_product(plot, product)
+            if node is None:
+                continue
+            kind = node.metadata().get(KIND_KEY, "product")
+            try:
+                drop_handler(kind, scene_plot_for(plot) is not None)(plot, product, self.parent())
+            except Exception as e:
+                log.error(f"drop of {product} failed", exc_info=True)
+                show_drop_error(plot, f"{product[-1]}: {e}")
 
 
 class TimeRangeDnDCallback(PlotDragNDropCallback):
