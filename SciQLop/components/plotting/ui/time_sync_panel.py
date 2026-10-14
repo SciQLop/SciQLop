@@ -10,10 +10,11 @@ from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import QApplication, QWidget
 from PySide6.QtGui import QColor
 from SciQLopPlots import SciQLopMultiPlotPanel, SciQLopTheme, PlotDragNDropCallback, ProductsModel, SciQLopPlot, \
-    ParameterType, GraphType, SciQLopNDProjectionPlot, OverlayLevel, OverlaySizeMode, OverlayPosition, \
+    GraphType, SciQLopNDProjectionPlot, OverlayLevel, OverlaySizeMode, OverlayPosition, \
     SciQLopLineGraph, SciQLopSingleLineGraph, SciQLopWaterfallGraph, SciQLopColorMap
 
 from SciQLop.components.theming import register_icon
+from SciQLop.core.product_kinds import product_kind_of
 from SciQLop.core import TimeRange
 from SciQLop.core import listify
 from SciQLop.components import sciqlop_logging
@@ -933,8 +934,9 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
         return r
     product_path_str = "//".join(product)
     target, existing_plot = _resolve_plot_target(p, kwargs)
-    log.debug(f"Parameter type: {node.parameter_type()}")
-    if node.parameter_type() in (ParameterType.Scalar, ParameterType.Vector, ParameterType.Multicomponents):
+    kind = product_kind_of(node)
+    log.debug(f"Product kind: {kind.id if kind else None}")
+    if kind is not None and kind.arity == 2:
         callback = _plot_product_callback(provider, node)
         labels = listify(provider.labels(node))
         log.debug(f"Building plot for {node.name()} with labels: {labels}, kwargs: {kwargs}")
@@ -954,7 +956,7 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
         _apply_product_color_axis(r, target, provider, node)
         return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
                           product_inputs=product_inputs)
-    if node.parameter_type() == ParameterType.Spectrogram:
+    if kind is not None and kind.arity == 3:
         callback = _specgram_callback(provider, node)
         log.debug(f"Building spectrogram plot for {node.name()} with kwargs: {kwargs}")
         r = target.plot(callback, name=node.display_name(), graph_type=GraphType.ColorMap,

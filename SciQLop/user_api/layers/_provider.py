@@ -5,6 +5,7 @@ from typing import Callable, Optional
 from SciQLop.core.unique_names import make_simple_incr_name
 from SciQLop.core.models import add_product_node, ProductsModelNodeType
 from SciQLop.core.enums import ParameterType
+from SciQLop.core.product_kinds import LAYER, PRODUCT_KIND_KEY
 from SciQLop.user_api.knobs import extract_specs_from_callback
 from SciQLop.user_api.layers.types import infer_type_from_annotation
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
@@ -30,6 +31,7 @@ class LayerProvider:
             "description": f"Annotation layer: {self.name}",
             "stable_id": f"{_LAYERS_ROOT}/{path}",
             "sciqlop_kind": "layer",
+            PRODUCT_KIND_KEY: LAYER,
         }
         product_path = self._path[:-1]
         add_product_node(

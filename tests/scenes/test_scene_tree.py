@@ -93,6 +93,7 @@ def test_a_layer_node_is_tagged_with_its_kind(main_window):
     provider = LayerProvider("scene_tree_test/kind_tag", scene_tree_test_layer)
     try:
         assert ProductsModel.node(provider.path).metadata()["sciqlop_kind"] == "layer"
+        assert ProductsModel.node(provider.path).metadata()["product_kind"] == "sciqlop.layer"
     finally:
         ProductsModel.instance().remove_node(provider.path[:-1])
 

@@ -4,6 +4,7 @@ from SciQLopPlots import OverlayLevel, OverlayPosition, OverlaySizeMode, Product
 
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.enums import ParameterType
+from SciQLop.core.product_kinds import BOUNDARY, PRODUCT_KIND_KEY, SCENE
 from SciQLop.core.models import ProductsModelNodeType, add_product_node
 from .model import resolve
 from .registry import BOUNDARIES, SCENES
@@ -12,6 +13,7 @@ from .scene_plot import concrete_plot, scene_plot_for
 log = getLogger(__name__)
 
 KIND_KEY = "sciqlop_kind"
+_PRODUCT_KINDS = {"scene": SCENE, "boundary": BOUNDARY}
 SCENE_KINDS = ("scene", "boundary")
 _STATUS_BAR_MS = 8000
 
@@ -46,8 +48,8 @@ def _boundary_path(model) -> list[str]:
 
 
 def _add_node(path: list[str], kind: str, description: str) -> None:
-    add_product_node(path[:-1], path[-1], "scenes", {KIND_KEY: kind, "description": description,
-                                                     "stable_id": "/".join(path)},
+    add_product_node(path[:-1], path[-1], "scenes", {KIND_KEY: kind, PRODUCT_KIND_KEY: _PRODUCT_KINDS[kind],
+                                                     "description": description, "stable_id": "/".join(path)},
                      ProductsModelNodeType.PARAMETER, ParameterType.Scalar)
 
 

@@ -21,6 +21,28 @@ the installed `SciQLop.user_api` before relying on it.
 - `sciqlop.extensions.get("sciqlop.data_providers")` lists providers by name.
 - A plugin whose activation fails has its providers removed.
 
+## Product kinds
+
+`sciqlop.product_kinds` holds the data shapes of products. A `ProductKind` has:
+
+- `id`: `sciqlop.<name>` for core, `<plugin id>.<name>` for a plugin.
+- `label`: shown to users.
+- `arity`: arrays per fetch. 2 is `(time, values)`, 3 is `(time, y, z)`, 0 is no data stream.
+- `default_plot_kind`: a `sciqlop.plot_kinds` id. Plot kinds arrive with plan 1c.
+- `parameter_type`: the SciQLopPlots `ParameterType` of nodes of this kind. Plugin kinds leave it unset.
+
+Core kinds are `sciqlop.scalar`, `vector`, `multicomponent` and `spectrogram`. A node without a tag is
+read by its `ParameterType`, so existing providers keep working.
+
+A plugin tags its product-tree nodes with the `product_kind` metadata key:
+
+```python
+add_product_node(path, name, provider.name, {PRODUCT_KIND_KEY: "vdf.distribution", ...}, ...)
+```
+
+Rendering of a plugin kind arrives with plot kinds (plan 1c). Until then a node whose kind is not a
+core one does not plot.
+
 ## Source kinds
 
 Every graph's `GraphContext.kind` says where its data comes from. Kinds are

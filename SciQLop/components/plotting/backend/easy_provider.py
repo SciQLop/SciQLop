@@ -12,6 +12,7 @@ from PySide6.QtGui import QIcon
 from SciQLop.core.unique_names import make_simple_incr_name
 from SciQLop.core.models import add_product_node, ProductsModelNodeType
 from SciQLop.core.enums import ParameterType
+from SciQLop.core.product_kinds import PRODUCT_KIND_KEY, PRODUCT_KINDS, kind_id_for
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder, DataProviderReturnType
 from SciQLop.components.plotting.backend.color_axis import ColorAxis
 from SciQLop.components.plotting.backend.remote.reduction import ensure_overlaps_request, epoch_seconds
@@ -141,6 +142,7 @@ class EasyProvider(DataProvider):
                  display_name: Optional[str] = None,
                  color_axis: Optional[ColorAxis] = None,
                  columns: Optional[List[str]] = None):
+        kind_id = kind_id_for(parameter_type)
         super(EasyProvider, self).__init__(name=make_simple_incr_name(_name_callable(callback)), data_order=data_order,
                                            cacheable=cacheable)
         from SciQLop.core.snippets import split_product_path
@@ -175,6 +177,7 @@ class EasyProvider(DataProvider):
             "description": f"Virtual {parameter_type.name} product built from Python function: {self.name}",
             **metadata,
             "stable_id": normalized_path,
+            **({PRODUCT_KIND_KEY: kind_id} if kind_id else {}),
             **({"remote": "True"} if out_of_process else {}),
         }
         self._callback = callback
@@ -209,7 +212,7 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
             from SciQLop.components.plotting.backend.remote.registry import remote_registry
             remote_callback = _build_remote_callback(
                 callback, self._range_stack, knobs_model, knobs_kwarg_name)
-            arity = 3 if parameter_type == ParameterType.Spectrogram else 2
+            arity = PRODUCT_KINDS.get(kind_id).arity
             remote_registry().register(path, remote_callback, arity, colored=color_axis is not None)
 
         # Last: the node announces the provider, GUI code may call it right away.

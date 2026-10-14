@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import itertools
 
-from SciQLopPlots import SciQLopPlot, ParameterType, PlotType
+from SciQLopPlots import SciQLopPlot, PlotType
 from .channel import RemoteChannel
 from .registry import remote_registry
 from ..color_axis import apply_color_axis
+from SciQLop.core.product_kinds import product_kind_of
 
 _channel_ids = itertools.count(1)
 
@@ -28,8 +29,8 @@ def plot_remote(target, node, provider, product: list, *, plot_type: PlotType = 
     """
     reg = remote_registry()
     plot = _new_plot(target, plot_type)
-    ptype = node.parameter_type()
-    if ptype == ParameterType.Spectrogram:
+    kind = product_kind_of(node)
+    if kind is not None and kind.arity == 3:
         graph = plot.add_remote_color_map(node.display_name())
     else:
         labels = list(provider.labels(node))
