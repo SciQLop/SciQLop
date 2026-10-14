@@ -3,7 +3,6 @@
 Register your own from a plugin's ``load(main_window)``; plot one with ``panel.plot_scene(name)``.
 """
 from SciQLop.components.scenes import scene_plot as _scene_plot
-from SciQLop.components.scenes import tree as _tree
 from SciQLop.components.scenes.boundary import Boundary, Plane, RadialBoundary
 from SciQLop.components.scenes.frames import FrameError
 from SciQLop.components.scenes.model import Body, Scene, resolve
@@ -30,17 +29,13 @@ def register_body(body: Body, replace: bool = False) -> Body:
 @on_main_thread
 def register_boundary(model: Boundary, replace: bool = False) -> Boundary:
     """Also lists the model in the products tree, under Models/<Body>/<kind>."""
-    BOUNDARIES.register(model, replace)
-    _tree.add_boundary_node(model)
-    return model
+    return BOUNDARIES.register(model, replace)
 
 
 @on_main_thread
 def register_scene(scene: Scene, replace: bool = False) -> Scene:
     """Also lists the scene in the products tree, under Scenes; drop it on a panel to plot it."""
-    SCENES.register(scene, replace)
-    _tree.add_scene_node(scene)
-    return scene
+    return SCENES.register(scene, replace)
 
 
 class ScenePlot(GuardedImpl):

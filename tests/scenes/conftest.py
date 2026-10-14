@@ -22,6 +22,8 @@ def earth(monkeypatch):
     from SciQLop.plugins.planetary_scenes import register_all
     for reg in (registry.BODIES, registry.BOUNDARIES, registry.SCENES):
         monkeypatch.setattr(reg, "_items", {})
+        monkeypatch.setattr(reg, "_owners", {})
+        monkeypatch.setattr(reg, "signals", type(reg.signals)())
     register_all()
     monkeypatch.setattr(summary, "rotation", lambda f, t, times: Rotation.identity(len(times)))
     monkeypatch.setattr(RadialBoundary, "n_samples", 10)   # 18 curves stay well inside the waits
@@ -56,9 +58,12 @@ def registered(main_window, earth):
     """The built-in scenes registered through the user_api, so the products tree lists them;
     tree roots this test created are removed afterwards."""
     from SciQLopPlots import ProductsModel
-    from SciQLop.plugins.planetary_scenes import load
+    from SciQLop.components.plugins.backend.loader.context import PluginContext
+    from SciQLop.components.scenes.tree import follow_registries
+    from SciQLop.plugins.planetary_scenes import activate
     roots = [r for r in ("Scenes", "Models") if ProductsModel.node([r]) is None]
-    load(main_window)
+    follow_registries()
+    activate(PluginContext("planetary_scenes", "1.0.0", main_window, frozenset()))
     yield
     for root in roots:
         ProductsModel.instance().remove_node([root])

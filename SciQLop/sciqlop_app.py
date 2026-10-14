@@ -201,6 +201,8 @@ def build_sciqlop():
     app.processEvents()
     main_windows = SciQLopMainWindow()
     app.processEvents()
+    from SciQLop.components.scenes.tree import follow_registries
+    follow_registries()
     load_all(main_windows)
     from SciQLop.components.plugins.backend.live_loader import PluginsLiveLoader
     main_windows._plugins_live_loader = PluginsLiveLoader(main_windows, parent=main_windows)

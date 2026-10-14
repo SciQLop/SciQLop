@@ -10,5 +10,11 @@
     }
   ],
   "license": "MIT",
-  "python_dependencies": []
+  "python_dependencies": [],
+  "provides": {
+    "sciqlop.scenes.bodies": ["earth", "mars", "mercury"],
+    "sciqlop.scenes.boundaries": ["jelinek2012", "shue1998", "vignes2000_bs", "vignes2000_mpb",
+                                  "winslow2013_bs", "winslow2013_mp"],
+    "sciqlop.scenes.scenes": ["Earth environment", "Mars environment", "Mercury environment"]
+  }
 }

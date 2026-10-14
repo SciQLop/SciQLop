@@ -70,8 +70,9 @@ def test_registering_adds_tree_nodes(registered):
 
 def test_registering_twice_keeps_one_node_per_item(main_window, registered):
     from SciQLopPlots import ProductsModel
-    from SciQLop.plugins.planetary_scenes import load
-    load(main_window)
+    from SciQLop.components.plugins.backend.loader.context import PluginContext
+    from SciQLop.plugins.planetary_scenes import activate
+    activate(PluginContext("planetary_scenes", "1.0.0", main_window, frozenset()))
     assert ProductsModel.node(["Scenes"]).children_count() == len(registry.SCENES.list())
     assert ProductsModel.node(SHUE[:-1]).children_count() == 1
 

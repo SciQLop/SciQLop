@@ -1,4 +1,4 @@
-"""Built-in planetary scenes: Earth, Mars and Mercury boundary models. `load` registers through the user_api."""
+"""Built-in planetary scenes: Earth, Mars and Mercury boundary models. `activate` contributes them through the scenes extension points."""
 import astropy.units as u
 
 from SciQLop.components.scenes.model import Body, Scene
@@ -30,9 +30,11 @@ def register_all(replace: bool = False) -> None:
             registry.register(item, replace)
 
 
-def load(main_window):
-    from SciQLop.user_api.scenes import register_body, register_boundary, register_scene
-    for register, items in ((register_body, BODIES_DATA), (register_boundary, MODELS),
-                            (register_scene, SCENES_DATA)):
+CONTRIBUTIONS = (("sciqlop.scenes.bodies", BODIES_DATA), ("sciqlop.scenes.boundaries", MODELS),
+                 ("sciqlop.scenes.scenes", SCENES_DATA))
+
+
+def activate(ctx):
+    for ep_id, items in CONTRIBUTIONS:
         for item in items:
-            register(item, replace=True)
+            ctx.contribute(ep_id, item, replace=True)

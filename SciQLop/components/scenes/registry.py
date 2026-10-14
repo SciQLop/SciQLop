@@ -1,32 +1,25 @@
-from typing import Generic, TypeVar
+"""Bodies, boundary models and scenes: three extension points keyed by their published names."""
+from operator import attrgetter
+from typing import TypeVar
+
+from SciQLop.core.extensions import ExtensionPoint, NotRegistered, declare  # noqa: F401  NotRegistered re-exported
 
 T = TypeVar("T")
 
 
-class NotRegistered(LookupError):
-    pass
+class Registry(ExtensionPoint[T]):
+    """An extension point keyed by `name`, with the published register(item, replace) call."""
 
-
-class Registry(Generic[T]):
-    def __init__(self, what: str):
-        self._what = what
-        self._items: dict[str, T] = {}
+    def __init__(self, id: str, what: str):
+        # object: Boundary is a non-runtime Protocol, and Body/Scene live in model.py, which imports this module.
+        super().__init__(id, object, what=what, key=attrgetter("name"))
 
     def register(self, item: T, replace: bool = False) -> T:
         if item.name in self._items and not replace:
             raise ValueError(f"{self._what} {item.name!r} is already registered")
-        self._items[item.name] = item
-        return item
-
-    def get(self, name: str) -> T:
-        if name not in self._items:
-            raise NotRegistered(f"no {self._what} named {name!r}; available: {', '.join(sorted(self._items))}")
-        return self._items[name]
-
-    def list(self, **filters) -> list[T]:
-        return [i for i in self._items.values() if all(getattr(i, k, None) == v for k, v in filters.items())]
+        return self.contribute(item, replace=True)
 
 
-BODIES: Registry = Registry("body")
-BOUNDARIES: Registry = Registry("boundary")
-SCENES: Registry = Registry("scene")
+BODIES: Registry = declare(Registry("sciqlop.scenes.bodies", "body"))
+BOUNDARIES: Registry = declare(Registry("sciqlop.scenes.boundaries", "boundary"))
+SCENES: Registry = declare(Registry("sciqlop.scenes.scenes", "scene"))

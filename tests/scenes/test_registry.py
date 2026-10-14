@@ -19,6 +19,8 @@ class Ball(RadialBoundary):
 def registries(monkeypatch):
     for reg in (BODIES, BOUNDARIES, SCENES):
         monkeypatch.setattr(reg, "_items", {})
+        monkeypatch.setattr(reg, "_owners", {})
+        monkeypatch.setattr(reg, "signals", type(reg.signals)())
     BODIES.register(Body("earth", 6371.2 * u.km, "Earth", "R_E"))
     BOUNDARIES.register(Ball())
 

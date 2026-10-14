@@ -6,7 +6,7 @@ from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.enums import ParameterType
 from SciQLop.core.models import ProductsModelNodeType, add_product_node
 from .model import resolve
-from .registry import BOUNDARIES
+from .registry import BOUNDARIES, SCENES
 from .scene_plot import concrete_plot, scene_plot_for
 
 log = getLogger(__name__)
@@ -57,6 +57,17 @@ def add_scene_node(scene) -> None:
 
 def add_boundary_node(model) -> None:
     _add_node(_boundary_path(model), "boundary", f"{model.description} {model.reference}".strip())
+
+
+def follow_registries() -> None:
+    """List every boundary and scene in the products tree as it is contributed, whoever contributes it.
+
+    Main thread only. Marks the signals object it connected, so it is idempotent and reconnects when a test
+    swaps in fresh signals."""
+    for registry, add_node in ((BOUNDARIES, add_boundary_node), (SCENES, add_scene_node)):
+        if not getattr(registry.signals, "_tree_follows", False):
+            registry.signals.added.connect(add_node)
+            registry.signals._tree_follows = True
 
 
 def _without_root(product: list[str]) -> list[str]:
