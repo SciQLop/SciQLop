@@ -154,6 +154,9 @@ def activate(ctx):
 
 `register_panel_menu` (dynamic submenus on the panel menu) is unchanged and keeps working.
 
+Plugins register commands in `activate(ctx)`. `CommandRegistry().register(...)` also works from a notebook cell:
+it is marshalled to the main thread.
+
 ## Keyboard shortcuts
 
 A shortcut is a contribution to `sciqlop.shortcuts`. It is listed in the help panel and in Settings, and the
@@ -168,6 +171,8 @@ def activate(ctx):
 ```
 
 A shortcut registered while the help panel or Settings is open shows up there at once.
+Plugins register shortcuts in `activate(ctx)`. `register_shortcut` also works from a notebook cell: it is
+marshalled to the main thread.
 
 ## Drop rules
 

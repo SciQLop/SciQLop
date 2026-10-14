@@ -21,3 +21,14 @@ def prepare_extension_points() -> None:
     from SciQLop.components.scenes import registry  # noqa: F401  importing declares sciqlop.scenes.*
     from SciQLop.components.scenes.tree import follow_registries
     follow_registries()
+
+
+def start_plugins(app, main_window) -> None:
+    """The built-in commands first, so menu actions they replace are not harvested, then the plugins.
+    ``load_all`` ends with a palette harvest, so none is needed here."""
+    from SciQLop.components.command_palette.commands import register_builtin_commands
+    from SciQLop.components.plugins import load_all
+    from SciQLop.core.extensions import owned_by
+    with owned_by("sciqlop"):
+        register_builtin_commands(app.command_registry)
+    load_all(main_window)
