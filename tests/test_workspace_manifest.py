@@ -223,3 +223,12 @@ class TestManagerSelfHeals:
 
         assert manifest.name == "default"
         assert (default_dir / "workspace.sciqlop.corrupt").exists()
+
+
+def test_unknown_tables_survive_a_save(tmp_path):
+    path = tmp_path / "ws.sciqlop"
+    path.write_text('[workspace]\nname = "W"\n\n[vdf_study]\nlast_event = "2015-10-16"\n'
+                    '[vdf_study.layout]\ncolumns = 2\n')
+    WorkspaceManifest.load(path).save(path)
+    reloaded = WorkspaceManifest.load(path)
+    assert reloaded.extra_tables == {"vdf_study": {"last_event": "2015-10-16", "layout": {"columns": 2}}}

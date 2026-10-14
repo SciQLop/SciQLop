@@ -38,6 +38,7 @@ from SciQLop.core.common.files import write_text_atomic
 log = logging.getLogger(__name__)
 
 LAST_USED_MARKER = ".last_used"
+_KNOWN_TABLES = ("workspace", "plugins", "dependencies", "examples")
 
 
 @dataclass
@@ -65,6 +66,8 @@ class WorkspaceManifest:
     requires: list[str] = field(default_factory=list)
     examples: list[InstalledExample] = field(default_factory=list)
     _directory: str = field(default="", repr=False, compare=False, init=False)
+    # Tables this class does not model (a plugin's own section): kept verbatim so a save never drops them.
+    extra_tables: dict = field(default_factory=dict)
 
     @property
     def directory(self) -> str:
@@ -116,6 +119,7 @@ class WorkspaceManifest:
             plugins_remove=plugins.get("remove", []),
             requires=dependencies.get("requires", []),
             examples=installed,
+            extra_tables={k: v for k, v in data.items() if k not in _KNOWN_TABLES},
         )
         manifest._directory = str(path.parent)
         return manifest
@@ -152,12 +156,7 @@ class WorkspaceManifest:
         """Save the manifest to a TOML file."""
         path = Path(path)
         self._directory = str(path.parent)
-        data: dict = {
-            "workspace": {
-                "name": self.name,
-                "description": self.description,
-            },
-        }
+        data: dict = {**self.extra_tables, "workspace": {"name": self.name, "description": self.description}}
         if self.sciqlop_version:
             data["workspace"]["sciqlop_version"] = self.sciqlop_version
         if self.image:
