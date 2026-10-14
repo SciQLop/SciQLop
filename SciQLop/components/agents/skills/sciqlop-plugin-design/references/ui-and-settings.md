@@ -121,7 +121,10 @@ What a drop on a plot does is a contribution to `sciqlop.drop_rules`
 accepts each MIME type that has rules, including MIME types contributed later.
 
 `DropRule(id, mime_type, drop, product_kind=None, target=None, creates_plot=False)`:
-- `drop(plot, payload, panel)` does the work. `plot` is None when the drop is on the panel itself.
+- `drop(plot, payload, panel)` does the work. For a drop between plots, `plot` is the empty plot the panel
+  just made: a rule that builds its own plot calls `take_drop_placeholder(plot, panel)` (from
+  `SciQLop.components.plotting.drops`) first, then moves its new plot to the index it returns, as the scene rule
+  does. `plot` is None only for programmatic drops.
   For `PRODUCT_LIST_MIME_TYPE` the payload is one product path. A rule that raises shows the error on the plot.
 - `product_kind` is the dragged product's kind id and `target` is the plot kind id of the plot dropped on.
   None matches anything.

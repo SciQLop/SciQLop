@@ -34,12 +34,24 @@ def plugin_of(kind_id: str) -> str:
     return kind_id.split(".", 1)[0]
 
 
+def _owns(kind: PlotKind, plot) -> bool:
+    try:
+        return kind.owns(plot)
+    except Exception:
+        log.error(f"plot kind {kind.id}: owns() raised, treating the plot as not its own", exc_info=True)
+        return False
+
+
 def plot_kind_of(plot) -> Optional[PlotKind]:
     """The kind that owns *plot*; a plot no plugin claims is a time-series plot."""
     if plot is None:
         return None
-    claimed = (k for k in PLOT_KINDS.list() if k.id != TIMESERIES and k.owns(plot))
+    claimed = (k for k in PLOT_KINDS.list() if k.id != TIMESERIES and _owns(k, plot))
     return next(claimed, None) or PLOT_KINDS.get(TIMESERIES)
+
+
+def unavailable_message(plot_kind_id: str) -> str:
+    return f"plot kind {plot_kind_id!r} is not available (plugin {plugin_of(plot_kind_id)!r} not loaded)"
 
 
 def plot_kind_for_product(product) -> Optional[PlotKind]:
@@ -54,7 +66,6 @@ def plot_kind_for_product(product) -> Optional[PlotKind]:
     if kind is None:
         return None
     if kind.default_plot_kind not in PLOT_KINDS:
-        log.warning(f"{'/'.join(product)}: plot kind {kind.default_plot_kind!r} is not available "
-                    f"(plugin {plugin_of(kind.default_plot_kind)!r} not loaded)")
+        log.warning(f"{'/'.join(product)}: {unavailable_message(kind.default_plot_kind)}")
         return None
     return PLOT_KINDS.get(kind.default_plot_kind)

@@ -6,7 +6,7 @@ from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.drop_rules import DROP_RULES, rule_for
 from SciQLop.core.mime import decode_mime
 from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE
-from SciQLop.core.plot_kinds import plot_kind_of
+from SciQLop.core.plot_kinds import plot_kind_of, plot_kind_for_product, unavailable_message
 from SciQLop.core.product_kinds import product_kind_of
 
 log = getLogger(__name__)
@@ -14,6 +14,36 @@ log = getLogger(__name__)
 
 def _kind_id(kind):
     return kind.id if kind is not None else None
+
+
+def take_drop_placeholder(plot, panel) -> int | None:
+    """Remove the empty plot the panel made for a drop between plots, and give back its index so a rule that
+    builds its own plot can move it there. None when *plot* is not such a placeholder (a programmatic drop, a
+    scene plot, a plot with data, a template placeholder).
+
+    simplify: any empty non-scene plot counts, as SciQLopPlots does not flag its placeholders;
+    a user's own empty plot is replaced too. Use a placeholder flag once SciQLopPlots has one."""
+    from SciQLop.components.plotting.placeholder import placeholder_model
+    from SciQLop.components.scenes.scene_plot import scene_plot_for
+    if plot is None or panel is None or scene_plot_for(plot) is not None or plot.plottables():
+        return None
+    if placeholder_model(plot) is not None:
+        return None
+    index = panel.index(plot)
+    panel.remove_plot(plot)
+    return index
+
+
+def _refusal(plot, product: list[str], node) -> str | None:
+    from SciQLop.components.plotting.placeholder import placeholder_model
+    kept = placeholder_model(plot)
+    if kept is not None:
+        return (f"This plot stands in for a {kept.kind} plot whose plugin is missing; "
+                "drop on another plot")
+    kind = product_kind_of(node)
+    if kind is not None and plot_kind_for_product(product) is None:
+        return f"{'/'.join(product)}: {unavailable_message(kind.default_plot_kind)}"
+    return None
 
 
 def drop_product(plot, product: list[str], panel):
@@ -25,6 +55,10 @@ def drop_product(plot, product: list[str], panel):
     if node is None:
         return None
     plot = concrete_plot(plot)
+    refusal = _refusal(plot, product, node)
+    if refusal is not None:
+        show_refusal(plot, panel, refusal)
+        return None
     rule = rule_for(PRODUCT_LIST_MIME_TYPE, _kind_id(product_kind_of(node)), _kind_id(plot_kind_of(plot)))
     if rule is None:
         return None

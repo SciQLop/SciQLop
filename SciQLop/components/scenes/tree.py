@@ -1,6 +1,6 @@
 """Scenes and models in the products tree, and what dropping (or plotting) them does."""
 import shiboken6
-from SciQLopPlots import OverlayLevel, OverlayPosition, OverlaySizeMode, ProductsModel
+from SciQLopPlots import OverlayLevel, OverlayPosition, OverlaySizeMode
 
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.enums import ParameterType
@@ -14,14 +14,7 @@ log = getLogger(__name__)
 
 KIND_KEY = "sciqlop_kind"
 _PRODUCT_KINDS = {"scene": SCENE, "boundary": BOUNDARY}
-SCENE_KINDS = ("scene", "boundary")
 _STATUS_BAR_MS = 8000
-
-
-def kind_of(product: list[str]):
-    """The node's sciqlop_kind ("product" when untagged); None when the path is not in the tree."""
-    node = ProductsModel.node(product)
-    return None if node is None else node.metadata().get(KIND_KEY, "product")
 
 
 def _status_bar(panel):
@@ -85,22 +78,11 @@ def _boundary_at(product: list[str]):
     return found[0]
 
 
-def _take_placeholder(plot, panel):
-    """Remove the empty plot the panel made for a drop between plots, and give back its index.
-
-    simplify: any empty non-scene plot counts, as SciQLopPlots does not flag its placeholders;
-    a user's own empty plot is replaced too. Use a placeholder flag once SciQLopPlots has one."""
-    if plot is None or panel is None or scene_plot_for(plot) is not None or plot.plottables():
-        return None
-    index = panel.index(plot)
-    panel.remove_plot(plot)
-    return index
-
-
 def plot_scene(plot, product, panel):
+    from SciQLop.components.plotting.drops import take_drop_placeholder
     from SciQLop.user_api.plot import PlotPanel
     resolved = resolve(product[-1])
-    slot = _take_placeholder(plot, panel)
+    slot = take_drop_placeholder(plot, panel)
     sp = PlotPanel(panel).plot_scene(resolved.scene)
     if slot is not None:
         panel.move_plot(panel.plot_count() - 1, slot)
@@ -119,7 +101,8 @@ def add_trajectory(plot, product, panel):
 
 
 def refuse(plot, product, panel):
-    slot = _take_placeholder(plot, panel)
+    from SciQLop.components.plotting.drops import take_drop_placeholder
+    slot = take_drop_placeholder(plot, panel)
     show_refusal(None if slot is not None else plot, panel,
                  f"{product[-1]} is a model: drop it on a scene plot of its body")
 

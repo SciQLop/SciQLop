@@ -12,7 +12,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from SciQLop.components.plotting.panel_template import PanelTemplate, ProductModel
+from SciQLop.components.plotting.panel_template import PanelTemplate, PlotModel, ProductModel
+from SciQLop.core.plot_kinds import TIMESERIES
 
 
 def _iso_range(template: PanelTemplate) -> tuple[str, str]:
@@ -20,6 +21,12 @@ def _iso_range(template: PanelTemplate) -> tuple[str, str]:
         return template.time_range.start, template.time_range.stop
     now = datetime.now(timezone.utc).replace(microsecond=0)
     return (now - timedelta(days=1)).isoformat(), now.isoformat()
+
+
+def timeseries_plots(template: PanelTemplate) -> list[PlotModel]:
+    """The plots a snippet can reproduce, numbered by their position here (scene, placeholder and plugin plots
+    are not time-series plots)."""
+    return [plot for plot in template.plots if plot.kind == TIMESERIES]
 
 
 def _plot_product_lines(products: list[ProductModel], plot_index: int) -> tuple[list[str], list[str]]:
@@ -52,7 +59,7 @@ def panel_reproducer_snippet(panel) -> Optional[str]:
     template = PanelTemplate.from_panel(panel)
     plot_lines: list[str] = []
     skipped: list[str] = []
-    for i, plot in enumerate(template.plots):
+    for i, plot in enumerate(timeseries_plots(template)):
         lines, plot_skipped = _plot_product_lines(plot.products, plot_index=i)
         plot_lines.extend(lines)
         skipped.extend(plot_skipped)
@@ -70,9 +77,10 @@ def plot_reproducer_snippet(panel, plot_index: int) -> Optional[str]:
     """Reproduce a single plot (by index) as one SciQLop script."""
     from SciQLop.core.snippets import render_snippet
     template = PanelTemplate.from_panel(panel)
-    if not (0 <= plot_index < len(template.plots)):
+    plots = timeseries_plots(template)
+    if not (0 <= plot_index < len(plots)):
         return None
-    lines, skipped = _plot_product_lines(template.plots[plot_index].products, plot_index=0)
+    lines, skipped = _plot_product_lines(plots[plot_index].products, plot_index=0)
     if not lines:
         return None
     start_iso, stop_iso = _iso_range(template)

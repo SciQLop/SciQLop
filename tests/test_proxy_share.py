@@ -314,6 +314,26 @@ def test_panel_reproducer_snippet_includes_colormap_graphs(colormap_panel):
     assert snippet is not None and "cda/DS/spec" in snippet
 
 
+def test_snippets_number_the_time_series_plots_only(monkeypatch):
+    from SciQLop.components.plotting.panel_template import PanelTemplate, PlotModel, ProductModel
+    from SciQLop.components.plotting.ui import graph_context_snippets as snippets
+    from SciQLop.core.plot_kinds import PROJECTION
+
+    def product(path):
+        return ProductModel(path=path, label=path, kind="speasy", graph_type="Line")
+
+    template = PanelTemplate(name="mixed", plots=[
+        PlotModel(kind=PROJECTION, config={"scene": "earth"}),
+        PlotModel(products=[product("a//one")]),
+        PlotModel(products=[product("a//two"), product("a//three")])])
+    monkeypatch.setattr(PanelTemplate, "from_panel", staticmethod(lambda panel: template))
+    assert [p.products[0].path for p in snippets.timeseries_plots(template)] == ["a//one", "a//two"]
+    assert 'plot_product("a//one")' in snippets.plot_reproducer_snippet(None, 0)
+    assert 'plot_product("a//two")' in snippets.plot_reproducer_snippet(None, 1)
+    assert snippets.plot_reproducer_snippet(None, 2) is None
+    assert 'panel.plot_product("a//three", plot_index=1)' in snippets.panel_reproducer_snippet(None)
+
+
 def test_skip_note_for_a_static_graph_reads_static_graph():
     from SciQLop.components.plotting.panel_template import ProductModel
     from SciQLop.components.plotting.ui.graph_context_snippets import _plot_product_lines

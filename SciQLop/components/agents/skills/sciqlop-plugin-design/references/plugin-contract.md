@@ -113,10 +113,13 @@ def activate(ctx):
 - `to_config(plot)` returns JSON-friendly values only (str, number, bool, list, dict). None means "not saved".
 - `from_config(panel, config)` builds the plot on the panel and returns the user-facing object.
 
-`DropRule.drop(plot, payload, panel)` gets one product path for product drops. `plot` is None for a drop between
-plots. Rules are matched on MIME type, then weighted: a matching `product_kind` counts 2, a matching `target`
+`DropRule.drop(plot, payload, panel)` gets one product path for product drops. For a drop between plots, `plot`
+is the empty plot the panel has just made. A rule that builds its own plot calls `take_drop_placeholder(plot, panel)`
+first, which removes that empty plot and returns its index (or None), then moves its new plot there with
+`panel.move_plot(panel.plot_count() - 1, index)`. `plot` is None only for programmatic drops. Rules are matched on MIME type, then weighted: a matching `product_kind` counts 2, a matching `target`
 (plot kind id) counts 1. The heaviest wins, ties go to the smallest id. `None` matches anything.
-`creates_plot=True` makes a drop between plots create a placeholder plot first.
+`creates_plot=True` makes a drop between plots create that empty plot first.
+A plot that stands in for a missing plugin's plot kind refuses product drops, so rules never see it.
 
 A saved panel is a tree (template v3). Each plot is its kind id plus the config `to_config` returned:
 
@@ -152,13 +155,20 @@ def from_config(panel, config):
     SEEN[plot.objectName()] = dict(config)
     return plot
 
+def drop(plot, product, panel):
+    from SciQLop.components.plotting.drops import take_drop_placeholder
+    index = take_drop_placeholder(plot, panel)
+    new_plot = from_config(panel, {"product": "//".join(product)})
+    if index is not None:
+        panel.move_plot(panel.plot_count() - 1, index)
+    return new_plot
+
 def activate(ctx):
     kind = PlotKind("vdf.slice_plot", "VDF slice", lambda panel, product, kw: (from_config(panel, {"product": "//".join(product)}), None),
                     lambda plot: plot.objectName() in SEEN, lambda plot: SEEN[plot.objectName()], from_config)
     ctx.contribute("sciqlop.product_kinds", ProductKind("vdf.distribution", "VDF", 0, "vdf.slice_plot"))
     ctx.contribute("sciqlop.plot_kinds", kind)
-    ctx.contribute("sciqlop.drop_rules", DropRule("vdf.drop", PRODUCT_LIST_MIME_TYPE,
-        lambda plot, product, panel: from_config(panel, {"product": "//".join(product)}),
+    ctx.contribute("sciqlop.drop_rules", DropRule("vdf.drop", PRODUCT_LIST_MIME_TYPE, drop,
         product_kind="vdf.distribution", creates_plot=True))
 ```
 

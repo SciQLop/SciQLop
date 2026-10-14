@@ -53,6 +53,15 @@ def test_a_missing_plot_kind_plots_nothing(plugin_kinds):
     assert plot_product(object(), ["pk1c", "orphan"]) is None
 
 
+def test_dropping_a_product_whose_plot_kind_is_missing_shows_a_refusal(plugin_kinds, monkeypatch):
+    from SciQLop.components.plotting.drops import drop_product
+    from SciQLop.components.scenes import tree
+    shown = []
+    monkeypatch.setattr(tree, "show_refusal", lambda plot, panel, message: shown.append(message))
+    assert drop_product(None, ["pk1c", "orphan"], None) is None
+    assert "pk1c.gone_plot" in shown[0] and "pk1c" in shown[0]
+
+
 def test_unknown_products_have_no_plot_kind(qapp):
     assert plot_kind_for_product(["pk1c_nowhere", "x"]) is None
     assert plot_kind_for_product("not a list") is None
@@ -61,6 +70,23 @@ def test_unknown_products_have_no_plot_kind(qapp):
 def test_plot_kind_of_defaults_to_time_series(qapp):
     assert plot_kind_of(None) is None
     assert plot_kind_of(object()).id == TIMESERIES
+
+
+def test_an_owns_that_raises_is_logged_and_does_not_claim_the_plot(qapp, monkeypatch):
+    from SciQLop.core import plot_kinds
+
+    def boom(plot):
+        raise RuntimeError("bad owns")
+
+    errors = []
+    monkeypatch.setattr(plot_kinds.log, "error", lambda msg, *a, **k: errors.append(msg))
+    with owned_by("pk_bad"):
+        PLOT_KINDS.contribute(PlotKind("pk_bad.plot", "Bad", plot_product=lambda *a: None, owns=boom))
+    try:
+        assert plot_kind_of(object()).id == TIMESERIES
+        assert "pk_bad.plot" in errors[0]
+    finally:
+        PLOT_KINDS.remove_owner("pk_bad")
 
 
 def test_plugin_of_is_the_id_prefix():

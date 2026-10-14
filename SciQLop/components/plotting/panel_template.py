@@ -117,7 +117,6 @@ def _restore_timeseries(panel, plot_model: PlotModel):
     return subplot
 
 
-
 def _read_max_zoom(panel) -> float | None:
     # A cleared panel has no plots left to ask; its bar still holds the limit.
     bar = getattr(panel, '_time_range_bar', None)
@@ -131,7 +130,7 @@ def _read_max_zoom(panel) -> float | None:
 
 
 TEMPLATE_VERSION = 3
-_V2 = 2
+_PER_GRAPH_AXES_VERSION = 2  # the version that started recording which y axis each graph draws on
 
 
 class PanelNode(BaseModel):
@@ -164,11 +163,11 @@ def _default_axis(product: dict) -> dict:
 def _upgrade(data: dict) -> dict:
     """Version 1 did not say which y axis each graph draws on; a spectrogram
     always drew on y2, any other graph on y."""
-    if data.get("version", 1) >= _V2:
+    if data.get("version", 1) >= _PER_GRAPH_AXES_VERSION:
         return data
     plots = [{**plot, "products": [_default_axis(p) for p in plot.get("products", [])]}
              for plot in data.get("plots", [])]
-    return {**data, "plots": plots, "version": _V2}
+    return {**data, "plots": plots, "version": _PER_GRAPH_AXES_VERSION}
 
 
 def _read_template_data(p: Path) -> dict:
@@ -333,7 +332,11 @@ def _saved_plot(plot) -> Optional[PlotModel]:
     if kind.to_config is None:
         log.warning(f"a {kind.id} plot is not saved: its plot kind has no to_config")
         return None
-    return PlotModel(kind=kind.id, config=kind.to_config(plot))
+    try:
+        return PlotModel(kind=kind.id, config=kind.to_config(plot))
+    except Exception:
+        log.error(f"a {kind.id} plot is not saved: its to_config raised", exc_info=True)
+        return None
 
 
 def _restore_plot(panel, model: PlotModel):
@@ -344,11 +347,18 @@ def _restore_plot(panel, model: PlotModel):
     kind = PLOT_KINDS.get(model.kind) if model.kind in PLOT_KINDS else None
     if kind is None or kind.from_config is None:
         return add_placeholder(panel, model)
+    plots_before = len(panel.plots())
     try:
         return kind.from_config(panel, model.config)
     except Exception as e:
         log.error(f"restoring a {model.kind} plot failed", exc_info=True)
+        _remove_plots_beyond(panel, plots_before)
         return add_placeholder(panel, model, reason=str(e))
+
+
+def _remove_plots_beyond(panel, count: int) -> None:
+    for plot in panel.plots()[count:]:
+        panel.remove_plot(plot)
 
 
 def _time_range_model(panel) -> Optional[TimeRangeModel]:
@@ -399,8 +409,8 @@ def list_templates() -> list[PanelTemplate]:
                 seen_stems.add(f.stem)
                 try:
                     results.append(_load_upgrading_file(f))
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.warning(f"Skipping template {f}: {e}")
     return results
 
 

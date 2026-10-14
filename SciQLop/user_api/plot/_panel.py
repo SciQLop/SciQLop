@@ -399,9 +399,11 @@ class PlotPanel(GuardedImpl):
     def add(self, kind: str, **config):
         """Add a plot of a registered plot kind, built from its config — the same path templates and plugins use.
 
+        ``panel.add("sciqlop.timeseries", product="speasy/amda/imf")`` (or ``products=[path, ...]``),
         ``panel.add("sciqlop.scenes.projection", scene="earth_gsm", trajectories=["MMS1"])``,
         ``panel.add("vdf.slice_plot", product="vdf//mms1/dis", plane="XY")``. Returns what the plot kind builds
-        (a TimeSeriesPlot, a ScenePlot, or the plugin's own object)."""
+        (a TimeSeriesPlot, a ScenePlot, or the plugin's own object). Unknown config keys of a time-series plot
+        raise ValueError."""
         from SciQLop.core.plot_kinds import PLOT_KINDS
         plot_kind = PLOT_KINDS.get(kind)
         if plot_kind.from_config is None:

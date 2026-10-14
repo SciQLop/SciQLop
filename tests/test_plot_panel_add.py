@@ -39,7 +39,21 @@ def test_add_kind_without_from_config_is_a_value_error(panel):
         PLOT_KINDS.remove_owner("pa_demo")
 
 
-def test_add_time_series_from_products(panel):
+@pytest.fixture
+def scalar_vp(main_window, simple_vp_callback):
+    from SciQLop.user_api.virtual_products import VirtualProductType, create_virtual_product
+    return create_virtual_product("pa_add/scalar", simple_vp_callback, VirtualProductType.Scalar, labels=["y"])
+
+
+@pytest.mark.parametrize("config", [lambda path: {"product": path}, lambda path: {"products": [path]},
+                                    lambda path: {"products": [{"path": path}]}])
+def test_add_time_series_plots_the_product_it_is_given(panel, scalar_vp, config):
     from SciQLop.user_api.plot import TimeSeriesPlot
-    plot = panel.add("sciqlop.timeseries", products=[])
-    assert plot is None or isinstance(plot, TimeSeriesPlot)
+    plot = panel.add("sciqlop.timeseries", **config("//".join(scalar_vp.path.split("/"))))
+    assert isinstance(plot, TimeSeriesPlot)
+    assert len(plot.graphs) == 1
+
+
+def test_add_time_series_with_an_unknown_key_raises(panel, scalar_vp):
+    with pytest.raises(ValueError, match="produt"):
+        panel.add("sciqlop.timeseries", produt="x")

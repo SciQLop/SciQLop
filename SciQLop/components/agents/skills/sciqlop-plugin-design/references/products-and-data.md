@@ -29,7 +29,7 @@ the installed `SciQLop.user_api` before relying on it.
 - `id`: `sciqlop.<name>` for core, `<plugin id>.<name>` for a plugin.
 - `label`: shown to users.
 - `arity`: arrays per fetch. 2 is `(time, values)`, 3 is `(time, y, z)`, 0 is no data stream.
-- `default_plot_kind`: a `sciqlop.plot_kinds` id. A product plots through its kind's `default_plot_kind`: `sciqlop.timeseries` (series or colour map by arity), `sciqlop.scenes.projection`, or a plugin plot kind. The plot-kind contract page arrives with Task 6 of plan 1c.
+- `default_plot_kind`: a `sciqlop.plot_kinds` id. A product plots through its kind's `default_plot_kind`: `sciqlop.timeseries` (series or colour map by arity), `sciqlop.scenes.projection`, or a plugin plot kind. If that plot kind is not loaded, nothing plots and a warning names the plugin. The plot-kind contract is in plugin-contract.md ("Plot kinds, drop rules and saved panels").
 - `parameter_type`: the SciQLopPlots `ParameterType` of nodes of this kind. Plugin kinds leave it unset.
 
 Core kinds are `sciqlop.scalar`, `vector`, `multicomponent` and `spectrogram`. A node without a tag is
@@ -41,9 +41,8 @@ A plugin tags its product-tree nodes with the `product_kind` metadata key:
 add_product_node(path, name, provider.name, {PRODUCT_KIND_KEY: "vdf.distribution", ...}, ...)
 ```
 
-Today a plugin kind plots by its `arity`, through the provider's `get_data`: arity 2 plots as a line time
-series, arity 3 as a colour map, and arity 0 does not plot. Plot kinds (plan 1c) will let a kind choose its
-plot through `default_plot_kind`.
+A product plots through its kind's `default_plot_kind`, not through its arity: see plugin-contract.md,
+"Plot kinds, drop rules and saved panels".
 
 ## Source kinds
 

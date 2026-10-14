@@ -21,8 +21,9 @@ from PySide6.QtGui import QGuiApplication
 
 from SciQLop.core.graph_context import context_of, graph_name, provider_for
 from SciQLop.components.plotting.panel_introspection import ordered_plots, plot_graphs
+from SciQLop.components.plotting.panel_template import PanelTemplate
 from SciQLop.components.plotting.ui.graph_context_snippets import (
-    panel_reproducer_snippet, plot_reproducer_snippet,
+    panel_reproducer_snippet, plot_reproducer_snippet, timeseries_plots,
 )
 
 
@@ -43,9 +44,8 @@ def _per_graph_variants(graph) -> dict:
         return {}
 
 
-def _plot_label(plot, plot_index: int) -> str:
-    graphs = plot_graphs(plot)
-    names = ", ".join(graph_name(g) for g in graphs) or "empty"
+def _plot_label(plot_model, plot_index: int) -> str:
+    names = ", ".join(p.label for p in plot_model.products) or "empty"
     return f"Plot {plot_index} ({names})"
 
 
@@ -54,14 +54,14 @@ def add_graph_context_actions(menu, panel) -> None:
 
     No-op if the panel has no graphs eligible for any snippet.
     """
-    plots = ordered_plots(panel)
+    plots = timeseries_plots(PanelTemplate.from_panel(panel))
 
     panel_snippet = panel_reproducer_snippet(panel)
     plot_snippets = [(i, plot_reproducer_snippet(panel, i)) for i, _ in enumerate(plots)]
     plot_snippets = [(i, s) for i, s in plot_snippets if s]
 
     graph_variants = []
-    for plot in plots:
+    for plot in ordered_plots(panel):
         for g in plot_graphs(plot):
             variants = _per_graph_variants(g)
             if variants:

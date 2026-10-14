@@ -60,7 +60,12 @@ _VDF = """
         return from_config(target, {"product": "//".join(product), "plane": "XY"}), None
 
     def drop(plot, product, panel):
-        return from_config(panel, {"product": "//".join(product), "plane": "XY"})
+        from SciQLop.components.plotting.drops import take_drop_placeholder
+        slot = take_drop_placeholder(plot, panel)
+        new_plot = from_config(panel, {"product": "//".join(product), "plane": "XY"})
+        if slot is not None:
+            panel.move_plot(panel.plot_count() - 1, slot)
+        return new_plot
 
     class Api:
         SLICE = "pi_vdf.slice_plot"
@@ -99,7 +104,18 @@ def _new_panel(qtbot, name):
     return panel
 
 
-def test_plugin_plot_kinds_round_trip_through_the_panel_tree(tmp_path, qtbot, fresh):
+def _drop_between_plots(monkeypatch, panel):
+    """What SciQLopMultiPlotPanel::dropEvent does: an empty plot is made and handed to the MIME callback."""
+    from PySide6.QtCore import QMimeData
+    from SciQLopPlots import PlotType
+    from SciQLop.components.plotting import drops
+    monkeypatch.setattr(drops, "decode_mime", lambda mime, types: [_PRODUCT])
+    panel.create_plot(len(panel.plots()), PlotType.TimeSeries)
+    panel._product_plot_callback.call(panel.plots()[-1], QMimeData())
+    assert len(panel.plots()) == 1
+
+
+def test_plugin_plot_kinds_round_trip_through_the_panel_tree(tmp_path, qtbot, fresh, monkeypatch):
     from SciQLop.components.plotting.drops import dispatch_drop
     from SciQLop.components.plotting.panel_template import PanelTemplate
     from SciQLop.core.enums import ParameterType
@@ -119,6 +135,7 @@ def test_plugin_plot_kinds_round_trip_through_the_panel_tree(tmp_path, qtbot, fr
     PlotPanel(panel).add(sys.modules["pi_study"].SLICE, product="pi_vdf_products//dis", plane="YZ")
     dispatch_drop(panel, None, PRODUCT_LIST_MIME_TYPE, [_PRODUCT])
     assert len(panel.plots()) == 2
+    _drop_between_plots(monkeypatch, _new_panel(qtbot, "pi_drop"))
 
     study = tmp_path / "study.yaml"
     PanelTemplate.from_panel(panel).to_file(study)

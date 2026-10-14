@@ -1,4 +1,5 @@
 from .fixtures import *
+from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE
 from datetime import datetime, timezone, timedelta
 
 
@@ -40,9 +41,6 @@ def test_decode_skips_unknown_catalogs(qtbot, qapp):
 
     decoded = decode_mime(mime)
     assert decoded == []
-
-
-from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE  # noqa: E402
 
 
 def test_drop_catalog_on_panel_adds_overlay(qtbot, qapp):

@@ -20,10 +20,32 @@ def _timeseries_config(plot) -> dict:
     return _timeseries_model(plot).model_dump(mode="json", exclude={"kind", "config"})
 
 
+_TIMESERIES_KEYS = {"product", "products", "y_axis", "y2_axis", "z_axis"}
+
+
+def _product_model(product):
+    from SciQLop.components.plotting.panel_template import ProductModel
+    return ProductModel(path=product) if isinstance(product, str) else ProductModel.model_validate(product)
+
+
+def _timeseries_plot_model(config: dict):
+    """Template configs are validated as they are; ``product=`` and ``products=[path, ...]`` are shorthands for
+    callers of ``PlotPanel.add``. Unknown keys raise here, as PlotModel itself ignores them on purpose
+    (files from newer versions must load)."""
+    from SciQLop.components.plotting.panel_template import PlotModel
+    unknown = sorted(set(config) - _TIMESERIES_KEYS)
+    if unknown:
+        raise ValueError(f"unknown config key(s) for {TIMESERIES}: {', '.join(unknown)}; "
+                         f"expected some of {', '.join(sorted(_TIMESERIES_KEYS))}")
+    products = [*([config["product"]] if "product" in config else []), *config.get("products", [])]
+    axes = {k: v for k, v in config.items() if k.endswith("_axis")}
+    return PlotModel.model_validate({**axes, "products": [_product_model(p) for p in products]})
+
+
 def _timeseries_from_config(panel, config):
-    from SciQLop.components.plotting.panel_template import PlotModel, _restore_timeseries
+    from SciQLop.components.plotting.panel_template import _restore_timeseries
     from SciQLop.user_api.plot._plots import to_plot
-    subplot = _restore_timeseries(panel, PlotModel.model_validate(config))
+    subplot = _restore_timeseries(panel, _timeseries_plot_model(config))
     return to_plot(subplot) if subplot is not None else None
 
 
