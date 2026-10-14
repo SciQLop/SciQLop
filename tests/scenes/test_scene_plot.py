@@ -38,6 +38,35 @@ def test_envelope_curves_are_dashed_and_the_centre_solid(plot_panel, earth):
         assert styles == [Qt.PenStyle.SolidLine, Qt.PenStyle.DashLine, Qt.PenStyle.DashLine]
 
 
+def pane_ranges(proj):
+    return [tuple((a.range().start(), a.range().stop()) for a in (proj.subplot(i).x_axis(), proj.subplot(i).y_axis()))
+            for i in range(proj.subplot_count())]
+
+
+def test_a_scene_extent_holds_after_the_data_arrives(plot_panel, earth, fake_speasy, qtbot):
+    sp = plot_panel.plot_scene("Earth environment")
+    sp.add_trajectory("MMS1")
+    proj = proj_of(sp)
+    orbit = [proj.subplot(i).plottables()[-1] for i in range(3)]   # the projection's own graph keeps no data
+    graphs = [g for kind in ("magnetopause", "bow_shock") for pane in sp._boundary_graphs[kind].graphs for g in pane]
+    for g in graphs + orbit:
+        wait_for_data(qtbot, g)
+    qtbot.wait(200)
+    assert pane_ranges(proj_of(sp)) == [((-30.0, 30.0), (-30.0, 30.0))] * 3
+
+
+def test_a_scene_without_extent_fits_its_data(plot_panel, earth, qtbot):
+    from SciQLop.components.scenes.model import Scene
+    sp = plot_panel.plot_scene(Scene("bare", "earth", "GSM", {}))
+    qtbot.wait(200)
+    for x, y in pane_ranges(proj_of(sp)):
+        assert -2 < x[0] <= -1 and 1 <= x[1] < 2   # the unit body circle, padded
+
+
+def test_scene_panes_have_equal_aspect(plot_panel, earth):
+    assert proj_of(plot_panel.plot_scene("Earth environment")).equal_aspect_ratio()
+
+
 def test_a_model_in_another_frame_is_rotated(plot_panel, earth, qtbot, monkeypatch):
     from scipy.spatial.transform import Rotation
     seen = set()

@@ -1,6 +1,6 @@
 import dataclasses
 from dataclasses import dataclass, field
-from typing import Literal, Mapping, Union
+from typing import Literal, Mapping, Optional, Union
 
 import astropy.units as u
 
@@ -25,6 +25,7 @@ class Scene:
     boundaries: Mapping[str, Union[str, Boundary]] = field(default_factory=dict)
     summary: Literal["median", "mean"] = "median"
     envelope: bool = True
+    extent: Optional[float] = None   # half-width of the view in body radii; None fits the data
 
     def with_boundary(self, kind: str, model: Union[str, Boundary]) -> "Scene":
         return dataclasses.replace(self, boundaries={**self.boundaries, kind: model})

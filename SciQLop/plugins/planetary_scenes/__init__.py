@@ -15,10 +15,12 @@ BODIES_DATA = (
 MODELS = (Shue1998(), Jelinek2012BowShock(), Vignes2000BowShock(), Vignes2000MPB(),
           Winslow2013Magnetopause(), Winslow2013BowShock())
 SCENES_DATA = (
-    Scene("Earth environment", "earth", "GSM", {"magnetopause": "shue1998", "bow_shock": "jelinek2012"}),
-    Scene("Mars environment", "mars", "MSO", {"mpb": "vignes2000_mpb", "bow_shock": "vignes2000_bs"}),
+    Scene("Earth environment", "earth", "GSM", {"magnetopause": "shue1998", "bow_shock": "jelinek2012"},
+          extent=30),
+    Scene("Mars environment", "mars", "MSO", {"mpb": "vignes2000_mpb", "bow_shock": "vignes2000_bs"},
+          extent=4),
     Scene("Mercury environment", "mercury", "MESO",
-          {"magnetopause": "winslow2013_mp", "bow_shock": "winslow2013_bs"}),
+          {"magnetopause": "winslow2013_mp", "bow_shock": "winslow2013_bs"}, extent=5),
 )
 
 
