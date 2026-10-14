@@ -29,7 +29,7 @@ the installed `SciQLop.user_api` before relying on it.
 - `id`: `sciqlop.<name>` for core, `<plugin id>.<name>` for a plugin.
 - `label`: shown to users.
 - `arity`: arrays per fetch. 2 is `(time, values)`, 3 is `(time, y, z)`, 0 is no data stream.
-- `default_plot_kind`: a `sciqlop.plot_kinds` id. Plot kinds arrive with plan 1c.
+- `default_plot_kind`: a `sciqlop.plot_kinds` id. A product plots through its kind's `default_plot_kind`: `sciqlop.timeseries` (series or colour map by arity), `sciqlop.scenes.projection`, or a plugin plot kind. The plot-kind contract page arrives with Task 6 of plan 1c.
 - `parameter_type`: the SciQLopPlots `ParameterType` of nodes of this kind. Plugin kinds leave it unset.
 
 Core kinds are `sciqlop.scalar`, `vector`, `multicomponent` and `spectrogram`. A node without a tag is

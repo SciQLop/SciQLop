@@ -10,7 +10,10 @@ def prepare_extension_points() -> None:
     import SciQLop.core.mime  # noqa: F401  declares sciqlop.mime_types
     import SciQLop.core.product_kinds  # noqa: F401  declares sciqlop.product_kinds
     import SciQLop.core.source_kinds  # noqa: F401  declares sciqlop.source_kinds
+    import SciQLop.core.plot_kinds  # noqa: F401  declares sciqlop.plot_kinds
     from SciQLop.components.catalogs.backend import catalog_mime, event_mime  # noqa: F401
+    import SciQLop.components.plotting.core_kinds  # noqa: F401  contributes sciqlop.timeseries
+    import SciQLop.components.scenes.contributions  # noqa: F401  contributes sciqlop.scenes.projection
     from SciQLop.components.scenes import registry  # noqa: F401  importing declares sciqlop.scenes.*
     from SciQLop.components.scenes.tree import follow_registries
     follow_registries()
