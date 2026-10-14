@@ -22,7 +22,31 @@ def recorded_3dview(monkeypatch):
 
     monkeypatch.setattr(frames, "_fetch_json", fake)
     frames._day_rotations.cache_clear()
-    return calls
+    yield calls
+    frames._day_rotations.cache_clear()
+
+
+def test_unknown_equal_frames_are_refused(recorded_3dview):
+    with pytest.raises(FrameError, match="FOO"):
+        rotation("FOO", "FOO", np.array([0.0]))
+
+
+def test_malformed_3dview_reply_raises_frame_error(monkeypatch):
+    monkeypatch.setattr(frames, "_fetch_json", lambda path, **params: {})
+    frames._day_rotations.cache_clear()
+    try:
+        with pytest.raises(FrameError, match="GSE.*GSM"):
+            rotation("GSE", "GSM", np.array([float(DAY)]))
+    finally:
+        frames._day_rotations.cache_clear()
+
+
+def test_empty_times_give_no_rotations_and_no_fetch(recorded_3dview):
+    assert len(rotation("GSE", "GSM", np.array([]))) == 0 and recorded_3dview == []
+
+
+def test_scalar_time_is_accepted(recorded_3dview):
+    assert len(rotation("GSE", "GSM", float(DAY))) == 1
 
 
 def test_equal_frames_are_identity_without_network(recorded_3dview):
@@ -58,8 +82,11 @@ def test_unreachable_3dview_raises_frame_error(monkeypatch):
 
     monkeypatch.setattr(frames, "_fetch_json", down)
     frames._day_rotations.cache_clear()
-    with pytest.raises(FrameError, match="GSE.*GSM.*connection refused"):
-        rotation("GSE", "GSM", np.array([float(DAY)]))
+    try:
+        with pytest.raises(FrameError, match="GSE.*GSM.*connection refused"):
+            rotation("GSE", "GSM", np.array([float(DAY)]))
+    finally:
+        frames._day_rotations.cache_clear()
 
 
 @pytest.mark.parametrize("raw, frame", [("GSE>Geocentric Solar Ecliptic", "GSE"), (" gsm ", "GSM"), ("MESO", "MESO")])

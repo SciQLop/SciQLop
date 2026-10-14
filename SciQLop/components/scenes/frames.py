@@ -65,7 +65,13 @@ def _day_rotations(from_frame: str, to_frame: str, day: int) -> tuple[np.ndarray
                            start=_iso(start), stop=_iso(start + _DAY_S), sampling=_SAMPLING_S)
     except Exception as e:
         raise FrameError(f"could not get {from_frame} → {to_frame} matrices from 3DView: {e}") from e
-    values = data["values"]
+    try:
+        return _parse_matrices(data["values"])
+    except (KeyError, TypeError, ValueError, IndexError) as e:
+        raise FrameError(f"malformed {from_frame} → {to_frame} matrices from 3DView: {e!r}") from e
+
+
+def _parse_matrices(values: list[dict]) -> tuple[np.ndarray, Rotation]:
     times = np.array([np.datetime64(v["time"].rstrip("Z"), "ns") for v in values]).astype("int64") / 1e9
     return times, Rotation.from_matrix(np.array([v["matrix"] for v in values], dtype=float))
 
@@ -81,9 +87,9 @@ def _stitched(from_frame: str, to_frame: str, times: np.ndarray) -> tuple[np.nda
 
 def rotation(from_frame: str, to_frame: str, times: np.ndarray) -> Rotation:
     """Rotations taking vectors from *from_frame* to *to_frame* at *times* (epoch seconds)."""
-    times = np.asarray(times, dtype=float)
-    if from_frame == to_frame:
-        return Rotation.identity(len(times))
+    times = np.atleast_1d(np.asarray(times, dtype=float))
     _check_same_centre(from_frame, to_frame)
+    if from_frame == to_frame or len(times) == 0:
+        return Rotation.identity(len(times))
     stamps, rots = _stitched(from_frame, to_frame, times)
     return Slerp(stamps, rots)(np.clip(times, stamps[0], stamps[-1]))
