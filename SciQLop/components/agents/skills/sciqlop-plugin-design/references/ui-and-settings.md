@@ -114,6 +114,46 @@ Plugins and users build mixed panels with `panel.add(kind, **config)`, the same 
   argument type or order in an overloaded call, not an import problem.
 - Use matplotlib only for exported, offline figures.
 
+## Commands and menu entries
+
+A command is a contribution to `sciqlop.commands`: it shows in the command palette. A menu entry
+(`sciqlop.menus`) places a registered command in a menu, in the same plugin or another one.
+
+`PaletteCommand(id, name, description, callback, args=[...])` and
+`MenuEntry(id, location, command, label=None, when=<always>, order=0)`
+(`from SciQLop.core.menus import MenuEntry`). `label=None` shows the command's name. Entries sort by `(order, id)`.
+
+When an entry is triggered, the callback gets the context values whose key matches one of the command's
+`CommandArg.name`s. The context values use the palette's argument conventions. The locations and their context keys:
+
+| Location | Menu | Context keys |
+|---|---|---|
+| `panel` | panel right-click menu | `panel` (panel name) |
+| `panel.export` | Export submenu of the panel menu | `panel` |
+| `graph` | per-graph submenu under Export > Copy Python code | `panel`, `graph` (graph name) |
+| `product_tree` | right-click on a plottable product | `product` (path string, `//` separated) |
+| `catalog_tree` | right-click in the catalog tree | `provider`, and `catalog` when on a catalog |
+| `main.tools` | Tools menu | none |
+
+`when(context)` decides whether the entry shows for that context. A `when` that raises hides the entry and logs an error.
+An entry whose command is not registered is left out.
+
+```python
+from SciQLop.components.command_palette.arg_types import PanelArg
+from SciQLop.components.command_palette.backend.registry import PaletteCommand
+from SciQLop.core.menus import PANEL, MenuEntry
+
+
+def activate(ctx):
+    ctx.contribute("sciqlop.commands", PaletteCommand(
+        id="my_plugin.zoom", name="Zoom to last event", description="", args=[PanelArg("panel")],
+        callback=lambda panel: zoom_to_last_event(panel)))
+    ctx.contribute("sciqlop.menus", MenuEntry("my_plugin.zoom_entry", PANEL, "my_plugin.zoom",
+                                              when=lambda c: c["panel"].startswith("MMS")))
+```
+
+`register_panel_menu` (dynamic submenus on the panel menu) is unchanged and keeps working.
+
 ## Drop rules
 
 What a drop on a plot does is a contribution to `sciqlop.drop_rules`

@@ -4,6 +4,8 @@ from PySide6.QtWidgets import QMenu, QTreeView
 from SciQLopPlots import ProductsModel, ProductsModelNodeType, PlotType
 
 from SciQLop.components.plotting.ui.time_sync_panel import plot_product
+from SciQLop.components.command_palette.menu_entries import add_menu_entries
+from SciQLop.core.menus import PRODUCT_TREE
 from SciQLop.core.mime import decode_mime
 from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components.sciqlop_logging import getLogger
@@ -109,11 +111,16 @@ def _on_context_menu(tree: QTreeView, pos, main_window):
     if not product_path:
         return
 
+    build_product_menu(tree, product_path, main_window).exec(tree.viewport().mapToGlobal(pos))
+
+
+def build_product_menu(tree, product_path: list[str], main_window) -> QMenu:
     menu = QMenu(tree)
     menu.setTitle("Plot in...")
     menu.setToolTipsVisible(True)
     _build_plot_target_menu(menu, product_path, main_window)
-    menu.exec(tree.viewport().mapToGlobal(pos))
+    add_menu_entries(menu, PRODUCT_TREE, {"product": "//".join(product_path)})
+    return menu
 
 
 def _show_folder_context_menu(tree: QTreeView, pos):

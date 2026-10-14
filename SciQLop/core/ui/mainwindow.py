@@ -25,6 +25,8 @@ from SciQLop.components.workspaces import Workspace
 from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle, qtads_stylesheet
 from SciQLop.core.ui import Metrics
 from SciQLop.core.ui.tooltips import rich_tooltip
+from SciQLop.components.command_palette.menu_entries import add_menu_entries
+from SciQLop.core.menus import MAIN_TOOLS
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLopPlots import SciQLopMultiPlotPanel
 from SciQLop.components.settings.ui import SettingsPanel
@@ -365,6 +367,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.toolsMenu = QMenu("Tools")
         self.toolsMenu.setToolTipsVisible(True)
         self._menubar.addMenu(self.toolsMenu)
+        self._tools_entry_actions = []
+        self.toolsMenu.aboutToShow.connect(self._refresh_tools_entries)
         open_lab = self.toolsMenu.addAction(
             "Open JupyterLab", self.open_jupyterlab_widget)
         open_lab.setToolTip(rich_tooltip(
@@ -946,6 +950,13 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _start_getting_started_tour(self) -> None:
         self._start_tour("getting_started")
+
+    def _refresh_tools_entries(self) -> None:
+        for action in self._tools_entry_actions:
+            self.toolsMenu.removeAction(action)
+        before = self.toolsMenu.actions()
+        add_menu_entries(self.toolsMenu, MAIN_TOOLS, {})
+        self._tools_entry_actions = [a for a in self.toolsMenu.actions() if a not in before]
 
     def _open_tour_picker(self) -> None:
         from SciQLop.components.onboarding.ui.tour_picker import TourPicker

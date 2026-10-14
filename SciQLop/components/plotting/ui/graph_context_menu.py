@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from PySide6.QtGui import QGuiApplication
 
+from SciQLop.components.command_palette.menu_entries import add_menu_entries
+from SciQLop.core.menus import GRAPH
 from SciQLop.core.graph_context import context_of, graph_name, provider_for
 from SciQLop.components.plotting.panel_introspection import ordered_plots, plot_graphs
 from SciQLop.components.plotting.panel_template import PanelTemplate
@@ -96,3 +98,4 @@ def add_graph_context_actions(menu, panel) -> None:
                 continue
             a = graph_sub.addAction(label)
             a.triggered.connect(lambda _checked=False, s=snippet: _copy(s))
+        add_menu_entries(graph_sub, GRAPH, {"panel": panel.windowTitle(), "graph": graph_name(graph)})

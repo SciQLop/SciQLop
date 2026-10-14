@@ -20,6 +20,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence, QPen, QColor, QShortcut
 from SciQLop.core.ui.tooltips import rich_tooltip
+from SciQLop.components.command_palette.arg_types import catalog_arg_value
+from SciQLop.components.command_palette.menu_entries import add_menu_entries
+from SciQLop.core.menus import CATALOG_TREE
 from SciQLop.components.theming.icons import get_icon
 
 import math
@@ -1130,7 +1133,15 @@ class CatalogBrowser(QWidget):
             self._add_catalog_color_actions(menu, node.catalog)
             self._build_color_by_menu(menu, node.catalog)
 
+        add_menu_entries(menu, CATALOG_TREE, self._menu_context(node))
         return menu
+
+    @staticmethod
+    def _menu_context(node) -> dict:
+        context = {"provider": node.provider.name}
+        if node.catalog is not None:
+            context["catalog"] = catalog_arg_value(node.provider.name, node.catalog.uuid)
+        return context
 
     def _add_panel_toggle_action(self, menu: QMenu, catalog: Catalog) -> None:
         if not self._panels:

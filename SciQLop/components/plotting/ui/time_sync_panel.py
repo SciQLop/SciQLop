@@ -38,6 +38,8 @@ from SciQLop.components.plotting.ui.diagnostic_overlay import overlay_of
 from SciQLop.components.plotting.backend.palette import Palette, make_color_list
 from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
 from SciQLop.components.plotting.ui.graph_context_menu import add_graph_context_actions
+from SciQLop.components.command_palette.menu_entries import add_menu_entries
+from SciQLop.core.menus import PANEL, PANEL_EXPORT
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -1370,8 +1372,12 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self._build_export_share_menu(menu)
         self._build_templates_menu(menu)
         self._add_plugin_menus(menu)
+        add_menu_entries(menu, PANEL, self._menu_context())
         self._append_knob_reset_actions(menu)
         return menu
+
+    def _menu_context(self) -> dict:
+        return {"panel": self.windowTitle()}
 
     def _add_plugin_menus(self, menu):
         from SciQLop.components.plotting.backend.panel_menus import add_plugin_menus
@@ -1504,6 +1510,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         export_pdf.setToolTip("Save this panel as a PDF document.")
         self._add_proxy_share_actions(sub)
         add_graph_context_actions(sub, self)
+        add_menu_entries(sub, PANEL_EXPORT, self._menu_context())
 
     def _add_proxy_share_actions(self, menu):
         from SciQLop.components.plotting.ui.proxy_share import proxy_plot_url
