@@ -63,6 +63,20 @@ def test_each_time_gets_its_own_plane():
     assert np.allclose(s[0, :, 2], 0) and np.allclose(s[1, :, 0], 0)
 
 
+class GrowingSphere(RadialBoundary):
+    """r = 1 + t: one radius per time, the way a model reads solar-wind inputs through times."""
+    name, body, kind, frame = "growing", "earth", "test", "GSM"
+    theta_max = np.pi
+
+    def radius(self, theta, phi, times):
+        return np.broadcast_to(1.0 + times, np.shape(theta))
+
+
+def test_a_time_dependent_radius_gives_one_section_per_time():
+    s = GrowingSphere().cross_section(planes((0, 0, 1), n=3), np.array([0.0, 1.0, 2.0]))
+    assert np.allclose(np.linalg.norm(s, axis=2), [[1.0], [2.0], [3.0]])
+
+
 def test_rays_past_theta_max_are_nan():
     s = Paraboloid().cross_section(planes((0, 0, 1)), np.array([0.0]))[0]
     finite = np.isfinite(s[:, 0])

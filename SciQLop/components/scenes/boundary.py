@@ -60,6 +60,8 @@ class RadialBoundary:
     n_rays: int = 720
 
     def radius(self, theta: np.ndarray, phi: np.ndarray, times: np.ndarray) -> np.ndarray:
+        """Boundary distance from the focus, in body radii, shape (n, m) like theta and phi
+        (n times, m rays). times (epoch seconds) is (n, 1), so it broadcasts against them."""
         raise NotImplementedError
 
     def sample_times(self, start: float, stop: float) -> np.ndarray:
@@ -70,7 +72,7 @@ class RadialBoundary:
     def _outside(self, points: np.ndarray, times: np.ndarray) -> np.ndarray:
         r, theta, phi = _spherical(points - np.asarray(self.focus))
         with np.errstate(invalid="ignore"):
-            return (theta > self.theta_max) | (r > self.radius(theta, phi, times))
+            return (theta > self.theta_max) | (r > self.radius(theta, phi, times[:, None]))
 
     def cross_section(self, planes: Plane, times: np.ndarray) -> np.ndarray:
         """Bisection along rays from the focus projected onto each plane."""
