@@ -21,7 +21,7 @@ from SciQLop.components.plotting.backend.data_provider import providers, DataPro
 from SciQLop.components.plotting.backend.color_axis import apply_color_axis
 from SciQLop.components.plotting.backend.easy_provider import EasyProvider
 from SciQLop.core.graph_context import (
-    attach_context, attach_data_meta, build_speasy_ctx, build_vp_ctx,
+    attach_context, attach_data_meta, build_speasy_ctx, build_provider_ctx, build_vp_ctx,
     build_static_ctx, build_function_ctx, GraphRichRefs,
     update_knobs,
 )
@@ -794,9 +794,9 @@ def _install_graph_context_ui(plot, graph) -> None:
 def _attach_graph_context(r, provider, node, target, fetch_callback=None):
     """Attach a GraphContext + rich refs to the graph just produced.
 
-    Only acts on recognized provider types (EasyProvider, Speasy).
-    Unknown DataProvider subclasses are skipped — better to attach no
-    context than mislabel one.
+    EasyProvider and Speasy get their dedicated envelopes. Every other
+    provider gets build_provider_ctx: its own source_kind if it names one,
+    else the generic sciqlop.provider envelope.
     """
     try:
         # `r` is either (plot, graph) (panel target) or a bare graph (single
@@ -856,8 +856,10 @@ def _attach_graph_context(r, provider, node, target, fetch_callback=None):
             attach_context(graph, ctx, GraphRichRefs(fetch_callback=fetch_callback))
             _install_graph_context_ui(plot, graph)
             return
-        log.debug("graph_context: unknown provider %r — skipping attach",
-                  type(provider).__name__)
+        ctx = build_provider_ctx(graph, panel_name=panel_name, plot_index=plot_index, provider=provider,
+                                 graph_type=graph_type, product_path=product_path, knobs=knobs)
+        attach_context(graph, ctx, GraphRichRefs(fetch_callback=fetch_callback))
+        _install_graph_context_ui(plot, graph)
     except Exception:
         log.warning("attach_graph_context failed", exc_info=True)
 

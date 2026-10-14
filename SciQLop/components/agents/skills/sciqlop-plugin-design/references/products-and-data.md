@@ -33,6 +33,8 @@ source line, templates and Export & Share all read them.
   `shareable=True` lets Export & Share send the graph to the Speasy proxy.
 - Core ids: `sciqlop.speasy`, `sciqlop.vp`, `sciqlop.function`, `sciqlop.static`,
   `sciqlop.provider`. Import the constants from `SciQLop.core.source_kinds`.
+- A third-party `DataProvider` gets `sciqlop.provider` unless it sets a
+  `source_kind` attribute to its own kind id (`source_kind = "myplugin.cdf"`).
 - Old saved values (`speasy`, `vp`, `function`, `static`) are still read and
   become the `sciqlop.*` ids. Plugin code comparing `ctx.kind == "speasy"` must
   compare to `SciQLop.core.source_kinds.SPEASY` instead.

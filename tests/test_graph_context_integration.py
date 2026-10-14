@@ -688,3 +688,56 @@ def test_copy_python_snippets_emit_slash_path():
     sciqlop_repro = snippets["Reproduce in SciQLop"]
     assert "['root'" not in sciqlop_repro
     assert 'panel.plot_product("speasy//amda//ACE//b_gsm")' in sciqlop_repro
+
+
+def _post_plot_with(monkeypatch, provider, node):
+    from SciQLop.components.plotting.ui import time_sync_panel as tsp
+    from PySide6.QtCore import QObject
+    captured = {}
+    monkeypatch.setattr(tsp, "attach_context", lambda graph, ctx, rich=None: captured.update(ctx=ctx))
+    monkeypatch.setattr(tsp, "_set_product_path", lambda *a, **kw: None)
+    monkeypatch.setattr(tsp, "_register_graph_hints", lambda *a, **kw: None)
+    monkeypatch.setattr(tsp, "_attach_knob_state", lambda *a, **kw: None)
+
+    class _Graph(QObject):
+        def set_name(self, n): self.setObjectName(n)
+        def name(self): return self.objectName()
+
+    class _Plot(QObject):
+        pass
+
+    class _Target:
+        def plots(self): return [_Plot()]
+        def windowTitle(self): return "PanelX"
+
+    graph = _Graph()
+    graph.setObjectName("g0")
+    tsp._post_plot((_Plot(), graph), provider, node, type("C", (), {"_post_fetch": None})(), _Target(),
+                   "demo//b", existing_plot=None)
+    return captured.get("ctx")
+
+
+class _PathNode:
+    def name(self): return "b"
+    def path(self): return ["demo", "b"]
+    def metadata(self, key=None): return None if key else {}
+
+
+def test_third_party_provider_gets_the_provider_envelope(qtbot, monkeypatch):
+    from SciQLop.core.source_kinds import PROVIDER
+
+    class ThirdParty:
+        name = "ThirdParty"
+
+    ctx = _post_plot_with(monkeypatch, ThirdParty(), _PathNode())
+    assert ctx is not None and ctx.kind == PROVIDER
+    assert ctx.provider_name == "ThirdParty" and ctx.product_path == ["demo", "b"]
+
+
+def test_provider_names_its_own_source_kind(qtbot, monkeypatch):
+    class CdfProvider:
+        name = "Cdf"
+        source_kind = "cdf_plugin.file"
+
+    ctx = _post_plot_with(monkeypatch, CdfProvider(), _PathNode())
+    assert ctx.kind == "cdf_plugin.file"

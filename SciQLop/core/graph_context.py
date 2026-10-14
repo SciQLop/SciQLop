@@ -9,7 +9,7 @@ import shiboken6
 from pydantic import BaseModel, Field, field_validator
 
 from SciQLop.components import sciqlop_logging
-from SciQLop.core.source_kinds import FUNCTION, SPEASY, STATIC, VP, canonical_id, source_kind
+from SciQLop.core.source_kinds import FUNCTION, PROVIDER, SPEASY, STATIC, VP, canonical_id, source_kind
 
 if TYPE_CHECKING:
     from SciQLop.components.plotting.backend.data_provider import DataProvider
@@ -226,6 +226,21 @@ def build_vp_ctx(graph, *, panel_name: str, plot_index: int,
         callback_qualname=getattr(callback, "__qualname__", None),
         callback_module=getattr(callback, "__module__", None),
         product_path=list(product_path) if product_path else vp_path_list,
+        knobs=knobs or {},
+    )
+
+
+def build_provider_ctx(graph, *, panel_name: str, plot_index: int, provider, graph_type: str,
+                       product_path: Optional[list] = None, knobs: Optional[dict] = None) -> GraphContext:
+    """Any other provider: its own source kind if it names one, else the generic sciqlop.provider envelope."""
+    return GraphContext(
+        kind=getattr(provider, "source_kind", PROVIDER),
+        graph_id=graph.objectName(),
+        panel_name=panel_name,
+        plot_index=plot_index,
+        graph_type=graph_type,
+        provider_name=getattr(provider, "name", None),
+        product_path=list(product_path) if product_path else None,
         knobs=knobs or {},
     )
 
