@@ -1377,7 +1377,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         return menu
 
     def _menu_context(self) -> dict:
-        return {"panel": self.windowTitle()}
+        return {"panel": self.name}
 
     def _add_plugin_menus(self, menu):
         from SciQLop.components.plotting.backend.panel_menus import add_plugin_menus

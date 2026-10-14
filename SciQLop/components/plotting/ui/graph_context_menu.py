@@ -98,4 +98,4 @@ def add_graph_context_actions(menu, panel) -> None:
                 continue
             a = graph_sub.addAction(label)
             a.triggered.connect(lambda _checked=False, s=snippet: _copy(s))
-        add_menu_entries(graph_sub, GRAPH, {"panel": panel.windowTitle(), "graph": graph_name(graph)})
+        add_menu_entries(graph_sub, GRAPH, {"panel": panel.name, "graph": graph_name(graph)})

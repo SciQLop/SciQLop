@@ -99,3 +99,15 @@ def test_the_product_menu_shows_entries_with_the_product_path(qtbot, demo):
     menu = build_product_menu(None, ["amda", "ace", "b"], _NoWindow())
     next(a for a in menu.actions() if a.text() == "Prod cmd").trigger()
     assert demo == ["amda//ace//b"]
+
+
+def test_the_panel_value_follows_a_rename(qtbot, demo):
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    with owned_by("mn_demo"):
+        MENUS.contribute(MenuEntry("mn_demo.renamed", PANEL, "mn_demo.zoom", label="After rename"))
+    panel = TimeSyncPanel("mn_panel_old", show_search_overlay=False)
+    qtbot.addWidget(panel)
+    panel.setObjectName("Renamed")
+    menu = panel._build_context_menu()
+    next(a for a in menu.actions() if a.text() == "After rename").trigger()
+    assert demo == ["Renamed"]

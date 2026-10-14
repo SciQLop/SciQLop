@@ -954,6 +954,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def _refresh_tools_entries(self) -> None:
         for action in self._tools_entry_actions:
             self.toolsMenu.removeAction(action)
+            action.deleteLater()
         before = self.toolsMenu.actions()
         add_menu_entries(self.toolsMenu, MAIN_TOOLS, {})
         self._tools_entry_actions = [a for a in self.toolsMenu.actions() if a not in before]
