@@ -56,10 +56,22 @@ def _apply_to_colormaps(plot, low: float, high: float) -> None:
             p.set_autoscale_percentile_high(high)
 
 
+def _axis_plots(plot) -> list:
+    """A projection plot has no axes of its own; its panes do."""
+    if hasattr(plot, "subplot_count"):
+        return [plot.subplot(i) for i in range(plot.subplot_count())]
+    return [plot]
+
+
 def apply_defaults_to_plot(plot) -> None:
     """Apply axis (graph) + any-existing-colormap percentiles to ``plot``,
     and subscribe to ``graph_list_changed`` so later-added colormaps inherit
     the same values."""
+    for p in _axis_plots(plot):
+        _apply_defaults(p)
+
+
+def _apply_defaults(plot) -> None:
     snap = _Percentiles.snapshot()
     plot._sciqlop_percentile_snapshot = snap
     _apply_to_axis(plot, "y_axis", snap.graph_low, snap.graph_high)
