@@ -58,7 +58,11 @@ class _Signals(QObject):
 
 
 class ExtensionPoint(Generic[T]):
-    """A registry of contributions of one type, each recorded with the plugin that made it."""
+    """A registry of contributions of one type, each recorded with the plugin that made it.
+
+    Contributing over an existing key (same owner, or `replace=True`) emits `added` with the new item and
+    no `removed`: listeners treat `added` as add-or-update.
+    """
 
     def __init__(self, id: str, contribution_type: type, what: str | None = None,
                  key: Callable[[T], str] = attrgetter("id"), doc: str = "", owner: str = "sciqlop"):

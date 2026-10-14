@@ -7,13 +7,13 @@ The rules below apply to both. `activate(ctx)` reaches the main window as
 
 - Called once, on the GUI thread, at startup. Keep it fast: register products,
   build widgets, return. No network calls here; start them in the background.
-- Import SciQLop and Qt modules inside `load()` or in submodules it imports.
+- Import SciQLop and Qt modules inside `activate()` (or `load()`) or in submodules it imports.
   Pure-Python helpers stay importable without SciQLop, which keeps them easy
   to test.
 - Never raise for a missing configuration (no API key, server down, CLI not
   installed). Load anyway, and report the problem where the user meets it: in
   the dock, or on the graph through the callback's exception. A raising
-  `load()` can take other plugins down with it.
+  `activate()` (or `load()`) refuses every plugin that depends on yours.
 - Return the objects you must keep alive (widgets, products). If the returned
   object has `async def close(self)`, SciQLop awaits it at shutdown: stop
   threads and close connections there.

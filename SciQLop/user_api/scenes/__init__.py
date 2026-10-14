@@ -1,6 +1,7 @@
 """Planetary scenes: bodies, boundary models and the scenes that combine them.
 
-Register your own from a plugin's ``load(main_window)``; plot one with ``panel.plot_scene(name)``.
+Register your own from a plugin's ``activate(ctx)`` (``load(main_window)`` is still supported);
+plot one with ``panel.plot_scene(name)``.
 """
 from SciQLop.components.scenes import scene_plot as _scene_plot
 from SciQLop.components.scenes.boundary import Boundary, Plane, RadialBoundary
