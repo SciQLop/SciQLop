@@ -93,6 +93,7 @@ wrong:
 
 A dock that previews data embeds SciQLopPlots widgets directly (`SciQLopPlot`).
 Plot panels from `user_api` live in SciQLop's central area, not in your dock.
+Plugins and users build mixed panels with `panel.add(kind, **config)`, the same path templates use.
 
 - Create graphs once, then update them with `graph.set_data(...)`. Never redo
   a fetch or a fit on a slider move: compute once, cache, and reslice.

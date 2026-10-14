@@ -396,6 +396,19 @@ class PlotPanel(GuardedImpl):
         return sp
 
     @on_main_thread
+    def add(self, kind: str, **config):
+        """Add a plot of a registered plot kind, built from its config — the same path templates and plugins use.
+
+        ``panel.add("sciqlop.scenes.projection", scene="earth_gsm", trajectories=["MMS1"])``,
+        ``panel.add("vdf.slice_plot", product="vdf//mms1/dis", plane="XY")``. Returns what the plot kind builds
+        (a TimeSeriesPlot, a ScenePlot, or the plugin's own object)."""
+        from SciQLop.core.plot_kinds import PLOT_KINDS
+        plot_kind = PLOT_KINDS.get(kind)
+        if plot_kind.from_config is None:
+            raise ValueError(f"plot kind {kind!r} cannot be built from a config")
+        return plot_kind.from_config(self._get_impl_or_raise(), config)
+
+    @on_main_thread
     @_tracing.traced("PlotPanel.plot_function", cat="plot")
     def plot_function(self, f, plot_index=-1, *, labels=_UNSET, name=_UNSET,
                       plot_type=_UNSET, graph_type=_UNSET, colors=_UNSET,
