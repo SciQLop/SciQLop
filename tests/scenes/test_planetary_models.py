@@ -3,7 +3,7 @@ import pytest
 
 from SciQLop.components.scenes.boundary import Plane
 from SciQLop.components.scenes.frames import frame_centres
-from SciQLop.plugins.planetary_scenes import BODIES_DATA, SCENES_DATA
+from SciQLop.plugins.planetary_scenes import BODIES_DATA, MODELS, SCENES_DATA
 from SciQLop.plugins.planetary_scenes.models import (Jelinek2012BowShock, Shue1998, Vignes2000BowShock,
                                                      Vignes2000MPB, Winslow2013BowShock, Winslow2013Magnetopause)
 
@@ -23,7 +23,7 @@ def test_radius_matches_reference(model, theta, expected):
 
 
 @pytest.mark.parametrize("model, subsolar_x", [
-    (Vignes2000BowShock(), 1.644926), (Vignes2000MPB(), 1.285263), (Winslow2013BowShock(), 1.848039)])
+    (Vignes2000BowShock(), 1.644926), (Vignes2000MPB(), 1.285263), (Winslow2013BowShock(), 1.901961)])
 def test_conic_subsolar_point(model, subsolar_x):
     focus_plane = Plane(normal=np.array([[0, 0, 1.0]]), offset=np.array([model.focus[2]]))
     s = model.cross_section(focus_plane, np.array([0.0]))[0]
@@ -37,7 +37,6 @@ def test_every_scene_frame_is_centred_on_its_body():
 
 
 def test_every_model_is_labelled_and_cited():
-    from SciQLop.plugins.planetary_scenes import MODELS
     for m in MODELS:
         assert m.label and m.reference.startswith("doi:") and m.frame in frame_centres()
 
@@ -50,4 +49,4 @@ def test_register_all_makes_the_scenes_resolvable(monkeypatch):
         monkeypatch.setattr(reg, "_items", {})
     register_all()
     for scene in SCENES_DATA:
-        assert resolve(scene.name).boundaries
+        assert set(resolve(scene.name).boundaries) == set(scene.boundaries)

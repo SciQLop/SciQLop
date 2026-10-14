@@ -78,6 +78,6 @@ def pane_summary(model, scene_frame: str, pane: int, start: float, stop: float,
     in_scene = np.einsum("nij,nmj->nmi", to_scene, sections)
     focus = to_model.inv()[len(times) // 2].apply(np.asarray(model.focus, dtype=float))
     # simplify: one polar origin for the whole interval, the focus at mid-interval. Exact when the
-    # model frame is the scene frame or the focus is the body centre (every built-in model).
+    # focus is the body centre or the model frame is the scene frame (true for every built-in).
     origin = focus - (focus @ normal) * normal
     return summarise(in_scene, pane, origin, how)

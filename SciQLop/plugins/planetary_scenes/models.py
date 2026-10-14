@@ -2,13 +2,15 @@ import numpy as np
 
 from SciQLop.components.scenes.boundary import RadialBoundary
 
-_DP, _BZ = 2.0, 0.0   # nominal solar wind: Dp in nPa, IMF Bz in nT
+# simplify: nominal solar wind only (Dp in nPa, IMF Bz in nT); upgrade path is instance parameters or
+# time-varying inputs read through `times`.
+_DP, _BZ = 2.0, 0.0
 
 
 class Shue1998(RadialBoundary):
     name, body, kind, frame = "shue1998", "earth", "magnetopause", "GSM"
     label = "Shue 1998 (Dp=2 nPa, Bz=0)"
-    description = "Earth magnetopause, empirical, nominal solar wind."
+    description = "Earth magnetopause, empirical, nominal solar wind; fitted in an aberrated frame (~4 deg), aberration ignored."
     reference = "doi:10.1029/98JA01103"
 
     def radius(self, theta, phi, times):
@@ -55,7 +57,7 @@ class Vignes2000MPB(_Conic):
 class Winslow2013Magnetopause(RadialBoundary):
     name, body, kind, frame = "winslow2013_mp", "mercury", "magnetopause", "MESO"
     label, reference = "Winslow 2013 magnetopause", "doi:10.1002/jgra.50237"
-    description = "Mercury magnetopause, MESSENGER fit, centred on the offset dipole."
+    description = "Mercury magnetopause, MESSENGER fit, centred on the offset dipole; fitted in an aberrated frame (~6-8 deg), aberration ignored."
     focus = (0.0, 0.0, 0.196)
 
     def radius(self, theta, phi, times):
@@ -66,5 +68,6 @@ class Winslow2013Magnetopause(RadialBoundary):
 class Winslow2013BowShock(_Conic):
     name, body, kind, frame = "winslow2013_bs", "mercury", "bow_shock", "MESO"
     label, reference = "Winslow 2013 bow shock", "doi:10.1002/jgra.50237"
-    description = "Mercury bow shock, MESSENGER conic fit."
-    focus, semi_latus, eccentricity = (0.5, 0.0, 0.196), 2.75, 1.04
+    description = "Mercury bow shock, MESSENGER conic fit; fitted in an aberrated frame (~6-8 deg), aberration ignored."
+    focus, eccentricity = (0.5, 0.0, 0.196), 1.04
+    semi_latus = 2.75 * eccentricity   # source form r = p*e / (1 + e cos(theta)), p = 2.75

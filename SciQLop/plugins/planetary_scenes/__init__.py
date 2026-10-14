@@ -1,4 +1,4 @@
-"""Built-in planetary scenes. Uses only the public scenes API, so it doubles as an example."""
+"""Built-in planetary scenes: Earth, Mars and Mercury boundary models. `load` registers through the user_api."""
 import astropy.units as u
 
 from SciQLop.components.scenes.model import Body, Scene
