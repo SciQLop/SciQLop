@@ -5,7 +5,7 @@ from typing import Literal, Mapping, Union
 import astropy.units as u
 
 from .boundary import Boundary
-from .frames import FrameError, frame_centres
+from .frames import FrameError, frame_centres, normalise_frame
 from .registry import BODIES, BOUNDARIES, SCENES
 
 
@@ -42,7 +42,7 @@ def _model(ref) -> Boundary:
 
 
 def _check_frame(frame: str, body: Body) -> None:
-    centre = frame_centres().get(frame)
+    centre = frame_centres()[frame]
     if centre != body.threedview:
         raise FrameError(f"{frame} is centred on {centre}, not {body.threedview}")
 
@@ -54,6 +54,7 @@ def _check_body(model: Boundary, body: Body) -> None:
 
 def resolve(scene: Union[Scene, str]) -> ResolvedScene:
     scene = SCENES.get(scene) if isinstance(scene, str) else scene
+    scene = dataclasses.replace(scene, frame=normalise_frame(scene.frame))
     body = BODIES.get(scene.body)
     _check_frame(scene.frame, body)
     models = {kind: _model(ref) for kind, ref in scene.boundaries.items()}

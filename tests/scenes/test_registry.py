@@ -57,6 +57,15 @@ def test_a_scene_frame_must_be_centred_on_its_body(registries):
         resolve(Scene("Earth", "earth", "MSO", {}))
 
 
+def test_a_lowercase_scene_frame_resolves_normalised(registries):
+    assert resolve(Scene("Earth", "earth", "gsm", {})).scene.frame == "GSM"
+
+
+def test_an_unknown_scene_frame_is_named_as_unknown(registries):
+    with pytest.raises(FrameError, match="3DView does not know the frame 'nope'"):
+        resolve(Scene("Earth", "earth", "nope", {}))
+
+
 def test_with_boundary_swaps_one_kind(registries):
     s = Scene("Earth", "earth", "GSM", {"magnetopause": "ball"}).with_boundary("magnetopause", "other")
     assert s.boundaries == {"magnetopause": "other"}
