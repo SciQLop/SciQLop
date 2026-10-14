@@ -33,6 +33,8 @@
 - Offering to install missing plugin dependencies needs the app-store index fields (sciqlop-appstore repo, spec §3.1). Until then a live install with a missing dependency is refused with a message naming the plugin to install. Cost if wrong: one more manual install step.
 - A plugin whose `ready` raises is logged and stays `active` (its phase-1 contributions are in place and dependents already activated).
 - `loaded_plugins` stores any API that is not `None` (today: any truthy one).
+- `ready(ctx)` runs only for `activate` plugins: a legacy `load(main_window)` plugin has no ctx to pass, and no legacy plugin defines `ready` today.
+- Tests that register scenes without a main window isolate the registries' signals too (Task 8), so the session-wide products tree only gets nodes from tests that ask for them.
 
 ## Review Focus
 
@@ -529,23 +531,35 @@ class Resolution:
     declared: dict[str, frozenset[str]]
 
 
-def _parse(specs) -> list[Requirement]:
-    return [Requirement(s) for s in specs]
+class _Dep:
+    """A dependency spec as written in plugin.json, kept for messages (packaging reorders specifiers)."""
+
+    def __init__(self, spec: str):
+        self.spec = spec
+        try:
+            self.req = Requirement(spec)
+        except InvalidRequirement as e:
+            raise InvalidRequirement(f"invalid dependency {spec!r}: {e}") from e
+        self.name = self.req.name
 
 
-def _in_range(req: Requirement, version: str) -> bool:
-    return req.specifier.contains(version, prereleases=True) if str(req.specifier) else True
+def _parse(specs) -> list[_Dep]:
+    return [_Dep(s) for s in specs]
 
 
-def _missing_reason(req: Requirement, candidates, active, refused) -> str | None:
-    name = req.name
+def _in_range(dep: _Dep, version: str) -> bool:
+    return dep.req.specifier.contains(version, prereleases=True) if str(dep.req.specifier) else True
+
+
+def _missing_reason(dep: _Dep, candidates, active, refused) -> str | None:
+    name = dep.name
     if name in refused:
         return f"needs plugin {name!r}, which was refused: {refused[name]}"
     version = candidates[name].version if name in candidates else active.get(name)
     if version is None:
         return f"needs plugin {name!r}, which is not installed or not enabled"
-    if not _in_range(req, version):
-        return f"needs plugin {req}, but {name} {version} is installed"
+    if not _in_range(dep, version):
+        return f"needs plugin {dep.spec}, but {name} {version} is installed"
     return None
 
 
@@ -592,7 +606,7 @@ def resolve(candidates: dict[str, Candidate], active: dict[str, str] | None = No
         try:
             reqs[cid] = (_parse(c.dependencies), _parse(c.optional_dependencies))
         except InvalidRequirement as e:
-            refused[cid] = f"invalid dependency {str(e).split(chr(10))[0]}"
+            refused[cid] = str(e).splitlines()[0]
             reqs[cid] = ([], [])
     while True:
         _refuse_unsatisfied(candidates, active, reqs, refused)
@@ -608,7 +622,7 @@ def resolve(candidates: dict[str, Candidate], active: dict[str, str] | None = No
         declared={c: frozenset(r.name for r in reqs[c][0] + reqs[c][1]) for c in candidates})
 ```
 
-Note on the invalid-specifier message: `packaging` raises `InvalidRequirement` whose first line quotes the spec; the test only checks the prefix `invalid dependency 'vdf >>> 1'`. If the installed `packaging` words it differently, build the message as `f"invalid dependency {spec!r}: {e}"` by parsing each spec in a loop that knows `spec` — keep the test's prefix.
+Messages quote the spec as written in plugin.json (`_Dep.spec`): `str(Requirement("vdf>=1.2,<2"))` is `vdf<2,>=1.2`, and `InvalidRequirement`'s own message does not contain the spec (both verified 2026-10-14).
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
@@ -916,10 +930,11 @@ def _entry_point_desc_path(ep) -> Optional[Path]:
 
     simplify: editable installs often list no package files, so their plugin.json is not found and the
     plugin loads without dependencies. Upgrade path: fall back to importlib.util.find_spec(ep.module)."""
-    files = ep.dist.files if ep.dist is not None else None
-    if not files:
+    files = getattr(getattr(ep, "dist", None), "files", None)
+    module = getattr(ep, "module", "")
+    if not files or not module:
         return None
-    parts = ep.module.split(".")
+    parts = module.split(".")
     wanted = {"/".join(parts + ["plugin.json"]), "/".join(parts[:-1] + ["plugin.json"])}
     found = next((f for f in files if f.as_posix() in wanted), None)
     return Path(ep.dist.locate_file(found)) if found is not None else None
@@ -1038,8 +1053,8 @@ from .context import STATES
 
 Run: `uv run pytest tests/test_plugin_activation.py -q`
 Expected: `11 passed`.
-Run: `uv run pytest tests/test_plugin_load_gate.py tests/test_plugins_live_loading.py tests/test_appstore_install.py tests/test_plugin_compat.py tests/test_sciqlop_app_incompatible_plugins_notice.py -q`
-Expected: all pass. If one fails because it asserted on the removed `_load_entry_point_plugin`, point it at `load_one(None, name, mw, {name: ep})` with the same assertion.
+Run: `uv run pytest tests/test_plugin_load_gate.py tests/test_plugins_live_loading.py tests/test_plugin_compat.py tests/test_sciqlop_app_incompatible_plugins_notice.py -q`
+Expected: all pass. (`tests/test_appstore_install.py` patches the deleted `_load_entry_point_plugin` in three tests; Task 5 rewrites them, so it is not run here.)
 
 - [ ] **Step 6: Commit**
 
@@ -1055,6 +1070,7 @@ git commit -m "feat(plugins): activate(ctx) contract, dependency-ordered two-pha
 **Files:**
 - Modify: `SciQLop/components/plugins/backend/live_loader.py:61-66` (`_load`)
 - Modify: `SciQLop/components/appstore/backend.py:135-171` (`_try_load_plugin`)
+- Modify: `tests/test_appstore_install.py:174-250` (`TestTryLoadPluginSettingsBookkeeping`: three tests patch the deleted `_load_entry_point_plugin`)
 - Test: `tests/test_plugin_live_activation.py`
 
 **Interfaces:**
@@ -1172,6 +1188,28 @@ and the imports inside `_try_load_plugin` changed to:
     from SciQLop.components.plugins.backend.loader.context import STATES
 ```
 
+- [ ] **Step 3b: Rewrite the three app-store bookkeeping tests**
+
+They patched `loader._load_entry_point_plugin`, which Task 4 deleted, and their fake entry points had no
+`.load`/`.module`. Give each fake entry point a module object instead, and drop the patch. In
+`tests/test_appstore_install.py`, add above the class:
+
+```python
+def _fake_entry_point(name, dist_name, requires, loaded):
+    module = SimpleNamespace(load=lambda main_window: loaded.append(name))
+    return SimpleNamespace(name=name, module=name, load=lambda: module,
+                           dist=SimpleNamespace(name=dist_name, requires=requires, files=None))
+```
+
+then in the three tests replace each `ep = SimpleNamespace(name=..., dist=SimpleNamespace(...))` with
+`ep = _fake_entry_point("<name>", "<dist-name>", [<requires>], loaded)` (create `loaded = []` before it in
+the third test too), and delete every `monkeypatch.setattr(... "_load_entry_point_plugin", ...)` line.
+Keep all assertions: the incompatible plugin still never reaches `load` (`loaded == []`, reason mentions
+SciQLop); the compatible one loads (`loaded == ["ok_plugin"]`, `reason is None`); the third still
+patches `_discover_entry_point_plugins` and asserts `ok_plugin` is not in `new_enabled_plugins()`.
+Add the `fresh` fixture (`from tests.test_plugin_activation import fresh`) to the second and third test
+signatures so `STATES`/`loaded_plugins` are restored.
+
 - [ ] **Step 4: Run the new and the existing live/app-store tests**
 
 Run: `uv run pytest tests/test_plugin_live_activation.py tests/test_plugins_live_loading.py tests/test_appstore_install.py -q`
@@ -1181,7 +1219,7 @@ Expected: all pass.
 
 ```bash
 git add tests/test_plugin_live_activation.py
-git commit -m "feat(plugins): live install resolves plugin dependencies and reports failed activation" -- SciQLop/components/plugins/backend/live_loader.py SciQLop/components/appstore/backend.py tests/test_plugin_live_activation.py
+git commit -m "feat(plugins): live install resolves plugin dependencies and reports failed activation" -- SciQLop/components/plugins/backend/live_loader.py SciQLop/components/appstore/backend.py tests/test_plugin_live_activation.py tests/test_appstore_install.py
 ```
 
 ---
@@ -1438,9 +1476,15 @@ def test_a_contributed_scene_gets_its_tree_node(main_window, monkeypatch):
     from SciQLopPlots import ProductsModel
     from SciQLop.components.scenes import registry
     from SciQLop.components.scenes.model import Scene
+    from SciQLop.components.scenes.tree import follow_registries
     monkeypatch.setattr(registry.SCENES, "_items", {})
+    monkeypatch.setattr(registry.SCENES, "signals", type(registry.SCENES.signals)())
+    follow_registries()
     registry.SCENES.contribute(Scene("Tree probe", "earth", "GSM", {}), owner="probe")
-    assert ProductsModel.node(["Scenes", "Tree probe"]) is not None
+    try:
+        assert ProductsModel.node(["Scenes", "Tree probe"]) is not None
+    finally:
+        ProductsModel.instance().remove_node(["Scenes", "Tree probe"])
 ```
 
 (`main_window` comes from `tests/fixtures.py`; add `from tests.fixtures import *  # noqa: F401,F403` at the top of the file if `tests/scenes/conftest.py` does not already re-export it — check how `tests/scenes/test_scene_tree.py` gets `main_window` and do the same.)
@@ -1486,16 +1530,15 @@ SCENES: Registry = declare(Registry("sciqlop.scenes.scenes", "scene"))
 Change the registry import at the top of `SciQLop/components/scenes/tree.py` to `from .registry import BOUNDARIES, SCENES`, then append:
 
 ```python
-_following = []
-
-
 def follow_registries() -> None:
-    """List every boundary and scene in the products tree as it is contributed, whoever contributes it."""
-    if _following:
-        return
-    BOUNDARIES.signals.added.connect(add_boundary_node)
-    SCENES.signals.added.connect(add_scene_node)
-    _following.append(True)
+    """List every boundary and scene in the products tree as it is contributed, whoever contributes it.
+
+    Main thread only. Marks the signals object it connected, so it is idempotent and reconnects when a test
+    swaps in fresh signals."""
+    for registry, add_node in ((BOUNDARIES, add_boundary_node), (SCENES, add_scene_node)):
+        if not getattr(registry.signals, "_tree_follows", False):
+            registry.signals.added.connect(add_node)
+            registry.signals._tree_follows = True
 ```
 
 In `SciQLop/user_api/scenes/__init__.py`, `register_boundary` and `register_scene` drop their `_tree.add_*_node(...)` lines (the docstrings keep saying the item is listed in the products tree — it still is, through the signal):
@@ -1513,7 +1556,7 @@ def register_scene(scene: Scene, replace: bool = False) -> Scene:
     return SCENES.register(scene, replace)
 ```
 
-and add, below the imports, `_tree.follow_registries()` so a notebook that imports `user_api.scenes` outside the app still gets nodes.
+No import-time call: the connection is made once on the main thread at startup (below), never as a side effect of importing `user_api.scenes`.
 
 In `SciQLop/sciqlop_app.py`, before `load_all(main_windows)`:
 
@@ -1571,7 +1614,20 @@ with
     activate(PluginContext("planetary_scenes", "1.0.0", main_window, frozenset()))
 ```
 
-and in `tests/scenes/conftest.py` `earth` fixture and `tests/scenes/test_registry.py` `registries` fixture, also reset owners: after each `monkeypatch.setattr(reg, "_items", {})` add `monkeypatch.setattr(reg, "_owners", {})`.
+and in `tests/scenes/conftest.py` `earth` fixture and `tests/scenes/test_registry.py` `registries` fixture, isolate each registry completely — items, owners and signals — so unit tests registering scenes never write to the session-wide products tree. After each `monkeypatch.setattr(reg, "_items", {})` add:
+
+```python
+        monkeypatch.setattr(reg, "_owners", {})
+        monkeypatch.setattr(reg, "signals", type(reg.signals)())
+```
+
+In `tests/scenes/conftest.py` `registered` fixture, which does want tree nodes, compute `roots` first (the `earth` registrations no longer create nodes, so the teardown list is right again), then connect the fresh signals before activating:
+
+```python
+    roots = [r for r in ("Scenes", "Models") if ProductsModel.node([r]) is None]
+    from SciQLop.components.scenes.tree import follow_registries
+    follow_registries()
+```
 
 - [ ] **Step 7: Run the scenes tests**
 
