@@ -27,6 +27,10 @@ from ._thread_safety import on_main_thread, GuardedImpl
 import numpy as np
 from speasy.products import SpeasyVariable as _SpeasyVariable
 from speasy.core import datetime64_to_epoch as _datetime64_to_epoch
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from SciQLop.user_api.scenes import ScenePlot
 
 # A graph's busy flag drops when the fetch ends, but its resampled data (and the
 # axis rescale) lands ~20 ms later, and the legend's busy marker lingers for
@@ -376,6 +380,20 @@ class PlotPanel(GuardedImpl):
         _apply_graph_options(_g, line_style, line_shape, gap_threshold)
         wrapped_plot = to_plot(_p)
         return wrapped_plot, to_plottable(_g, plot=wrapped_plot)
+
+    @on_main_thread
+    def plot_scene(self, scene) -> "ScenePlot":
+        """Plot a planetary scene (a registered name or a Scene): the body, its boundaries
+        summarised over the panel's time range, all in the scene's frame and unit.
+        Add spacecraft with ``add_trajectory``."""
+        from SciQLop.components.scenes.model import resolve
+        from SciQLop.components.scenes.scene_plot import create_scene_plot
+        from SciQLop.user_api.scenes import ScenePlot
+        resolved = resolve(scene)
+        sp = ScenePlot(create_scene_plot(self._get_impl_or_raise(), resolved), resolved)
+        for kind, model in resolved.boundaries.items():
+            sp.set_boundary(kind, model)
+        return sp
 
     @on_main_thread
     @_tracing.traced("PlotPanel.plot_function", cat="plot")
