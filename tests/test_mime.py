@@ -68,10 +68,10 @@ def test_time_range_dnd_callback_ignores_undecodable_drop(qapp):
     plotting layer with None."""
     from unittest.mock import MagicMock
     from PySide6.QtCore import QMimeData
-    from SciQLop.components.plotting.ui.time_sync_panel import TimeRangeDnDCallback
+    from SciQLop.components.plotting.drops import RuleDnDCallback
     from SciQLop.core.mime.types import TIME_RANGE_MIME_TYPE
 
-    callback = TimeRangeDnDCallback(None)
+    callback = RuleDnDCallback(TIME_RANGE_MIME_TYPE, False, None)
     plot = MagicMock()
     bad_mime = QMimeData()
     bad_mime.setData(TIME_RANGE_MIME_TYPE, b"not json")

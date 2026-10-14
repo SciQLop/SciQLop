@@ -3,6 +3,10 @@ import pytest
 from PySide6.QtCore import QModelIndex, Qt
 
 from SciQLop.components.scenes import registry, tree
+from SciQLop.core.drop_rules import rule_for
+from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE
+from SciQLop.core.plot_kinds import PROJECTION, TIMESERIES
+from SciQLop.core.product_kinds import BOUNDARY, LAYER, SCALAR, SCENE
 
 from ..fixtures import *  # noqa: F401, F403
 from .helpers import overlay_text, proj_of
@@ -11,14 +15,21 @@ SHUE = ["Models", "Earth", "magnetopause", "Shue 1998 (Dp=2 nPa, Bz=0)"]
 EARTH_SCENE = ["Scenes", "Earth environment"]
 
 
+@pytest.fixture(autouse=True)
+def core_extension_points(qapp):
+    from SciQLop.components.extension_points import prepare_extension_points
+    prepare_extension_points()
+
+
 @pytest.mark.parametrize("kind, on_scene, expected", [
-    ("scene", False, "plot_scene"), ("scene", True, "plot_scene"),
-    ("boundary", True, "set_boundary"), ("boundary", False, "refuse"),
-    ("product", True, "add_trajectory"), ("product", False, "plot_product"),
-    ("layer", False, "attach_layer"), ("layer", True, "attach_layer"),
+    (SCENE, False, "plot_scene"), (SCENE, True, "plot_scene"),
+    (BOUNDARY, True, "set_boundary"), (BOUNDARY, False, "refuse"),
+    (SCALAR, True, "add_trajectory"), (SCALAR, False, "_plot_product_drop"),
+    (LAYER, False, "_attach_layer"), (LAYER, True, "_attach_layer"),
 ])
 def test_drop_table(kind, on_scene, expected):
-    assert tree.drop_handler(kind, on_scene).__name__ == expected
+    rule = rule_for(PRODUCT_LIST_MIME_TYPE, kind, PROJECTION if on_scene else TIMESERIES)
+    assert rule.drop.__name__ == expected
 
 
 def _child(model, parent, name):
@@ -168,15 +179,23 @@ def test_a_position_product_dropped_on_a_scene_goes_through_add_trajectory(
     assert proj.time_color_enabled()
 
 
-def test_a_failing_drop_never_raises_and_shows_why(plot_panel, registered, qtbot, monkeypatch):
-    import SciQLopPlots
-    from SciQLopPlots import ProductsModelNode
+def test_a_failing_drop_never_raises_and_shows_why(plot_panel, registered, qtbot):
+    from SciQLop.core.drop_rules import DROP_RULES, DropRule
+    from SciQLop.core.extensions import owned_by
+
+    def boom(plot, product, panel):
+        raise RuntimeError("boom")
+
     plot = _plot_with_data(plot_panel)
     mime = _mime(EARTH_SCENE)
-    monkeypatch.setattr(SciQLopPlots.ProductsModel, "node",
-                        lambda path: ProductsModelNode("odd", {"sciqlop_kind": "unheard-of"}))
-    plot_panel._impl._product_plot_callback.call(plot, mime)
-    qtbot.waitUntil(lambda: "Earth environment" in overlay_text(plot), timeout=5000)
+    with owned_by("failing_drop"):
+        DROP_RULES.contribute(DropRule("failing_drop.scene", PRODUCT_LIST_MIME_TYPE, boom, product_kind=SCENE,
+                                       target=TIMESERIES))
+    try:
+        plot_panel._impl._product_plot_callback.call(plot, mime)
+        qtbot.waitUntil(lambda: "Earth environment" in overlay_text(plot), timeout=5000)
+    finally:
+        DROP_RULES.remove_owner("failing_drop")
 
 
 def test_a_refusal_on_a_deleted_plot_does_not_raise(plot_panel, qtbot):

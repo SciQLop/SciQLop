@@ -42,6 +42,9 @@ def test_decode_skips_unknown_catalogs(qtbot, qapp):
     assert decoded == []
 
 
+from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE  # noqa: E402
+
+
 def test_drop_catalog_on_panel_adds_overlay(qtbot, qapp):
     from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
     from SciQLop.core.mime import encode_mime
@@ -51,7 +54,7 @@ def test_drop_catalog_on_panel_adds_overlay(qtbot, qapp):
     cat = provider.catalogs()[0]
 
     mime = encode_mime([cat])
-    panel._catalog_plot_callback.call(None, mime)
+    panel._drop_callbacks[CATALOG_LIST_MIME_TYPE].call(None, mime)
     assert cat.uuid in panel.catalog_manager.catalog_uuids
 
 
@@ -64,7 +67,7 @@ def test_drop_multiple_catalogs_on_panel(qtbot, qapp):
     cats = provider.catalogs()
 
     mime = encode_mime(cats)
-    panel._catalog_plot_callback.call(None, mime)
+    panel._drop_callbacks[CATALOG_LIST_MIME_TYPE].call(None, mime)
     for cat in cats:
         assert cat.uuid in panel.catalog_manager.catalog_uuids
 

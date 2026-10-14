@@ -11,6 +11,7 @@ def prepare_extension_points() -> None:
     import SciQLop.core.product_kinds  # noqa: F401  declares sciqlop.product_kinds
     import SciQLop.core.source_kinds  # noqa: F401  declares sciqlop.source_kinds
     import SciQLop.core.plot_kinds  # noqa: F401  declares sciqlop.plot_kinds
+    import SciQLop.core.drop_rules  # noqa: F401  declares sciqlop.drop_rules
     from SciQLop.components.catalogs.backend import catalog_mime, event_mime  # noqa: F401
     import SciQLop.components.plotting.core_kinds  # noqa: F401  contributes sciqlop.timeseries
     import SciQLop.components.scenes.contributions  # noqa: F401  contributes sciqlop.scenes.projection

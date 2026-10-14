@@ -33,6 +33,7 @@ from SciQLop.core.source_kinds import VP
 from SciQLop.core.plot_hints import apply_plot_hints, combine_hints, merge_hints, PlotHints
 from SciQLop.core.property import SciQLopProperty
 from SciQLop.core.mime import decode_mime
+from SciQLop.components.plotting.drops import accept_drop_rules
 import SciQLop.components.plotting.core_kinds  # noqa: F401  plot_product needs the time-series plot kind
 from SciQLop.components.plotting.ui.diagnostic_overlay import overlay_of
 from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE, CATALOG_LIST_MIME_TYPE
@@ -1260,40 +1261,6 @@ def attach_layer(plot, product: list[str], panel=None):
                                 scope=provider.resolve_scope())
 
 
-class ProductDnDCallback(PlotDragNDropCallback):
-    def __init__(self, parent):
-        super().__init__(PRODUCT_LIST_MIME_TYPE, True, parent)
-
-    def call(self, plot, mime_data: QMimeData):
-        from SciQLop.components.scenes.tree import drop
-        for product in decode_mime(mime_data, [PRODUCT_LIST_MIME_TYPE]):
-            drop(plot, product, self.parent())
-
-
-class TimeRangeDnDCallback(PlotDragNDropCallback):
-    def __init__(self, parent):
-        super().__init__(TIME_RANGE_MIME_TYPE, False, parent)
-
-    def call(self, plot, mime_data: QMimeData):
-        time_range = decode_mime(mime_data, [TIME_RANGE_MIME_TYPE])
-        if time_range is None:
-            return
-        plot.time_axis().set_range(time_range)
-
-
-class CatalogDnDCallback(PlotDragNDropCallback):
-    def __init__(self, parent):
-        super().__init__(CATALOG_LIST_MIME_TYPE, False, parent)
-
-    def call(self, plot, mime_data: QMimeData):
-        catalogs = decode_mime(mime_data, [CATALOG_LIST_MIME_TYPE])
-        if not catalogs:
-            return
-        manager = self.parent().catalog_manager
-        for cat in catalogs:
-            manager.add_catalog(cat)
-
-
 class TimeSyncPanel(SciQLopMultiPlotPanel):
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None,
@@ -1303,12 +1270,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self.setWindowTitle(name)
         self._parent_node = None
         self._template_source_path: str | None = None
-        self._product_plot_callback = ProductDnDCallback(self)
-        self._time_range_plot_callback = TimeRangeDnDCallback(self)
-        self._catalog_plot_callback = CatalogDnDCallback(self)
-        self.add_accepted_mime_type(self._product_plot_callback)
-        self.add_accepted_mime_type(self._time_range_plot_callback)
-        self.add_accepted_mime_type(self._catalog_plot_callback)
+        accept_drop_rules(self)
         self.set_color_palette(make_color_list(Palette()))
         self.update_theme()
         if time_range is not None:

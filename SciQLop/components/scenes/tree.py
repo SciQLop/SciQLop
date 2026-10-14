@@ -124,38 +124,8 @@ def refuse(plot, product, panel):
                  f"{product[-1]} is a model: drop it on a scene plot of its body")
 
 
-def plot_product(plot, product, panel):
-    from SciQLop.components.plotting.ui.time_sync_panel import plot_product as _plot_product
-    _plot_product(plot, product)
-
-
-def attach_layer(plot, product, panel):
-    from SciQLop.components.plotting.ui.time_sync_panel import attach_layer as _attach_layer
-    _attach_layer(plot, product, panel=panel)
-
-
-_TABLE = {
-    ("scene", False): plot_scene, ("scene", True): plot_scene,
-    ("boundary", True): set_boundary, ("boundary", False): refuse,
-    ("product", True): add_trajectory, ("product", False): plot_product,
-    ("layer", False): attach_layer, ("layer", True): attach_layer,
-}
-
-
-def drop_handler(kind: str, target_is_scene: bool):
-    return _TABLE[(kind, target_is_scene)]
-
-
 def drop(plot, product: list[str], panel):
     """Put *product* on *plot* (None: on *panel*) as its kind says. Never raises: a refusal or
     failure shows why. Returns the ScenePlot a scene or model went to, else None."""
-    kind = kind_of(product)
-    if kind is None:
-        return None
-    plot = concrete_plot(plot)
-    try:
-        return drop_handler(kind, scene_plot_for(plot) is not None)(plot, product, panel)
-    except Exception as e:
-        log.error(f"drop of {product} failed", exc_info=True)
-        show_refusal(plot, panel, f"{product[-1]}: {e}")
-        return None
+    from SciQLop.components.plotting.drops import drop_product
+    return drop_product(plot, product, panel)

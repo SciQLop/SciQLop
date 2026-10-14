@@ -113,6 +113,32 @@ Plot panels from `user_api` live in SciQLop's central area, not in your dock.
   argument type or order in an overloaded call, not an import problem.
 - Use matplotlib only for exported, offline figures.
 
+## Drop rules
+
+What a drop on a plot does is a contribution to `sciqlop.drop_rules`
+(`from SciQLop.core.drop_rules import DROP_RULES, DropRule`). Every plot panel
+accepts each MIME type that has rules, including MIME types contributed later.
+
+`DropRule(id, mime_type, drop, product_kind=None, target=None, creates_plot=False)`:
+- `drop(plot, payload, panel)` does the work. `plot` is None when the drop is on the panel itself.
+  For `PRODUCT_LIST_MIME_TYPE` the payload is one product path. A rule that raises shows the error on the plot.
+- `product_kind` is the dragged product's kind id and `target` is the plot kind id of the plot dropped on.
+  None matches anything.
+- `creates_plot=True` lets a drop between plots make a new plot for it.
+- The most specific matching rule wins: a matching `product_kind` weighs 2, a matching `target` weighs 1,
+  and ties go to the smallest id.
+
+```python
+from SciQLop.core.drop_rules import DropRule
+from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE
+
+ctx.contribute("sciqlop.drop_rules", DropRule("my_plugin.show_vdf", PRODUCT_LIST_MIME_TYPE,
+                                         lambda plot, product, panel: show_vdf(plot, product),
+                                         product_kind="my_plugin.distribution", creates_plot=True))
+```
+
+Contribute through `ctx` in `activate(ctx)` so the rule goes away with the plugin.
+
 ## Settings
 
 ```python
