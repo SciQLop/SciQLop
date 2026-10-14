@@ -6,7 +6,7 @@
 sciqlop_my_plugin/              # folder you add to SciQLop's plugin folders
 ├── pyproject.toml              # pip name: sciqlop-my-plugin
 └── sciqlop_my_plugin/          # import name, = plugin id in SciQLop's settings
-    ├── __init__.py             # load(main_window)
+    ├── __init__.py             # activate(ctx)
     ├── plugin.json
     └── tests/
 ```
@@ -48,7 +48,7 @@ Details: [plugin-contract.md](plugin-contract.md).
   A missing one skips the plugin.
 - `python_dependencies` are pip requirements. The `SciQLop>=X,<Y` range is
   the compatibility gate: SciQLop skips a plugin whose range excludes the
-  running version, instead of letting `load()` crash on an API it doesn't
+  running version, instead of letting `activate()` crash on an API it doesn't
   have. Without a range the plugin always loads. Declare it, and cap it at the
   next minor release you have not tested. The host is compared by its base
   version, so a `0.14.1.dev0` build satisfies `>=0.14.0`: no `.dev0` floors. It does not interfere with

@@ -17,6 +17,7 @@
 | `python_dependencies` | pip packages (numpy…); never other plugins |
 
 A packaged plugin ships `plugin.json` next to the module its `sciqlop.plugins` entry point names, and lists it in package data.
+Editable installs often list no files, so their `plugin.json` is not found and the plugin loads without dependencies.
 
 ## ctx
 
@@ -32,6 +33,8 @@ Extension points are main-thread objects: contributing from another thread raise
 Core ids today: `sciqlop.scenes.bodies`, `sciqlop.scenes.boundaries`, `sciqlop.scenes.scenes`.
 
 ## Collaborating with another plugin
+
+Hypothetical example: `vdf`, `vdf.reconstruction_methods`, `vdf.Method` and `mars` are made-up names.
 
 ```python
 def activate(ctx):
@@ -58,4 +61,4 @@ from SciQLop.components.plugins.testing import assert_provides_matches
 assert_provides_matches("myplugin", "myplugin/plugin.json")   # after activating the plugin
 ```
 
-At startup the loader runs the same check and only logs a warning on drift.
+At startup the loader runs the same check and only logs a warning on drift. It applies only to `activate` plugins that ship a `plugin.json`.

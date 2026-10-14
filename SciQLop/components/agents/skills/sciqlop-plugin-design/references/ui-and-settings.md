@@ -1,6 +1,9 @@
 # UI, threading and settings
 
-## `load(main_window)`
+## `activate(ctx)` (older plugins: `load(main_window)`)
+
+The rules below apply to both. `activate(ctx)` reaches the main window as
+`ctx.main_window`; `load(main_window)` stays supported.
 
 - Called once, on the GUI thread, at startup. Keep it fast: register products,
   build widgets, return. No network calls here; start them in the background.
@@ -160,9 +163,9 @@ The chat dock belongs to SciQLop. A backend plugin contributes a class only:
 ```python
 from SciQLop.components.agents import ensure_agent_dock, register_agent_backend
 
-def load(main_window):
+def activate(ctx):
     register_agent_backend(MyBackend)        # needs MyBackend.display_name
-    return ensure_agent_dock(main_window)
+    return ensure_agent_dock(ctx.main_window)
 ```
 
 - For a CLI agent that speaks ACP, subclass

@@ -64,7 +64,7 @@ vp = create_virtual_product("myplugin/b_total", b_total,
   annotations (`SpeasyVariable`, `Knob`, `Scalar`, …) must be imported at
   module top. Otherwise SciQLop silently falls back: time arguments of unknown
   type, knobs and annotated labels lost.
-- **Keep the returned `VirtualProduct`** (return it from `load()`, or store it
+- **Keep the returned `VirtualProduct`** (return it from `activate()`, or store it
   on your plugin object). Plot it with `panel.plot(vp)` or by path with
   `panel.plot_product("myplugin//b_total")`.
 - Registering again at the same path replaces the tree node, but the old
@@ -159,7 +159,7 @@ Rules:
 - Cap the work per call and say so. Returning only the first N files shows
   data at the window start and nothing after: it looks like a fetch bug.
 - If the search UI creates products on demand (the user picks a station),
-  persist what was created, and re-register it in `load()` without network
+  persist what was created, and re-register it in `activate()` without network
   calls. Otherwise saved panels referencing it fail after a restart. A
   settings field marked `json_schema_extra={"widget": "hidden"}` is a good
   store: persisted, not shown in the settings page.

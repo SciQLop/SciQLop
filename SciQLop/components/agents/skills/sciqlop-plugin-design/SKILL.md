@@ -48,7 +48,7 @@ and [references/ui-and-settings.md](references/ui-and-settings.md).
 my_plugin/                  # folder added to SciQLop's plugin folders
 ├── pyproject.toml          # name = "sciqlop-my-plugin"
 └── my_plugin/              # the package SciQLop imports
-    ├── __init__.py         # defines or re-exports load()
+    ├── __init__.py         # defines or re-exports activate()
     ├── plugin.json         # REQUIRED for folder discovery
     └── tests/
 ```
