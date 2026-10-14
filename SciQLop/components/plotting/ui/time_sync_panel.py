@@ -875,7 +875,20 @@ def _owning_time_sync_panel(widget) -> Optional["TimeSyncPanel"]:
     return widget
 
 
+def _plot_scene_item(p, product: List[str], kwargs):
+    """Scenes and models have no data provider: they go where a drop would put them."""
+    from SciQLop.components.scenes.tree import drop
+    from SciQLop.components.scenes.scene_plot import concrete_plot
+    target = concrete_plot(_resolve_plot_target(p, kwargs)[0])
+    panel = _owning_time_sync_panel(target)
+    sp = drop(None if target is panel else target, product, panel)
+    return None if sp is None else (sp._get_impl_or_raise(), None)
+
+
 def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], product: List[str], **kwargs):
+    from SciQLop.components.scenes.tree import SCENE_KINDS, kind_of
+    if isinstance(product, list) and kind_of(product) in SCENE_KINDS:
+        return _plot_scene_item(p, product, kwargs)
     r = _plot_product(p, product, **kwargs)
     panel = _owning_time_sync_panel(p) if r is not None else None
     if panel is not None:
@@ -1254,18 +1267,9 @@ class ProductDnDCallback(PlotDragNDropCallback):
         super().__init__(PRODUCT_LIST_MIME_TYPE, True, parent)
 
     def call(self, plot, mime_data: QMimeData):
-        from SciQLop.components.scenes.tree import KIND_KEY, drop_handler, show_drop_error
-        from SciQLop.components.scenes.scene_plot import scene_plot_for
+        from SciQLop.components.scenes.tree import drop
         for product in decode_mime(mime_data):
-            node = ProductsModel.node(product)
-            if node is None:
-                continue
-            kind = node.metadata().get(KIND_KEY, "product")
-            try:
-                drop_handler(kind, scene_plot_for(plot) is not None)(plot, product, self.parent())
-            except Exception as e:
-                log.error(f"drop of {product} failed", exc_info=True)
-                show_drop_error(plot, f"{product[-1]}: {e}")
+            drop(plot, product, self.parent())
 
 
 class TimeRangeDnDCallback(PlotDragNDropCallback):

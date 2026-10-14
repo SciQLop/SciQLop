@@ -5,35 +5,11 @@ import pytest
 import shiboken6
 from PySide6.QtCore import Qt
 
-from SciQLop.components.scenes import registry, summary
-from SciQLop.components.scenes.boundary import RadialBoundary
-from SciQLop.plugins.planetary_scenes import register_all
+from SciQLop.components.scenes import summary
 from SciQLop.user_api.plot import TimeRange
 
 from ..fixtures import *  # noqa: F401, F403
-
-
-@pytest.fixture
-def earth(monkeypatch):
-    from scipy.spatial.transform import Rotation
-    from SciQLop.components.scenes import scene_plot
-    for reg in (registry.BODIES, registry.BOUNDARIES, registry.SCENES):
-        monkeypatch.setattr(reg, "_items", {})
-    register_all()
-    monkeypatch.setattr(summary, "rotation", lambda f, t, times: Rotation.identity(len(times)))
-    monkeypatch.setattr(RadialBoundary, "n_samples", 10)   # 18 curves stay well inside the waits
-    scene_plot._cached_summary.cache_clear()
-    yield
-    scene_plot._cached_summary.cache_clear()
-
-
-def wait_for_data(qtbot, graph):
-    qtbot.waitUntil(lambda: graph.data() is not None and graph.data()[0] is not None
-                    and len(graph.data()[0]) > 0, timeout=5000)
-
-
-def proj_of(sp):
-    return sp.projection._get_impl_or_raise()
+from .helpers import overlay_text, proj_of, wait_for_data  # noqa: F401
 
 
 def pane_labels(sp):
@@ -43,10 +19,6 @@ def pane_labels(sp):
 
 def expected_labels(frame, unit):
     return [(f"{'XYZ'[i]} {frame} [{unit}]", f"{'XYZ'[j]} {frame} [{unit}]") for i, j in summary.PANES]
-
-
-def overlay_text(sub):
-    return sub.overlay().text() or ""
 
 
 def test_a_scene_plot_has_three_labelled_panes(plot_panel, earth):

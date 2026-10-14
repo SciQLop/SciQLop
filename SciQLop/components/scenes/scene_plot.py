@@ -237,8 +237,15 @@ def remember_scene_plot(proj, scene_plot) -> None:
     proj.destroyed.connect(lambda *_: _SCENE_PLOTS.pop(key, None))
 
 
+def concrete_plot(plot):
+    """``panel.plots()`` hands out SciQLopPlotInterfacePtr wrappers; the plot itself is behind ``data()``."""
+    data = getattr(plot, "data", None)
+    return data() if callable(data) else plot
+
+
 def scene_plot_for(widget):
     """The ScenePlot showing *widget*: the projection itself or one of its panes; None otherwise."""
+    widget = concrete_plot(widget)
     while widget is not None:
         found = _SCENE_PLOTS.get(_key(widget))
         if found is not None:

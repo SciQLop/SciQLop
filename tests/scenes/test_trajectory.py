@@ -7,24 +7,9 @@ from SciQLop.components.scenes.model import ResolvedScene
 from SciQLop.plugins.planetary_scenes import BODIES_DATA, SCENES_DATA
 
 from ..fixtures import *  # noqa: F401, F403
-from .test_scene_plot import earth, proj_of, wait_for_data  # noqa: F401
-
-
-class FakeVariable:
-    def __init__(self, values, meta):
-        self.time = np.array(["2015-10-16T00:00", "2015-10-16T00:10"], dtype="datetime64[ns]")
-        self.values = np.asarray(values, dtype=float)
-        self.meta = meta
-        self.unit = meta.get("UNITS")
-
+from .helpers import RE, FakeVariable, proj_of, threedview_meta, wait_for_data
 
 EARTH = ResolvedScene(SCENES_DATA[0], BODIES_DATA[0], {})
-RE = 6371.2
-
-
-def threedview_meta(frame):
-    """The metadata speasy gives a cdpp3dview trajectory (recorded 2026-10-14)."""
-    return {"CATDESC": f"position in {frame} frame", "UNITS": "km", "FIELDNAM": "Position"}
 
 
 def fake_variable_for_all(monkeypatch, variable):
@@ -39,27 +24,6 @@ def counted_rotations(monkeypatch):
     monkeypatch.setattr(scene_plot, "rotation",
                         lambda f, to, times: calls.append((f, to)) or Rotation.identity(len(times)))
     return calls
-
-
-@pytest.fixture
-def fake_speasy(monkeypatch):
-    requests = []
-
-    def get_data(product, start, stop, **kwargs):
-        requests.append((product, kwargs))
-        if product.startswith("cdpp3dview/"):
-            return FakeVariable([[RE, 0, 0], [2 * RE, 0, 0]], threedview_meta("GSM"))
-        if product.endswith("r_gse"):
-            return FakeVariable([[RE, 0, 0, RE], [0, RE, 0, RE]], {"UNITS": "km", "COORDINATE_SYSTEM": "GSE>x"})
-        if product.endswith("rtn"):
-            return FakeVariable([[1, 0, 0]] * 2, {"UNITS": "km", "COORDINATE_SYSTEM": "RTN"})
-        if product.endswith("r_gsm"):
-            return FakeVariable([[RE, 0, 0]] * 2, {"UNITS": "km", "COORDINATE_SYSTEM": "GSM"})
-        return FakeVariable([[1, 0, 0]] * 2, {"UNITS": "km"})
-
-    import speasy
-    monkeypatch.setattr(speasy, "get_data", get_data)
-    return requests
 
 
 def test_a_3dview_body_is_fetched_in_the_scene_frame_and_scaled(fake_speasy):
