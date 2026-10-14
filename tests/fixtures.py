@@ -40,8 +40,8 @@ def _build_main_window(qapp):
     mw = SciQLopMainWindow()
     mw.show()
     qapp.processEvents()
-    from SciQLop.components.scenes.tree import follow_registries
-    follow_registries()
+    from SciQLop.components.extension_points import prepare_extension_points
+    prepare_extension_points()
     load_all(mw)
     register_builtin_commands(qapp.command_registry)
     harvest_qactions(qapp.command_registry, mw)

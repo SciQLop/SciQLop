@@ -27,8 +27,8 @@ def test_a_contributed_scene_gets_its_tree_node(main_window, isolated_registries
     from SciQLopPlots import ProductsModel
     from SciQLop.components.scenes import registry
     from SciQLop.components.scenes.model import Scene
-    from SciQLop.components.scenes.tree import follow_registries
-    follow_registries()
+    from SciQLop.components.extension_points import prepare_extension_points
+    prepare_extension_points()
     registry.SCENES.contribute(Scene("Tree probe", "earth", "GSM", {}), owner="probe")
     try:
         assert ProductsModel.node(["Scenes", "Tree probe"]) is not None
