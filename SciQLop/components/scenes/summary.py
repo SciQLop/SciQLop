@@ -9,7 +9,9 @@ from .frames import rotation
 
 PANES = ((0, 1), (1, 2), (2, 0))   # XY, YZ, ZX
 N_ANGLES = 720
-_GAP = 3  # a resampled angle farther than this many section steps from any valid point is a gap
+# A resampled angle whose valid neighbours on either side are more than this many section steps
+# apart is a gap. Distance to the nearest neighbour alone would keep a hook past an open end.
+_GAP = 3
 _REDUCERS = {"median": np.nanmedian, "mean": np.nanmean}
 
 
@@ -41,11 +43,11 @@ def _polar(section: np.ndarray, e1, e2, origin) -> tuple[np.ndarray, np.ndarray]
     return np.arctan2(rel @ e2, rel @ e1), np.hypot(rel @ e1, rel @ e2)
 
 
-def _nearest_distance(grid: np.ndarray, sorted_angles: np.ndarray) -> np.ndarray:
-    """Circular distance from each grid angle to the nearest of sorted_angles, all in [-π, π]."""
+def _bracket_width(grid: np.ndarray, sorted_angles: np.ndarray) -> np.ndarray:
+    """Circular width between the sorted_angles just before and just after each grid angle, all in [-π, π]."""
     ext = np.concatenate([sorted_angles[-1:] - 2 * np.pi, sorted_angles, sorted_angles[:1] + 2 * np.pi])
     i = np.searchsorted(ext, grid)
-    return np.minimum(grid - ext[i - 1], ext[i] - grid)
+    return ext[i] - ext[i - 1]
 
 
 def _resample(angles: np.ndarray, radii: np.ndarray, grid: np.ndarray) -> np.ndarray:
@@ -56,7 +58,7 @@ def _resample(angles: np.ndarray, radii: np.ndarray, grid: np.ndarray) -> np.nda
     a, r = angles[keep][order], radii[keep][order]
     out = np.interp(grid, a, r, period=2 * np.pi)
     step = 2 * np.pi / len(angles)
-    return np.where(_nearest_distance(grid, a) > _GAP * step, np.nan, out)
+    return np.where(_bracket_width(grid, a) > _GAP * step, np.nan, out)
 
 
 def _reduce(reducer, resampled: np.ndarray) -> np.ndarray:

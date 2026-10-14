@@ -43,8 +43,9 @@ def test_open_tail_leaves_a_gap():
     c = circle(3.0)
     c[np.abs(np.arctan2(c[:, 1], c[:, 0])) > np.deg2rad(150)] = np.nan
     s = summarise(c[None], pane=0, origin=np.zeros(3), how="median")
-    tail = np.abs(s.angles) > np.deg2rad(155)
-    assert np.all(np.isnan(s.centre[tail])) and np.all(np.isfinite(s.centre[np.abs(s.angles) < np.deg2rad(140)]))
+    past_the_last_valid_angle = np.abs(s.angles) > np.deg2rad(150) + 1e-9
+    assert np.all(np.isnan(s.centre[past_the_last_valid_angle]))
+    assert np.all(np.isfinite(s.centre[np.abs(s.angles) < np.deg2rad(149)]))
 
 
 class TiltedSphereInGSE(RadialBoundary):
@@ -107,11 +108,14 @@ def test_angles_no_section_reaches_stay_nan_without_warnings():
 
 
 def _brute_force_gap(grid, valid_angles, step):
-    return np.abs(np.angle(np.exp(1j * (grid[:, None] - valid_angles[None, :])))).min(axis=1) > summary._GAP * step
+    """A grid angle is in a gap when the valid angles just before and just after it are too far apart."""
+    ahead = np.mod(valid_angles[None, :] - grid[:, None], 2 * np.pi).min(axis=1)
+    behind = np.mod(grid[:, None] - valid_angles[None, :], 2 * np.pi).min(axis=1)
+    return ahead + behind > summary._GAP * step
 
 
 @pytest.mark.parametrize("seed", range(5))
-def test_gap_mask_matches_the_brute_force_circular_distance(seed):
+def test_gap_mask_matches_the_brute_force_bracketing_pair(seed):
     rng = np.random.default_rng(seed)
     angles = rng.uniform(-np.pi, np.pi, 300)
     radii = np.where(rng.uniform(size=300) < 0.3, np.nan, 2.0)
