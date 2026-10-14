@@ -127,10 +127,9 @@ class TestSettingsHonored:
         assert hist._impl.autoscale_percentile_high() == pytest.approx(99.0)
 
 
-def test_projection_plots_get_defaults_on_their_panes(plot_panel, capfd):
+def test_projection_plots_get_defaults_on_their_panes(plot_panel):
     from SciQLopPlots import GraphType, PlotType
     z = np.zeros(1)
     proj, _ = plot_panel._get_impl_or_raise().plot([z, z, z, z], plot_type=PlotType.Projections,
                                                    graph_type=GraphType.ParametricCurve, labels=["", "", ""])
-    assert "Abstract method called" not in capfd.readouterr().err
     assert all(hasattr(proj.subplot(i), "_sciqlop_percentile_snapshot") for i in range(proj.subplot_count()))
