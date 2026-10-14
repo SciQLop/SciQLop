@@ -1036,14 +1036,19 @@ class _PlotErrorReporter(QObject):
         self._pending = None
         self._shown = True
         if self._plot is not None:
-            self._plot.overlay().show_message(
+            _overlay_of(self._plot).show_message(
                 f"{self.name}: {message}", OverlayLevel.Error,
                 OverlaySizeMode.FitContent, OverlayPosition.Top)
 
     def _clear(self) -> None:
         if self._shown and self._plot is not None:
             self._shown = False
-            self._plot.overlay().clear_message()
+            _overlay_of(self._plot).clear_message()
+
+
+def _overlay_of(plot):
+    """A projection plot has no overlay of its own: its first pane shows its messages."""
+    return plot.overlay() if hasattr(plot, "overlay") else plot.subplot(0).overlay()
 
 
 class _CallbackErrorOverlay(_PlotErrorReporter):

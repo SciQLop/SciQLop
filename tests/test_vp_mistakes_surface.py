@@ -79,3 +79,15 @@ def test_no_data_is_not_an_error(plot_panel, qtbot):
     plot, _ = _plot_vp(plot_panel, nothing)
     qtbot.wait(1000)
     assert plot.overlay().text() == ""
+
+
+def test_a_failing_callback_on_a_projection_says_why_on_its_first_pane(plot_panel, qtbot):
+    from SciQLopPlots import GraphType, PlotType
+    from SciQLop.components.plotting.ui.time_sync_panel import _CallbackErrorOverlay
+    z = np.zeros(1)
+    proj, _ = plot_panel._get_impl_or_raise().plot([z, z, z, z], plot_type=PlotType.Projections,
+                                                   graph_type=GraphType.ParametricCurve, labels=["", "", ""])
+    reporter = _CallbackErrorOverlay(raises)
+    reporter.attach(proj)
+    reporter(0.0, 1.0)
+    qtbot.waitUntil(lambda: "upstream archive unreachable" in proj.subplot(0).overlay().text(), timeout=5000)
