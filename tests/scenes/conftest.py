@@ -3,6 +3,17 @@ import pytest
 from .helpers import RE, FakeVariable, threedview_meta
 
 
+@pytest.fixture(autouse=True)
+def private_matrix_disk_cache(monkeypatch, tmp_path):
+    """Tests feed fake 3DView matrices; the real speasy cache (symlinked by tests/conftest.py)
+    would keep them for a year, so each test gets its own cache directory."""
+    from speasy.core.cache import Cache, CacheCall
+    from SciQLop.components.scenes import frames
+    cached = CacheCall(cache_retention=frames._MATRICES_RETENTION, is_pure=True,
+                       cache_instance=Cache(str(tmp_path / "speasy_cache")))
+    monkeypatch.setattr(frames, "_fragment_matrices", cached(frames._fragment_matrices.__wrapped__))
+
+
 @pytest.fixture
 def earth(monkeypatch):
     from scipy.spatial.transform import Rotation

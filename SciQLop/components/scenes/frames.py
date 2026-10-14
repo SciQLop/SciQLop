@@ -6,14 +6,18 @@ import functools
 import json
 import urllib.parse
 import urllib.request
+from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
 from scipy.spatial.transform import Rotation, Slerp
+from speasy.core.cache import CacheCall
 
 THREEDVIEW_URL = "https://3dview.irap.omp.eu/webresources"
 _SAMPLING_S = 600
-_DAY_S = 86400
+# 3DView answers a week about as fast as a day (0.97 s vs 0.68 s), a month in 4 s, 90 days in 24 s (2026-10-14).
+_FRAGMENT_S = 7 * 86400
+_MATRICES_RETENTION = timedelta(days=7)   # ~70 kB per week of one frame pair
 _FRAMES_FILE = Path(__file__).parent / "resources" / "threedview_frames.json"
 
 
@@ -77,22 +81,27 @@ def transform_matrices(from_frame: str, to_frame: str, start: float, stop: float
         raise FrameError(f"malformed {from_frame} → {to_frame} matrices from 3DView: {e!r}") from e
 
 
-@functools.lru_cache(maxsize=128)
-def _day_rotations(from_frame: str, to_frame: str, day: int) -> tuple[np.ndarray, Rotation]:
-    start = day * _DAY_S
-    times, matrices = transform_matrices(from_frame, to_frame, start, start + _DAY_S, _SAMPLING_S)
+@CacheCall(cache_retention=_MATRICES_RETENTION, is_pure=True)
+def _fragment_matrices(from_frame: str, to_frame: str, fragment: int) -> tuple[np.ndarray, np.ndarray]:
+    start = fragment * _FRAGMENT_S
+    return transform_matrices(from_frame, to_frame, start, start + _FRAGMENT_S, _SAMPLING_S)
+
+
+@functools.lru_cache(maxsize=64)
+def _fragment_rotations(from_frame: str, to_frame: str, fragment: int) -> tuple[np.ndarray, Rotation]:
+    times, matrices = _fragment_matrices(from_frame, to_frame, fragment)
     return times.astype("int64") / 1e9, Rotation.from_matrix(matrices)
 
 
 def _stitched(from_frame: str, to_frame: str, times: np.ndarray) -> tuple[np.ndarray, Rotation]:
-    """simplify: one 3DView request per day, in sequence, with a 128-day cache. A one-year view
-    makes hundreds of requests per pane and the next range change refetches them. Upgrade path:
-    above a few days, one request for the whole span at a coarser sampling (multiple of 600 s)."""
-    days = np.unique(np.floor(times / _DAY_S).astype(int))
-    parts = [_day_rotations(from_frame, to_frame, int(d)) for d in days]
+    """simplify: one 3DView request per week, in sequence; each week is then kept on disk. A first
+    look at a one-year span still makes 53 requests (~50 s). Upgrade path: for long spans, one
+    request at a coarser sampling (multiple of 600 s)."""
+    fragments = np.unique(np.floor(times / _FRAGMENT_S).astype(int))
+    parts = [_fragment_rotations(from_frame, to_frame, int(f)) for f in fragments]
     stamps = np.concatenate([p[0] for p in parts])
     rots = Rotation.concatenate([p[1] for p in parts])
-    stamps, first = np.unique(stamps, return_index=True)  # consecutive days share their midnight sample
+    stamps, first = np.unique(stamps, return_index=True)  # consecutive fragments share their boundary sample
     return stamps, rots[first]
 
 

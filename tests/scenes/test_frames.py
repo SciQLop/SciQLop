@@ -9,21 +9,22 @@ from SciQLop.components.scenes.frames import FrameError, normalise_frame, rotati
 
 DATA = Path(__file__).parent / "data"
 DAY = np.datetime64("2015-10-16", "s").astype("int64")
+RECORDED = [v for f in sorted(DATA.glob("gse_gsm_*.json")) for v in json.loads(f.read_text())["values"]]
 
 
 @pytest.fixture
 def recorded_3dview(monkeypatch):
+    """3DView GSE→GSM matrices recorded for 2015-10-16 and 17, served for any requested span."""
     calls = []
 
     def fake(path, **params):
         calls.append(params)
-        day = params["start"][:10].replace("-", "")
-        return json.loads((DATA / f"gse_gsm_{day}.json").read_text())
+        return {"values": [v for v in RECORDED if params["start"] <= v["time"].rstrip("Z") <= params["stop"]]}
 
     monkeypatch.setattr(frames, "_fetch_json", fake)
-    frames._day_rotations.cache_clear()
+    frames._fragment_rotations.cache_clear()
     yield calls
-    frames._day_rotations.cache_clear()
+    frames._fragment_rotations.cache_clear()
 
 
 def test_unknown_equal_frames_are_refused(recorded_3dview):
@@ -33,12 +34,12 @@ def test_unknown_equal_frames_are_refused(recorded_3dview):
 
 def test_malformed_3dview_reply_raises_frame_error(monkeypatch):
     monkeypatch.setattr(frames, "_fetch_json", lambda path, **params: {})
-    frames._day_rotations.cache_clear()
+    frames._fragment_rotations.cache_clear()
     try:
         with pytest.raises(FrameError, match="GSE.*GSM"):
             rotation("GSE", "GSM", np.array([float(DAY)]))
     finally:
-        frames._day_rotations.cache_clear()
+        frames._fragment_rotations.cache_clear()
 
 
 def test_empty_times_give_no_rotations_and_no_fetch(recorded_3dview):
@@ -66,9 +67,32 @@ def test_interpolated_rotations_stay_orthonormal(recorded_3dview):
     assert np.allclose(m @ m.transpose(0, 2, 1), np.eye(3), atol=1e-9)
 
 
-def test_rotation_spans_two_days(recorded_3dview):
-    r = rotation("GSE", "GSM", DAY + np.array([86000.0, 87000.0]))
-    assert len(r) == 2 and len(recorded_3dview) == 2
+def test_one_request_covers_a_week(recorded_3dview):
+    rotation("GSE", "GSM", DAY + np.array([0.0, 86000.0, 87000.0]))
+    assert len(recorded_3dview) == 1
+
+
+def test_rotation_spans_two_weeks(monkeypatch):
+    calls = []
+
+    def identities(path, **params):
+        calls.append(params)
+        return {"values": [{"time": params[k] + "Z", "matrix": np.eye(3).tolist()} for k in ("start", "stop")]}
+
+    monkeypatch.setattr(frames, "_fetch_json", identities)
+    frames._fragment_rotations.cache_clear()
+    try:
+        week = frames._FRAGMENT_S
+        assert len(rotation("GSE", "GSM", np.array([week - 1.0, week + 1.0]))) == 2 and len(calls) == 2
+    finally:
+        frames._fragment_rotations.cache_clear()
+
+
+def test_a_day_of_matrices_is_fetched_once_across_restarts(recorded_3dview):
+    rotation("GSE", "GSM", np.array([float(DAY)]))
+    frames._fragment_rotations.cache_clear()   # what a restart forgets; speasy's disk cache does not
+    rotation("GSE", "GSM", np.array([float(DAY)]))
+    assert len(recorded_3dview) == 1
 
 
 def test_frames_centred_on_different_bodies_are_refused():
@@ -81,12 +105,12 @@ def test_unreachable_3dview_raises_frame_error(monkeypatch):
         raise OSError("connection refused")
 
     monkeypatch.setattr(frames, "_fetch_json", down)
-    frames._day_rotations.cache_clear()
+    frames._fragment_rotations.cache_clear()
     try:
         with pytest.raises(FrameError, match="GSE.*GSM.*connection refused"):
             rotation("GSE", "GSM", np.array([float(DAY)]))
     finally:
-        frames._day_rotations.cache_clear()
+        frames._fragment_rotations.cache_clear()
 
 
 @pytest.mark.parametrize("raw, frame", [("GSE>Geocentric Solar Ecliptic", "GSE"), (" gsm ", "GSM"), ("MESO", "MESO")])
