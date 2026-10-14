@@ -32,6 +32,8 @@
 - Templates keep both y axes and which one each graph draws on: a spectrogram's energy axis (right) and lines on the left or right axis. Before, only the left axis was saved, so a spectrogram lost its energy scale and range, a proxy link forced that axis to linear, and a line moved to the right axis came back on the left. A saved linear axis is now restored too. Templates and proxy links saved before this change keep each graph on its default axis, so their spectrograms stay on the right. Your saved templates are upgraded to the new format the first time SciQLop lists them.
 - Projection plots draw again. `panel.plot_data(t, xyz, plot_type=PlotType.Projection)` and products with more than three components, such as an MMS position with its magnitude, gave three empty panes with no error. A projection now uses the first three components. Data with fewer than three components raises an error instead of drawing nothing.
 - On a projection plot, every pane's legend now shows the graph's name: the product's name, or `name=` given to `plot_data`. The component names label the pane axes. Before, `name=` was ignored, each pane's legend showed one component, and the axes had no titles.
+- Planetary scenes: `panel.plot_scene("Earth environment")` draws the planet and its magnetopause and bow shock, summarised over the panel's time range; `add_trajectory("MMS1")` adds an orbit, converted to the scene's frame and unit. Earth, Mars and Mercury are built in; plugins register their own bodies, models and scenes.
+- Products tree: Scenes/ and Models/ entries; drop a scene on a panel, a model on a scene plot, a spacecraft position on a scene plot.
 
 ### Updates
 
