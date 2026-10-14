@@ -734,6 +734,17 @@ def test_third_party_provider_gets_the_provider_envelope(qtbot, monkeypatch):
     assert ctx.provider_name == "ThirdParty" and ctx.product_path == ["demo", "b"]
 
 
+def test_provider_with_source_kind_none_gets_the_provider_envelope(qtbot, monkeypatch):
+    from SciQLop.core.source_kinds import PROVIDER
+
+    class NoKind:
+        name = "NoKind"
+        source_kind = None
+
+    ctx = _post_plot_with(monkeypatch, NoKind(), _PathNode())
+    assert ctx is not None and ctx.kind == PROVIDER
+
+
 def test_provider_names_its_own_source_kind(qtbot, monkeypatch):
     class CdfProvider:
         name = "Cdf"

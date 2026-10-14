@@ -11,7 +11,7 @@ from SciQLop.core import tracing
 from SciQLop.components import sciqlop_logging
 from speasy.products import SpeasyVariable, VariableAxis
 from speasy.core import datetime64_to_epoch
-from SciQLop.core.extensions import ExtensionPoint, current_owner, declare
+from SciQLop.core.extensions import ExtensionPoint, NotRegistered, current_owner, declare
 from SciQLop.user_api.data_types import Colored
 from SciQLop.user_api.threading import on_main_thread
 from .color_axis import ColorAxis
@@ -30,9 +30,10 @@ class _ProvidersView(MutableMapping):
     """The historical `providers` dict, read and written through sciqlop.data_providers."""
 
     def __getitem__(self, name):
-        if name not in DATA_PROVIDERS:
-            raise KeyError(name)
-        return DATA_PROVIDERS.get(name)
+        try:
+            return DATA_PROVIDERS.get(name)
+        except NotRegistered:
+            raise KeyError(name) from None
 
     def __setitem__(self, name, provider):
         if getattr(provider, "name", None) != name:

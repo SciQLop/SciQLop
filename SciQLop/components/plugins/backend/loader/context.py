@@ -2,6 +2,8 @@
 from dataclasses import dataclass
 from operator import attrgetter
 
+from packaging.utils import canonicalize_name
+
 from SciQLop.core import extensions
 
 
@@ -51,13 +53,20 @@ class PluginContext:
     def contribute(self, ep_id: str, item, replace: bool = False):
         return extensions.get(ep_id).contribute(item, owner=self.name, replace=replace)
 
+    def _declared_id(self, name: str) -> str:
+        wanted = canonicalize_name(name)
+        return next((d for d in self._declared if canonicalize_name(d) == wanted), name)
+
     def plugin(self, name: str):
-        if name not in self._declared:
+        plugin_id = self._declared_id(name)
+        if plugin_id not in self._declared:
             raise UndeclaredDependency(f"{self.name} uses plugin {name!r} without declaring it in plugin.json "
                                        f"dependencies or optional_dependencies")
-        if STATES.get(name) is None or STATES[name].status != "active":
-            raise PluginUnavailable(f"{self.name} needs plugin {name!r}, which is {_describe(name)}")
-        return STATES[name].api
+        if STATES.get(plugin_id) is None or STATES[plugin_id].status != "active":
+            raise PluginUnavailable(f"{self.name} needs plugin {name!r}, which is {_describe(plugin_id)}")
+        return STATES[plugin_id].api
 
     def has(self, name: str) -> bool:
-        return name in self._declared and STATES.get(name) is not None and STATES[name].status == "active"
+        plugin_id = self._declared_id(name)
+        return plugin_id in self._declared and STATES.get(plugin_id) is not None \
+            and STATES[plugin_id].status == "active"

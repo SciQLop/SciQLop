@@ -140,7 +140,7 @@ def test_the_drop_callback_offers_the_jump(qtbot, main_window, product_with_cove
     from SciQLop.components.plotting.ui import time_sync_panel
     from SciQLop.components.plotting.ui.coverage_notice import CoverageNotice
 
-    monkeypatch.setattr(time_sync_panel, "decode_mime", lambda _m: [product_with_coverage])
+    monkeypatch.setattr(time_sync_panel, "decode_mime", lambda _m, _formats=None: [product_with_coverage])
     panel = _panel(main_window, (250 * DAY, 252 * DAY))
     panel.create_plot(0, PlotType.TimeSeries)
     panel._product_plot_callback.call(panel.plots()[0], QMimeData())

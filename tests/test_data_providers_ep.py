@@ -38,12 +38,21 @@ def test_dict_writes_and_pops_go_through_the_extension_point(withdraw):
 
     seen = []
     DATA_PROVIDERS.signals.removed.connect(seen.append)
-    with owned_by("dp_test"):
-        providers["dp_fake"] = fake = Fake()
-    assert DATA_PROVIDERS.get("dp_fake") is fake
-    assert providers.pop("dp_fake") is fake and seen == [fake]
+    try:
+        with owned_by("dp_test"):
+            providers["dp_fake"] = fake = Fake()
+        assert DATA_PROVIDERS.get("dp_fake") is fake
+        assert providers.pop("dp_fake") is fake and seen == [fake]
+    finally:
+        DATA_PROVIDERS.signals.removed.disconnect(seen.append)
     assert providers.pop("dp_fake", None) is None
     assert providers.get("dp_fake") is None
+
+
+def test_reading_an_unknown_provider_is_a_key_error(qapp):
+    assert providers.get("dp_nobody") is None
+    with pytest.raises(KeyError):
+        providers["dp_nobody"]
 
 
 def test_dict_write_under_another_name_is_refused(withdraw):

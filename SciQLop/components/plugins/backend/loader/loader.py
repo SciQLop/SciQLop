@@ -295,7 +295,8 @@ def _activate_one(entry: _Entry, main_window, declared, ep_plugins) -> PluginSta
     version = entry.candidate.version
     ctx = PluginContext(entry.name, version, main_window, declared)
     try:
-        mod = _import(entry, ep_plugins)
+        with owned_by(entry.name):
+            mod = _import(entry, ep_plugins)
         log.info(f"Loading {entry.name}")
         api = _call_entry_function(mod, ctx, main_window)
     except Exception as e:

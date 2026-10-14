@@ -234,7 +234,7 @@ def build_provider_ctx(graph, *, panel_name: str, plot_index: int, provider, gra
                        product_path: Optional[list] = None, knobs: Optional[dict] = None) -> GraphContext:
     """Any other provider: its own source kind if it names one, else the generic sciqlop.provider envelope."""
     return GraphContext(
-        kind=getattr(provider, "source_kind", PROVIDER),
+        kind=getattr(provider, "source_kind", None) or PROVIDER,
         graph_id=graph.objectName(),
         panel_name=panel_name,
         plot_index=plot_index,

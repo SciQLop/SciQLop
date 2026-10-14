@@ -32,7 +32,7 @@ def _plot_product_lines(products: list[ProductModel], plot_index: int) -> tuple[
             continue
         if not product.path:
             skipped.append(
-                f"plot {plot_index} / {product.label} — {product.kind} graph "
+                f"plot {plot_index} / {product.label} — {product.kind.removeprefix('sciqlop.')} graph "
                 "(function/static, not reproducible from a snippet)"
             )
             continue

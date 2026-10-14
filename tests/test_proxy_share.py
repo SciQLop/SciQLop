@@ -314,6 +314,13 @@ def test_panel_reproducer_snippet_includes_colormap_graphs(colormap_panel):
     assert snippet is not None and "cda/DS/spec" in snippet
 
 
+def test_skip_note_for_a_static_graph_reads_static_graph():
+    from SciQLop.components.plotting.panel_template import ProductModel
+    from SciQLop.components.plotting.ui.graph_context_snippets import _plot_product_lines
+    _, skipped = _plot_product_lines([ProductModel(path="", label="s", kind="static")], 0)
+    assert "static graph" in skipped[0] and "sciqlop." not in skipped[0]
+
+
 def test_panel_reproducer_snippet_passes_knobs_as_product_inputs(panel):
     from SciQLop.components.plotting.ui.graph_context_snippets import panel_reproducer_snippet
     snippet = panel_reproducer_snippet(panel)

@@ -221,3 +221,37 @@ def test_failed_legacy_load_withdraws_its_contributions(tmp_path, fresh):
     """, _desc())]
     loader.activate_all(plugins, main_window=object(), ep_plugins={})
     assert ep.list() == []
+
+
+def test_failed_import_withdraws_module_level_contributions(tmp_path, fresh):
+    ep = extensions.declare(extensions.ExtensionPoint("imp_test.things", str, key=lambda s: s))
+    plugins = [_plugin(tmp_path, "imp_mod", """
+        from SciQLop.core import extensions
+        extensions.get("imp_test.things").contribute("imp_mod.one")
+        def activate(ctx):
+            raise RuntimeError("after import")
+    """, _desc())]
+    loader.activate_all(plugins, main_window=object(), ep_plugins={})
+    assert context.STATES["imp_mod"].status == "failed"
+    assert ep.list() == []
+
+
+def test_plugin_and_has_accept_any_spelling_of_a_declared_dependency(tmp_path, fresh):
+    plugins = [
+        _plugin(tmp_path, "hy_user", """
+            GOT = []
+            def activate(ctx):
+                GOT.extend([ctx.plugin("hy-dep").answer, ctx.plugin("hy_dep").answer,
+                            ctx.has("hy-opt"), ctx.has("HY_OPT")])
+        """, _desc(dependencies=["hy-dep>=1"], optional_dependencies=["Hy_Opt"])),
+        _plugin(tmp_path, "hy_dep", """
+            class Api:
+                answer = 1
+            def activate(ctx):
+                return Api()
+        """, _desc()),
+        _plugin(tmp_path, "hy_opt", "def activate(ctx):\n    pass\n", _desc()),
+    ]
+    loader.activate_all(plugins, main_window=object(), ep_plugins={})
+    import sys
+    assert sys.modules["hy_user"].GOT == [1, 1, True, True]
