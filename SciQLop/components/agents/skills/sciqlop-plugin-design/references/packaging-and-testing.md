@@ -25,16 +25,27 @@ is overkill for a plugin.
   "authors": [{"name": "...", "email": "...", "organization": "..."}],
   "license": "MIT",
   "python_dependencies": ["SciQLop>=0.14.0,<0.15.0", "requests>=2.31"],
-  "dependencies": ["speasy_provider"],
+  "dependencies": ["speasy_provider>=1"],
+  "optional_dependencies": [],
+  "provides": {"extension_points": []},
   "disabled": false
 }
 ```
 
+Only `name` and `version` are required.
+
+| Key | Meaning |
+|---|---|
+| `dependencies` | plugins you need, by plugin id (folder or entry-point name) with PEP 440 ranges: `["vdf>=1.2,<2"]` |
+| `optional_dependencies` | plugins you use when present; they load before you |
+| `provides` | `{extension point id: [contribution ids]}` plus `"extension_points": [ids you declare]`; shown by the app store |
+
+Details: [plugin-contract.md](plugin-contract.md).
+
 - Required for folder discovery. A plugin with only an entry point in
   `pyproject.toml` is invisible when loaded from a folder.
-- `name`, `version`, `description`, `authors` and `license` are required, and
-  every author needs `name`, `email` and `organization`. A missing one skips
-  the plugin.
+- Every author, when you list any, needs `name`, `email` and `organization`.
+  A missing one skips the plugin.
 - `python_dependencies` are pip requirements. The `SciQLop>=X,<Y` range is
   the compatibility gate: SciQLop skips a plugin whose range excludes the
   running version, instead of letting `load()` crash on an API it doesn't
@@ -46,8 +57,8 @@ is overkill for a plugin.
 - Third-party requirements are installed into SciQLop's workspace
   environment by SciQLop. Never `pip install` into it by hand; inside
   SciQLop's chat, use the `sciqlop_install_package` tool.
-- `dependencies` names other SciQLop plugins (for example
-  `"speasy_provider"`). Don't rely on it for load order.
+- `dependencies` names other SciQLop plugins, never pip packages. SciQLop
+  loads them first and refuses your plugin if one is missing or out of range.
 
 ## pyproject.toml
 

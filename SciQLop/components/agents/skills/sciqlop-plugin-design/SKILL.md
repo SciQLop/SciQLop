@@ -1,14 +1,15 @@
 ---
 name: sciqlop-plugin-design
-description: Use when designing, writing, reviewing or debugging a SciQLop plugin — a Python package SciQLop loads at startup through `load(main_window)` — including plugins that add products to the product tree, virtual products, dock widgets, settings pages, data fetchers or agent backends, and when a plugin loads but its products, plots or dock show nothing.
+description: Use when designing, writing, reviewing or debugging a SciQLop plugin — a Python package SciQLop loads at startup through `activate(ctx)` (or the older `load(main_window)`) — including plugins that add products to the product tree, virtual products, dock widgets, settings pages, data fetchers or agent backends, plugins that depend on or extend other plugins, and when a plugin loads but its products, plots or dock show nothing.
 ---
 
 # Designing SciQLop plugins
 
 ## Overview
 
-A SciQLop plugin is a Python package with a `load(main_window)` function.
-SciQLop calls it once at startup. Everything the plugin adds goes through
+A SciQLop plugin is a Python package with an `activate(ctx)` function (older
+plugins: `load(main_window)`). SciQLop calls it once at startup, after the
+plugins it depends on. Everything the plugin adds goes through
 SciQLop's public API: `SciQLop.user_api` for products and plots, the main
 window for docks and menus, `ConfigEntry` for settings.
 
@@ -35,6 +36,7 @@ against the current API — plugins carry workarounds for bugs fixed since.
 | Draw a small plot inside that dock | SciQLopPlots, graphs created once and updated with `set_data` | matplotlib |
 | Persist user options | A `ConfigEntry` subclass | Hand-written YAML/JSON |
 | Mark events or intervals | `SciQLop.user_api.catalogs.catalogs` | A private event list |
+| Use or extend another plugin | Declare it in plugin.json dependencies, then ctx.plugin(name) / ctx.contribute(ep_id, item) — see [references/plugin-contract.md](references/plugin-contract.md) | Importing the other plugin's package directly |
 | Add an assistant to the chat dock | `register_agent_backend(MyBackend)` + `ensure_agent_dock(main_window)` | Your own chat widget |
 
 Details and code for each row: [references/products-and-data.md](references/products-and-data.md)
@@ -53,14 +55,16 @@ my_plugin/                  # folder added to SciQLop's plugin folders
 
 ```python
 # my_plugin/__init__.py
-def load(main_window):
+def activate(ctx):
     from .products import register_products   # import SciQLop-heavy code lazily
-    return register_products()                 # keep references alive; may be None
+    return register_products()                 # your public API, or None
 ```
 
-If `load()` returns an object with `async def close(self)`, SciQLop awaits it
+If `activate()` returns an object with `async def close(self)`, SciQLop awaits it
 at shutdown. Packaging, `plugin.json` fields, version pins and tests:
 [references/packaging-and-testing.md](references/packaging-and-testing.md).
+Dependencies, `ctx` and extension points:
+[references/plugin-contract.md](references/plugin-contract.md).
 
 ## Traps that make a plugin show nothing
 

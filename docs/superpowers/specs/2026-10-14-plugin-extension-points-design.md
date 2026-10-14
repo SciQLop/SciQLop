@@ -45,8 +45,7 @@ Third-party plugins can do everything bundled plugins do.
   "dependencies": ["vdf>=1.2,<2", "planetary_scenes"],
   "optional_dependencies": ["mars"],
   "provides": {
-    "product_kinds": [],
-    "plot_kinds": ["vdf_study.event_overview"],
+    "sciqlop.plot_kinds": ["vdf_study.event_overview"],
     "extension_points": []
   }
 }
@@ -59,7 +58,7 @@ silently dropped.
 
 - `dependencies` / `optional_dependencies`: plugin names with PEP 440 specifiers checked against the
   other plugin's `version`.
-- `provides`: summary for the app store; the code is the truth. After activation the loader compares
+- `provides`: summary for the app store; the code is the truth. Keys are extension point ids, plus `extension_points` for the EPs the plugin declares. After activation the loader compares
   what the plugin registered with `provides` and warns on mismatch; a test helper turns it into a failure.
 - A packaged plugin (entry point in group `sciqlop.plugins`) ships `plugin.json` next to the module the
   entry point names. Without one it loads as today: no plugin dependencies, empty `provides`.
