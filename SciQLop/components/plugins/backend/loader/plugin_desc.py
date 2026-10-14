@@ -7,6 +7,9 @@ from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
 
+# from_json runs several times per plugin per scan; one warning per file is enough.
+_warned: set[str] = set()
+
 
 class Author(BaseModel):
     name: str
@@ -33,6 +36,7 @@ class PluginDesc(BaseModel):
     def from_json(path: str) -> "PluginDesc":
         with open(path, "r") as f:
             desc = PluginDesc(**json.load(f))
-        if desc.model_extra:
+        if desc.model_extra and path not in _warned:
+            _warned.add(path)
             log.warning("%s: unknown keys ignored: %s", path, ", ".join(sorted(desc.model_extra)))
         return desc

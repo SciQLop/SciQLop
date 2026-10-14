@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 from types import SimpleNamespace
 from SciQLop.components.sciqlop_logging import getLogger
+from SciQLop.core import extensions
 from SciQLop.core.extensions import owned_by
 from .context import STATES, PluginContext, PluginState, active_versions
 from .provides import provides_drift
@@ -283,6 +284,13 @@ def _call_entry_function(mod, ctx, main_window):
         return mod.load(main_window)
 
 
+def _withdraw(name: str) -> None:
+    """A failed activation must not leave half its contributions registered under its name."""
+    for ep in extensions.all_extension_points():
+        ep.remove_owner(name)
+        ep.remove_owner(f"legacy:{name}")
+
+
 def _activate_one(entry: _Entry, main_window, declared, ep_plugins) -> PluginState:
     version = entry.candidate.version
     ctx = PluginContext(entry.name, version, main_window, declared)
@@ -293,6 +301,7 @@ def _activate_one(entry: _Entry, main_window, declared, ep_plugins) -> PluginSta
     except Exception as e:
         log.error(f"Plugin {entry.name} failed to load: {e}")
         log.error(f"Traceback: {traceback.format_exc()}")
+        _withdraw(entry.name)
         return PluginState("failed", version, reason=f"{type(e).__name__}: {e}")
     if api is not None:
         loaded_plugins.__dict__[entry.name] = api

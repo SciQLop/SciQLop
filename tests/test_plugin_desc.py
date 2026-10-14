@@ -38,3 +38,14 @@ def test_unknown_keys_are_reported_not_silently_dropped(tmp_path, monkeypatch):
     monkeypatch.setattr(plugin_desc.log, "warning", lambda *a: warnings.append(a))
     PluginDesc.from_json(_write(tmp_path, {"name": "T", "version": "1", "provide": {}}))
     assert warnings and "provide" in str(warnings[0])
+
+
+def test_unknown_keys_are_warned_once_per_file(tmp_path, monkeypatch):
+    # SciQLop's logger emits a Qt signal, not a stdlib record, so caplog cannot see it.
+    warnings = []
+    monkeypatch.setattr(plugin_desc.log, "warning", lambda msg, *args: warnings.append(msg % args))
+    path = tmp_path / "plugin.json"
+    path.write_text('{"name": "x", "version": "1.0.0", "colour": "red"}')
+    PluginDesc.from_json(str(path))
+    PluginDesc.from_json(str(path))
+    assert sum("unknown keys ignored: colour" in w for w in warnings) == 1

@@ -197,3 +197,27 @@ def test_has_reports_present_optional_dependency(tmp_path, fresh):
     loader.activate_all(plugins, main_window=object(), ep_plugins={})
     import sys
     assert sys.modules["opt_earth"].FOUND == [True, False]
+
+
+def test_failed_activate_withdraws_its_contributions(tmp_path, fresh):
+    ep = extensions.declare(extensions.ExtensionPoint("wd_test.things", str, key=lambda s: s))
+    plugins = [_plugin(tmp_path, "wd_half", """
+        def activate(ctx):
+            ctx.contribute("wd_test.things", "wd_half.one")
+            raise RuntimeError("half way")
+    """, _desc())]
+    loader.activate_all(plugins, main_window=object(), ep_plugins={})
+    assert context.STATES["wd_half"].status == "failed"
+    assert ep.list() == []
+
+
+def test_failed_legacy_load_withdraws_its_contributions(tmp_path, fresh):
+    ep = extensions.declare(extensions.ExtensionPoint("wd_test.legacy", str, key=lambda s: s))
+    plugins = [_plugin(tmp_path, "wd_legacy", """
+        from SciQLop.core import extensions
+        def load(main_window):
+            extensions.get("wd_test.legacy").contribute("wd_legacy.one")
+            raise RuntimeError("half way")
+    """, _desc())]
+    loader.activate_all(plugins, main_window=object(), ep_plugins={})
+    assert ep.list() == []
