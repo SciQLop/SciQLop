@@ -100,6 +100,17 @@ def activate(ctx):
 - Dependency names match across case, dash and underscore: `io-vdf`, `io_vdf` and `Io_Vdf` are one plugin.
 - Plot kinds, which make a plugin's product kind plottable, are in the next section.
 
+## Commands, menu entries and shortcuts
+
+| Extension point | Contribution | Key |
+|---|---|---|
+| `sciqlop.commands` | `PaletteCommand(id, name, description, callback, args)` | `id` |
+| `sciqlop.menus` | `MenuEntry(id, location, command, label, when, order)` | `id` |
+| `sciqlop.shortcuts` | `Shortcut(id, group, label, default, fixed)` | `id` |
+
+Locations, argument values and examples: the "Commands and menu entries" and "Keyboard shortcuts" sections of
+[ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws all three.
+
 ## Plot kinds, drop rules and saved panels
 
 | Extension point | Contribution | Key |

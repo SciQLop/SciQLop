@@ -188,7 +188,7 @@ candidates migrated only when a plugin needs one or when the cleanup is touched 
 | 1 | `sciqlop.drop_rules` | scenes drop `_TABLE`, panel DnD callbacks, catalog tree drops |
 | 1 | `sciqlop.scenes.bodies/boundaries/scenes` | scenes registries; `planetary_scenes` contributes like a third party |
 | 2 | `sciqlop.panel_kinds` + slots | `new_plot_panel(backend="native")`; designed in the panels sub-project |
-| 2 | `sciqlop.commands`, `sciqlop.menus`, `sciqlop.shortcuts` | CommandRegistry, one-shot QAction harvest, panel_menus, fixed product-tree / export / graph / catalog menus |
+| 2 | `sciqlop.commands`, `sciqlop.menus`, `sciqlop.shortcuts` | CommandRegistry, one-shot QAction harvest, panel_menus, fixed product-tree / export / graph / catalog menus Implemented (docs/superpowers/plans/2026-10-14-commands-menus-shortcuts.md) |
 | 2 | `sciqlop.export_targets` | Export submenu, `PlotPanel.save` formats, proxy share |
 | 2 | `sciqlop.inspector_sections` | core-only `add_inspector_extension` |
 | 2 | `sciqlop.agent_tools`, `sciqlop.agent_backends`, `sciqlop.agent_skills` | fixed tool list, backend dict, package-only skills dir |
