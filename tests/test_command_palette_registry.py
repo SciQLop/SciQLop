@@ -29,7 +29,7 @@ def test_completion_creation():
     assert c.icon is None
 
 
-def test_registry_register_and_list():
+def test_registry_register_and_list(empty_commands):
     from SciQLop.components.command_palette.backend.registry import (
         CommandRegistry, PaletteCommand,
     )
@@ -42,7 +42,7 @@ def test_registry_register_and_list():
     assert "test.hello" in [c.id for c in registry.commands()]
 
 
-def test_registry_unregister():
+def test_registry_unregister(empty_commands):
     from SciQLop.components.command_palette.backend.registry import (
         CommandRegistry, PaletteCommand,
     )
@@ -56,7 +56,7 @@ def test_registry_unregister():
     assert "test.bye" not in [c.id for c in registry.commands()]
 
 
-def test_registry_reregister_overwrites():
+def test_registry_reregister_overwrites(empty_commands):
     from SciQLop.components.command_palette.backend.registry import (
         CommandRegistry, PaletteCommand,
     )

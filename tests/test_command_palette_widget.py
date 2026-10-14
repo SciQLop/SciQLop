@@ -2,7 +2,7 @@ from PySide6 import QtCore
 from tests.fixtures import *
 
 
-def test_palette_opens_and_closes(qtbot, qapp):
+def test_palette_opens_and_closes(qtbot, qapp, empty_commands):
     from PySide6.QtWidgets import QMainWindow
     from SciQLop.components.command_palette.backend.registry import (CommandRegistry, PaletteCommand)
     from SciQLop.components.command_palette.backend.history import LRUHistory
@@ -19,7 +19,7 @@ def test_palette_opens_and_closes(qtbot, qapp):
     assert not palette.isVisible()
 
 
-def test_palette_filters_commands(qtbot, qapp):
+def test_palette_filters_commands(qtbot, qapp, empty_commands):
     from PySide6.QtWidgets import QMainWindow
     from SciQLop.components.command_palette.backend.registry import (CommandRegistry, PaletteCommand)
     from SciQLop.components.command_palette.backend.history import LRUHistory
@@ -38,7 +38,7 @@ def test_palette_filters_commands(qtbot, qapp):
     assert "plot" in first_name.lower()
 
 
-def test_palette_executes_argless_command(qtbot, qapp):
+def test_palette_executes_argless_command(qtbot, qapp, empty_commands):
     from PySide6.QtWidgets import QMainWindow
     from SciQLop.components.command_palette.backend.registry import (CommandRegistry, PaletteCommand)
     from SciQLop.components.command_palette.backend.history import LRUHistory
@@ -57,7 +57,7 @@ def test_palette_executes_argless_command(qtbot, qapp):
     assert not palette.isVisible()
 
 
-def test_palette_multi_step_args(qtbot, qapp):
+def test_palette_multi_step_args(qtbot, qapp, empty_commands):
     from PySide6.QtWidgets import QMainWindow
     from SciQLop.components.command_palette.backend.registry import (
         CommandRegistry, PaletteCommand, CommandArg, Completion,

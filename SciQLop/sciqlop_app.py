@@ -208,10 +208,11 @@ def build_sciqlop():
     main_windows._plugins_live_loader = PluginsLiveLoader(main_windows, parent=main_windows)
 
     from SciQLop.components.command_palette.commands import register_builtin_commands
-    register_builtin_commands(app.command_registry)
-
     from SciQLop.components.command_palette.backend.harvester import harvest_qactions
-    harvest_qactions(app.command_registry, main_windows)
+    from SciQLop.core.extensions import owned_by
+    with owned_by("sciqlop"):
+        register_builtin_commands(app.command_registry)
+        harvest_qactions(app.command_registry, main_windows)
 
     main_windows.push_variables_to_console({"plugins": kernel_plugins_view()})
 

@@ -70,6 +70,20 @@ def main_window(qapp, sciqlop_resources):
         qapp.processEvents()
 
 
+@pytest.fixture
+def empty_commands(qapp):
+    """Palette commands are global (sciqlop.commands): start a test with none, put them back after."""
+    from SciQLop.components.command_palette.backend.registry import COMMANDS
+    saved = [(c, COMMANDS.owner_of(c.id)) for c in COMMANDS.list()]
+    for command, _ in saved:
+        COMMANDS.remove(command.id)
+    yield
+    for command in COMMANDS.list():
+        COMMANDS.remove(command.id)
+    for command, owner in saved:
+        COMMANDS.contribute(command, owner=owner)
+
+
 def destroy_main_window(mw):
     """close() only hides a window, so its ~1GB widget tree stays alive; and it
     runs closeEvent, whose unsaved-catalogs QMessageBox blocks a headless run

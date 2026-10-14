@@ -1,6 +1,6 @@
 from tests.fixtures import *
 
-def test_harvest_menu_actions(qtbot, qapp):
+def test_harvest_menu_actions(qtbot, qapp, empty_commands):
     from PySide6.QtWidgets import QMainWindow, QMenu
     from PySide6.QtGui import QAction
     from SciQLop.components.command_palette.backend.registry import CommandRegistry
@@ -15,7 +15,7 @@ def test_harvest_menu_actions(qtbot, qapp):
     ids = [c.id for c in registry.commands()]
     assert any("Save" in cid for cid in ids)
 
-def test_harvest_skips_already_registered(qtbot, qapp):
+def test_harvest_skips_already_registered(qtbot, qapp, empty_commands):
     from PySide6.QtWidgets import QMainWindow, QMenu
     from PySide6.QtGui import QAction
     from SciQLop.components.command_palette.backend.registry import (CommandRegistry, PaletteCommand)
@@ -34,7 +34,7 @@ def test_harvest_skips_already_registered(qtbot, qapp):
     assert names.count("Save (rich)") == 1
     assert "Save" not in names
 
-def test_harvest_skips_replaces_qaction(qtbot, qapp):
+def test_harvest_skips_replaces_qaction(qtbot, qapp, empty_commands):
     from PySide6.QtWidgets import QMainWindow, QMenu
     from PySide6.QtGui import QAction
     from SciQLop.components.command_palette.backend.registry import (CommandRegistry, PaletteCommand)

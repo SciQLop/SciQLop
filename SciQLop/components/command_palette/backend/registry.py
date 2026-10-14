@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from typing import Callable
 from PySide6.QtGui import QIcon
 
+from SciQLop.core.extensions import ExtensionPoint, declare
+
 
 @dataclass
 class Completion:
@@ -37,18 +39,22 @@ class PaletteCommand:
     replaces_qaction: str | None = None
 
 
+COMMANDS = declare(ExtensionPoint("sciqlop.commands", PaletteCommand, what="command",
+                                  doc="Commands of the command palette; menu entries place them in menus."))
+
+
 class CommandRegistry:
-    def __init__(self):
-        self._commands: dict[str, PaletteCommand] = {}
+    """The published registry API, a view onto sciqlop.commands: every instance sees the same commands."""
 
     def register(self, command: PaletteCommand) -> None:
-        self._commands[command.id] = command
+        COMMANDS.contribute(command, replace=True)
 
     def unregister(self, command_id: str) -> None:
-        self._commands.pop(command_id, None)
+        if command_id in COMMANDS:
+            COMMANDS.remove(command_id)
 
     def commands(self) -> list[PaletteCommand]:
-        return list(self._commands.values())
+        return COMMANDS.list()
 
     def get(self, command_id: str) -> PaletteCommand | None:
-        return self._commands.get(command_id)
+        return COMMANDS.get(command_id) if command_id in COMMANDS else None
