@@ -1,6 +1,7 @@
 """Draw a resolved scene into a three-pane projection plot."""
 import functools
 import math
+import re
 import threading
 from dataclasses import dataclass
 
@@ -18,6 +19,8 @@ from .summary import PANES, pane_summary
 
 _AXES = "XYZ"
 _THREEDVIEW_SAMPLING_S = 60
+_EARTH_RADII = {"Re", "R_E", "RE"}
+_EARTH_RADIUS = 6371.2 * u.km
 _KIND_COLOURS = {"magnetopause": "#4FC3F7", "bow_shock": "#FFB74D", "mpb": "#BA68C8"}
 _DEFAULT_COLOUR = "#B0BEC5"
 _CURVE_SUFFIX = {"centre": "", "low": " min", "high": " max"}
@@ -127,6 +130,7 @@ def remove_boundary(proj, curves: BoundaryCurves) -> None:
 
 
 def _speasy_id(source: str) -> str:
+    """The speasy id of *source*; a products-tree path is looked up in ProductsModel (main thread only)."""
     if source.startswith("speasy//"):
         from SciQLopPlots import ProductsModel
         node = ProductsModel.node(source.split("//"))
@@ -136,6 +140,20 @@ def _speasy_id(source: str) -> str:
     return source
 
 
+def _threedview_frame(source: str, v, requested: str) -> str:
+    """speasy falls back to J2000, with only a log warning, when 3DView cannot list its frames.
+
+    simplify: the frame is read back from CATDESC ("position in GSM frame"); switch to a proper
+    COORDINATE_SYSTEM attribute once speasy's 3DView variables carry one (speasy#406-style metadata)."""
+    found = re.fullmatch(r"position in (\S+) frame", v.meta.get("CATDESC", "").strip())
+    if found is None:
+        raise FrameError(f"{source!r}: cannot confirm the frame of the 3DView trajectory")
+    frame = normalise_frame(found.group(1))
+    if frame != requested:
+        raise FrameError(f"{source!r}: 3DView answered in {frame} instead of {requested}")
+    return frame
+
+
 def _fetch(source: str, frame: str, start: float, stop: float):
     """The variable (None when the range has no data) and the frame its values are in."""
     import speasy
@@ -143,13 +161,25 @@ def _fetch(source: str, frame: str, start: float, stop: float):
     if "/" not in source:
         v = speasy.get_data(f"cdpp3dview/{source}", start, stop, coordinate_frame=frame,
                             sampling=str(_THREEDVIEW_SAMPLING_S))
-        return v, frame
-    v = speasy.get_data(_speasy_id(source), start, stop)
+        return (None, None) if v is None else (v, _threedview_frame(source, v, frame))
+    v = speasy.get_data(source, start, stop)
     if v is None:
         return None, None
     if "COORDINATE_SYSTEM" not in v.meta:
         raise FrameError(f"{source!r} has no COORDINATE_SYSTEM: its frame is unknown")
     return v, normalise_frame(v.meta["COORDINATE_SYSTEM"])
+
+
+def _length_unit(unit: str):
+    if unit.strip() in _EARTH_RADII:
+        return _EARTH_RADIUS
+    try:
+        parsed = u.Unit(unit)
+    except ValueError:
+        parsed = None
+    if parsed is None or not parsed.is_equivalent(u.km):
+        raise ValueError(f"unit {unit!r} is not a length astropy knows")
+    return parsed
 
 
 def _in_body_radii(v, body) -> np.ndarray:
@@ -159,19 +189,21 @@ def _in_body_radii(v, body) -> np.ndarray:
         raise ValueError(f"{name} has no unit")
     if v.values.ndim != 2 or v.values.shape[1] < 3:
         raise ValueError(f"{name} is not a position: values of shape {v.values.shape}")
-    return (v.values[:, :3] * u.Unit(unit)).to_value(body.radius)
+    return (v.values[:, :3] * _length_unit(unit)).to_value(body.radius)
 
 
 def trajectory_source(source: str, resolved: ResolvedScene):
-    """A plot callback giving ``[t, x, y, z]`` of *source* in the scene's frame and body radii."""
+    """A plot callback giving ``[t, x, y, z]`` of *source* (a 3DView body or a speasy id)
+    in the scene's frame and body radii."""
     frame = resolved.scene.frame
 
     def fetch(start, stop):
         v, data_frame = _fetch(source, frame, float(start), float(stop))
         if v is None:
             return None
+        xyz = _in_body_radii(v, resolved.body)   # before rotation: a bad product never downloads matrices
         t = v.time.astype("datetime64[ns]").astype("int64") / 1e9
-        xyz = rotation(data_frame, frame, t).apply(_in_body_radii(v, resolved.body))
+        xyz = rotation(data_frame, frame, t).apply(xyz)
         return [t] + [np.ascontiguousarray(xyz[:, i]) for i in range(3)]
 
     fetch.__name__ = source
@@ -179,7 +211,7 @@ def trajectory_source(source: str, resolved: ResolvedScene):
 
 
 def add_trajectory(proj, resolved: ResolvedScene, source: str):
-    reporter = _CallbackErrorOverlay(trajectory_source(source, resolved))
+    reporter = _CallbackErrorOverlay(trajectory_source(_speasy_id(source), resolved))
     name = source.split("/")[-1]
     graph = proj.plot(reporter, labels=[name] * 3, graph_type=GraphType.ParametricCurve)
     graph = graph[1] if isinstance(graph, tuple) else graph
