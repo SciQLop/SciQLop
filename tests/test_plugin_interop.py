@@ -158,10 +158,10 @@ _VP_MAKER = """
     from SciQLop.user_api.layers import Marker, register_layer
     from SciQLop.user_api.virtual_products import VirtualProductType, create_virtual_product
 
-    def series(start, stop):
+    def series(start: float, stop: float):
         return [start, stop], [0.0, 1.0]
 
-    def peaks(start, stop):
+    def peaks(start: float, stop: float):
         return [Marker(time=start, value=1.0)]
 
     def activate(ctx):
@@ -187,8 +187,8 @@ _VP_USER = """
 
 def test_plugin_contributes_a_virtual_product_and_a_layer_and_withdraws_them(tmp_path, main_window, fresh):
     from SciQLopPlots import ProductsModel
+    from SciQLop.components.plotting.backend.data_provider import providers
     from SciQLop.components.plotting.backend.easy_provider import VIRTUAL_PRODUCTS
-    from SciQLop.user_api.layers._provider import LAYERS
     loader.activate_all([_plugin(tmp_path, "vp_user", _VP_USER, dependencies=["vp_maker"]),
                          _plugin(tmp_path, "vp_maker", _VP_MAKER)], main_window=object(), ep_plugins={})
     assert context.STATES["vp_user"].status == "active", context.STATES["vp_user"].reason
@@ -199,7 +199,9 @@ def test_plugin_contributes_a_virtual_product_and_a_layer_and_withdraws_them(tmp
     assert nodes.node(["vp_maker", "b"]) is not None
     assert nodes.node(["Layers", "vp_maker", "peaks"]) is not None
 
-    VIRTUAL_PRODUCTS.remove_owner("vp_maker")
-    LAYERS.remove_owner("vp_maker")
+    provider_name = VIRTUAL_PRODUCTS.get("vp_maker//b").name
+    assert provider_name in providers
+    loader._withdraw("vp_maker")
+    assert provider_name not in providers
     assert nodes.node(["vp_maker", "b"]) is None
     assert nodes.node(["Layers", "vp_maker", "peaks"]) is None

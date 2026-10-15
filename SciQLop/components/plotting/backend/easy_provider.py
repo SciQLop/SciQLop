@@ -219,7 +219,8 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
             arity = PRODUCT_KINDS.get(kind_id).arity
             remote_registry().register(path, remote_callback, arity, colored=color_axis is not None)
 
-        # Last: the node announces the provider, GUI code may call it right away.
+        # The node announces the provider, GUI code may call it right away; the contribution comes after the
+        # node so withdrawal followers always find one.
         add_product_node(product_path, product_name, self.name, metadata, ProductsModelNodeType.PARAMETER,
                          parameter_type, "", None, display_name=display_name)
         _contribute_virtual_product(self)

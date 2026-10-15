@@ -158,8 +158,8 @@ no IPython), `create_virtual_product(path, callback, VirtualProductType.X)`
 is the equivalent and accepts the same annotated callback.
 `sciqlop_list_virtual_products` lists every registered path — check it before
 reusing a scratch path so you don't collide with one from earlier in the
-session (there is no removal tool yet, so unused scratch products persist for
-the rest of the session).
+session (there is no removal tool, but you can call `remove_virtual_product(path)`
+from `SciQLop.user_api.virtual_products` in the kernel to drop one).
 
 Try the maths on real data before writing the product. `sciqlop_fetch`
 loads the inputs into the kernel from the same `//` paths `Depends` takes

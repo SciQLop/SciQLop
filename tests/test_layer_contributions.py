@@ -57,6 +57,16 @@ def test_same_signature_rerun_swaps_the_body(layers):
     assert p1.callback(0.0, 1.0)[0].value == 2.0
 
 
+def f_default(start: float, stop: float, threshold: float = 0.9):
+    return [Marker(time=start, value=1.0)]
+
+
+def test_same_signature_rerun_refreshes_knob_defaults(layers):
+    p = define_layer("lc/k", f1)
+    define_layer("lc/k", f_default)
+    assert p.get_knobs()[0].default == 0.9
+
+
 def test_changed_signature_refreshes_knobs(layers):
     p1 = define_layer("lc/c", f1)
     p2 = define_layer("lc/c", f_level)

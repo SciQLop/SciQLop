@@ -113,19 +113,24 @@ def test_removing_an_out_of_process_product_unregisters_it(vps):
     assert not remote_registry().is_remote(["vpc", "remote"])
 
 
-def test_withdrawn_while_plotted_does_not_crash(vps, qtbot):
+def _point_count(graph):
+    x = graph.data()[0]
+    return 0 if x is None else len(x)
+
+
+def test_withdrawn_while_plotted_keeps_the_graph_and_its_data(vps, plot_panel, qtbot):
     from SciQLop.components.plotting.ui.time_sync_panel import plot_product
-    from SciQLop.user_api.plot import create_plot_panel
     with owned_by("vp_demo"):
         _create()
-    panel = create_plot_panel()
-    panel.time_range = (T0, T0 + 100.0)
-    plot, graph = plot_product(panel._impl, ["vpc", "a"])
-    qtbot.wait(200)
+    plot_panel.time_range = (T0, T0 + 100.0)
+    plot, graph = plot_product(plot_panel._impl, ["vpc", "a"])
+    qtbot.waitUntil(lambda: _point_count(graph) > 0, timeout=5000)
+    before = _point_count(graph)
     VIRTUAL_PRODUCTS.remove_owner("vp_demo")
-    panel.time_range = (T0 + 50.0, T0 + 150.0)
+    plot_panel.time_range = (T0 + 50.0, T0 + 150.0)
     qtbot.wait(200)
     assert graph in plot.plottables()
+    assert _point_count(graph) == before
 
 
 VP_CELL = """

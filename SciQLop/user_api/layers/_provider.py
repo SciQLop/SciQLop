@@ -102,6 +102,7 @@ def define_layer(path: str, func: Callable, scope: str = "auto") -> LayerProvide
     existing._scope = scope
     if _swaps_in_place(existing, func):
         existing.callback.callback = func
+        existing.update_callback(existing.callback)
     else:
         existing.update_callback(MutableCallback(func))
     return _contribute_layer(existing)
