@@ -147,6 +147,14 @@ def _dock_icon(icon: Optional[str], widget: QWidget) -> QIcon:
     return QIcon(icon) if os.path.exists(icon) else get_icon(icon)
 
 
+def _build_dock_content(dock: Dock) -> Optional[QWidget]:
+    try:
+        return dock.build()
+    except Exception:
+        log.error(f"dock {dock.id} failed to build", exc_info=True)
+        return None
+
+
 def _new_dock_widget(dock: Dock, widget: QWidget) -> QtAds.CDockWidget:
     dock_widget = QtAds.CDockWidget(dock.title)
     if dock.placement == "center":
@@ -730,7 +738,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if not shiboken6.isValid(self) or not self._places(dock):
             return
         self._close_dock(dock.id)
-        self._docks[dock.id] = (dock, self._place_dock(dock))
+        widget = _build_dock_content(dock)
+        if widget is not None:
+            self._docks[dock.id] = (dock, self._place_dock(dock, widget))
 
     def _on_dock_removed(self, dock: Dock) -> None:
         if not shiboken6.isValid(self):
@@ -739,8 +749,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if placed is not None and placed[0] is dock:
             self._close_dock(dock.id)
 
-    def _place_dock(self, dock: Dock) -> QtAds.CDockWidget:
-        widget = dock.build()
+    def _place_dock(self, dock: Dock, widget: QWidget) -> QtAds.CDockWidget:
         if not widget.windowTitle():
             widget.setWindowTitle(dock.title)
         dock_widget = _new_dock_widget(dock, widget)

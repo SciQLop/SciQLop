@@ -111,6 +111,39 @@ def test_bad_placement_is_refused():
         Dock(id="dock_demo.bad", title="Bad", build=QLabel, placement="top")
 
 
+def _raise():
+    raise RuntimeError("broken factory")
+
+
+@pytest.fixture
+def logged_errors(monkeypatch):
+    from SciQLop.core.ui import mainwindow
+    errors = []
+    monkeypatch.setattr(mainwindow.log, "error", lambda msg, *a, **k: errors.append(msg))
+    return errors
+
+
+def test_a_raising_build_is_logged_not_raised(main_window, demo_docks, logged_errors):
+    _contribute(id="dock_demo.broken", title="Broken probe", build=_raise)
+
+    assert main_window.dock_manager.findDockWidget("Broken probe") is None
+    assert len(logged_errors) == 1 and "dock_demo.broken" in logged_errors[0]
+
+
+def test_a_raising_build_does_not_break_a_new_window(qapp, main_window, demo_docks, logged_errors):
+    from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+    _contribute(id="dock_demo.broken", title="Broken probe", build=_raise)
+    logged_errors.clear()
+    previous = qapp.main_window
+    second = SciQLopMainWindow()
+    try:
+        assert second.dock_manager.findDockWidget("Broken probe") is None
+        assert len(logged_errors) == 1 and "dock_demo.broken" in logged_errors[0]
+    finally:
+        destroy_main_window(second)
+        qapp.main_window = previous
+
+
 def test_two_live_windows_keep_their_own_docks(qapp, main_window, qtbot, demo_docks):
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
     previous = qapp.main_window

@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 
 import pytest
+import shiboken6
 from PySide6.QtCore import QSize
 
 import SciQLop
@@ -78,6 +79,24 @@ def test_agent_ui_registered_once_centrally(bare_main_window):
     assert [a for a in mw.toolsMenu.actions() if a.text() == "Agent Chat"] == []
     view_toggles = [a for a in mw.viewMenu.actions() if a.text() == "Agents"]
     assert len(view_toggles) == 1
+
+
+def test_agent_dock_survives_the_withdrawal_of_the_backend_that_created_it(bare_main_window, qtbot):
+    """The chat UI is owned by core: a failing backend plugin's withdrawal must not close it for the others."""
+    from SciQLop.components.agents import ensure_agent_dock
+    from SciQLop.core.docks import DOCKS
+    from SciQLop.core.extensions import owned_by
+
+    with owned_by("legacy:first_backend"):
+        dock = ensure_agent_dock(bare_main_window)
+    try:
+        DOCKS.remove_owner("legacy:first_backend")
+        qtbot.wait(50)
+        assert shiboken6.isValid(dock)
+        assert bare_main_window.dock_manager.findDockWidget("Agents") is not None
+        assert DOCKS.owner_of("sciqlop.Agents") == "sciqlop"
+    finally:
+        DOCKS.remove("sciqlop.Agents")
 
 
 def test_added_dock_gets_widget_window_icon(bare_main_window):

@@ -1169,8 +1169,10 @@ def _dock_agent_panel(main_window, dock):
     the product tree, catalogs, settings and plot-properties panels (a left
     sidebar tab plus a View-menu toggle). The ``assistant`` window icon set on
     the panel becomes the tab icon."""
+    from SciQLop.core.extensions import owned_by
     dock_manager = getattr(main_window, "dock_manager", None)
     if dock_manager is None:
         return None
-    main_window.add_side_pan(dock)
+    with owned_by("sciqlop"):  # shared by every backend: withdrawing the one that created it must not close it
+        main_window.add_side_pan(dock)
     return dock_manager.findDockWidget(_DOCK_TITLE)
