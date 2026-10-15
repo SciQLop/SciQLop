@@ -1,16 +1,16 @@
-"""Layer lifecycle: MutableCallback wrapper and registry for hot-reload."""
+"""Hot-reload building blocks shared by layers and virtual products: a swappable callback wrapper
+and the knob signature that decides whether a re-run can swap the body in place."""
 import functools
 import inspect
-from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from typing import Callable
 
 
-def _signature_kwargs(callback) -> tuple:
+def signature_kwargs(callback, skip: tuple = ("start", "stop", "data")) -> tuple:
     sig = inspect.signature(callback)
     return tuple(
         (name, p.default.__class__)
         for name, p in sig.parameters.items()
-        if p.default is not inspect.Parameter.empty and name not in ("start", "stop", "data")
+        if p.default is not inspect.Parameter.empty and name not in skip
     )
 
 
@@ -29,35 +29,3 @@ class MutableCallback:
 
     def __call__(self, *args, **kwargs):
         return self._callback(*args, **kwargs)
-
-
-@dataclass
-class LayerEntry:
-    wrapper: MutableCallback
-    signature_changed: bool = False
-
-
-class LayerRegistry:
-    def __init__(self):
-        self._entries: Dict[str, LayerEntry] = {}
-
-    def register(self, name: str, callback: Callable) -> LayerEntry:
-        existing = self._entries.get(name)
-        new_sig = _signature_kwargs(callback)
-        if existing is not None:
-            old_sig = _signature_kwargs(existing.wrapper.callback)
-            if old_sig == new_sig:
-                existing.wrapper.callback = callback
-                existing.signature_changed = False
-                return existing
-
-        wrapper = MutableCallback(callback)
-        entry = LayerEntry(wrapper=wrapper, signature_changed=existing is not None)
-        self._entries[name] = entry
-        return entry
-
-    def get(self, name: str) -> Optional[LayerEntry]:
-        return self._entries.get(name)
-
-
-_registry = LayerRegistry()

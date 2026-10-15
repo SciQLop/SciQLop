@@ -1,40 +1,44 @@
-"""Integration tests for the layer system (pure logic, no Qt)."""
+"""Integration tests for the layer system: define a layer, invoke it, hot-reload it."""
+import pytest
+
 from SciQLop.user_api.layers.types import Marker, Span, HLine
-from SciQLop.user_api.layers.registry import LayerRegistry
+from ..fixtures import *  # noqa: F401,F403
 
 
-def test_register_and_invoke_marker_layer():
-    reg = LayerRegistry()
+@pytest.fixture
+def define(main_window):
+    from SciQLop.user_api.layers._provider import LAYERS, define_layer, follow_layers
+    follow_layers()
+    yield define_layer
+    for key in LAYERS.keys():
+        if key.startswith("Layers/li/"):
+            LAYERS.remove(key)
 
+
+def test_register_and_invoke_marker_layer(define):
     def find_peaks(start: float, stop: float, threshold: float = 0.5) -> list[Marker]:
         mid = (start + stop) / 2
         return [Marker(time=mid, value=threshold)]
 
-    entry = reg.register("find_peaks", find_peaks)
-    result = entry.wrapper(0.0, 100.0)
+    result = define("li/find_peaks", find_peaks).callback(0.0, 100.0)
     assert len(result) == 1
     assert isinstance(result[0], Marker)
     assert result[0].time == 50.0
     assert result[0].value == 0.5
 
 
-def test_register_and_invoke_span_layer():
-    reg = LayerRegistry()
-
+def test_register_and_invoke_span_layer(define):
     def detect_intervals(start: float, stop: float) -> list[Span]:
         mid = (start + stop) / 2
         return [Span(start=mid - 1, stop=mid + 1, label="event")]
 
-    entry = reg.register("detect_intervals", detect_intervals)
-    result = entry.wrapper(0.0, 100.0)
+    result = define("li/detect_intervals", detect_intervals).callback(0.0, 100.0)
     assert len(result) == 1
     assert isinstance(result[0], Span)
     assert result[0].label == "event"
 
 
-def test_register_and_invoke_mixed_layer():
-    reg = LayerRegistry()
-
+def test_register_and_invoke_mixed_layer(define):
     def annotate(start: float, stop: float) -> list[Marker | Span | HLine]:
         return [
             Marker(time=start, value=1.0),
@@ -42,30 +46,27 @@ def test_register_and_invoke_mixed_layer():
             HLine(value=0.0),
         ]
 
-    entry = reg.register("annotate", annotate)
-    result = entry.wrapper(0.0, 10.0)
+    result = define("li/annotate", annotate).callback(0.0, 10.0)
     assert len(result) == 3
     assert isinstance(result[0], Marker)
     assert isinstance(result[1], Span)
     assert isinstance(result[2], HLine)
 
 
-def test_hot_reload_swaps_callback():
-    reg = LayerRegistry()
-
+def test_hot_reload_swaps_callback(define):
     def v1(start, stop):
         return [Marker(time=0, value=1)]
 
     def v2(start, stop):
         return [Marker(time=0, value=2)]
 
-    entry = reg.register("layer", v1)
-    assert entry.wrapper(0, 1)[0].value == 1
+    first = define("li/layer", v1)
+    wrapper = first.callback
+    assert wrapper(0, 1)[0].value == 1
 
-    entry2 = reg.register("layer", v2)
-    assert entry2.wrapper(0, 1)[0].value == 2
-    # same wrapper object (hot-reloaded)
-    assert entry.wrapper is entry2.wrapper
+    second = define("li/layer", v2)
+    assert second.callback(0, 1)[0].value == 2
+    assert second.callback is wrapper
 
 
 def test_partition_end_to_end():

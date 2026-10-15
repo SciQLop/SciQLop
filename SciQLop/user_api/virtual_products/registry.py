@@ -4,6 +4,8 @@ import inspect
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
+from SciQLop.user_api.layers.registry import MutableCallback as _LayerMutableCallback, signature_kwargs
+
 
 def _resolve_fractional_range(start: float, stop: float, v):
     """If v is a SciQLopPlotRange with fractional coords (0-1), convert to absolute."""
@@ -35,32 +37,12 @@ def _resolve_range_defaults(callback, start: float, stop: float, kwargs: dict) -
     return resolved
 
 
-def _signature_kwargs(callback) -> tuple:
-    sig = inspect.signature(callback)
-    return tuple(
-        (name, p.default.__class__)
-        for name, p in sig.parameters.items()
-        if p.default is not inspect.Parameter.empty and name not in ("start", "stop")
-    )
+class MutableCallback(_LayerMutableCallback):
+    """The layer wrapper, plus fractional-range resolution and an `after_call` hook for the debug panel."""
 
-
-class MutableCallback:
     def __init__(self, callback: Callable):
-        self.callback = callback
+        super().__init__(callback)
         self.after_call: Optional[Callable] = None
-
-    def _update_metadata(self, callback: Callable):
-        import functools
-        functools.update_wrapper(self, callback)
-
-    @property
-    def callback(self):
-        return self._callback
-
-    @callback.setter
-    def callback(self, value):
-        self._callback = value
-        self._update_metadata(value)
 
     def __call__(self, start, stop, **kwargs):
         import time as _time
@@ -94,10 +76,10 @@ class VPRegistry:
                  product_type: str, labels: Optional[List[str]],
                  colored: bool = False) -> RegistryEntry:
         existing = self._entries.get(name)
-        new_sig_kwargs = _signature_kwargs(callback)
+        new_sig_kwargs = signature_kwargs(callback, skip=("start", "stop"))
         if (existing and existing.product_type == product_type and existing.labels == labels
                 and existing.colored == colored):
-            old_sig_kwargs = _signature_kwargs(existing.wrapper.callback)
+            old_sig_kwargs = signature_kwargs(existing.wrapper.callback, skip=("start", "stop"))
             if old_sig_kwargs == new_sig_kwargs:
                 existing.wrapper.callback = callback
                 existing.signature_changed = False

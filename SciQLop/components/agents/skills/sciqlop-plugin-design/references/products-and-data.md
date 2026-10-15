@@ -187,6 +187,30 @@ def smoothed(start: float, stop: float,
 - Shared knob aliases (`Window = Annotated[int, Knob(...)]`) must also be
   module-level names in every module that uses them.
 
+## Layers
+
+An annotation layer is a function returning `Marker`/`Span`/`HLine` items,
+drawn over a plot it is dropped on:
+
+```python
+from SciQLop.user_api.layers import register_layer, remove_layer, Span
+
+@register_layer("myplugin/quiet_times", scope="panel")
+def quiet_times(start: float, stop: float, threshold: float = 5.0) -> list[Span]:
+    ...
+```
+
+- A layer is a contribution to `sciqlop.layers`, keyed by its path
+  (`Layers/myplugin/quiet_times`). The path names it, not the function: the
+  same function at two paths gives two layers.
+- Registering again at the same path hot-reloads it. With the same knob
+  signature, layers already on plots run the new body; with other knobs, new
+  drops get them and layers already on plots keep the old ones.
+- `remove_layer("myplugin/quiet_times")` removes its tree node (an unknown
+  path raises `LookupError`). A layer registered in `activate()` belongs to
+  the plugin and leaves the tree when the plugin is withdrawn. Layers already
+  dropped on plots keep rendering.
+
 ## Streaming archived data (files, web services)
 
 Model: **one virtual product per source channel**, whose callback fetches

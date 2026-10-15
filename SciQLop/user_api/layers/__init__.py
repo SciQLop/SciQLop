@@ -19,12 +19,12 @@ Two callback shapes are supported:
 from SciQLop.user_api._annotations import experimental_api
 from SciQLop.user_api.layers.types import Marker, Span, HLine, Annotation
 from SciQLop.user_api.data_types import Scalar, Vector, MultiComponent, Spectrogram  # noqa: F401
-from SciQLop.user_api.layers.registry import _registry
+from SciQLop.user_api.threading import on_main_thread
 
 __all__ = [
     "Marker", "Span", "HLine", "Annotation",
     "Scalar", "Vector", "MultiComponent", "Spectrogram",
-    "register_layer",
+    "register_layer", "remove_layer",
 ]
 
 
@@ -39,6 +39,7 @@ def register_layer(path: str = None, scope: str = "auto"):
     ----------
     path : str, optional
         Path in the product tree (under Layers/). Defaults to the function name.
+        The path names the layer: registering again at the same path hot-reloads it.
     scope : {"auto", "panel", "plot"}, optional
         Where the layer's spans render and where its inspector node lives.
         ``"panel"`` renders spans across every plot in the panel and places
@@ -67,16 +68,23 @@ def register_layer(path: str = None, scope: str = "auto"):
         raise ValueError(f"scope must be 'auto', 'panel', or 'plot', got {scope!r}")
 
     def decorator(func):
-        name = func.__name__
-        entry = _registry.register(name, func)
-        layer_path = path or name
-
-        from SciQLop.user_api.layers._provider import _layer_providers
-        if name not in _layer_providers:
-            from SciQLop.user_api.threading import invoke_on_main_thread
-            from SciQLop.user_api.layers._provider import LayerProvider
-            invoke_on_main_thread(
-                lambda: LayerProvider(layer_path, entry.wrapper, scope=scope))
-
+        from SciQLop.user_api.layers._provider import define_layer
+        define_layer(path or func.__name__, func, scope)
         return func
     return decorator
+
+
+@experimental_api()
+@on_main_thread
+def remove_layer(path: str) -> None:
+    """Remove the layer at ``path`` (under Layers/) from the product tree.
+
+    Layers already attached to plots keep rendering.
+
+    Raises
+    ------
+    LookupError
+        If no layer exists at ``path``; the message lists the available layers.
+    """
+    from SciQLop.user_api.layers._provider import LAYERS
+    LAYERS.remove(f"Layers/{path}")

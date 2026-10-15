@@ -28,6 +28,8 @@ def prepare_extension_points() -> None:
     from SciQLop.components.scenes.tree import follow_registries
     follow_registries()
     easy_provider.follow_virtual_products()
+    from SciQLop.user_api.layers import _provider as layer_provider  # importing declares sciqlop.layers
+    layer_provider.follow_layers()
     from SciQLop.components.plotting.ui.contributed_sections import follow_inspector_sections
     follow_inspector_sections()
 

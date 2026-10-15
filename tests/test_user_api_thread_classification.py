@@ -19,6 +19,7 @@ QT_FREE_MODULES = {
     "dsp/_background.py",
     "dsp/_speasy.py",
     "layers/_introspection.py",
+    "layers/registry.py",
     "layers/types.py",
     "plot/protocol.py",
     "templates.py",
@@ -34,7 +35,6 @@ NOT_MARSHALED_ON_PURPOSE = {
     "catalogs/_overlay.py": {"CatalogOverlay.catalog_path", "CatalogOverlay.override_color"},
     "layers/_provider.py": {"LayerProvider.callback", "LayerProvider.get_knobs", "LayerProvider.path",
                             "LayerProvider.resolve_scope", "LayerProvider.update_callback"},
-    "layers/registry.py": {"LayerRegistry.get", "LayerRegistry.register", "MutableCallback.callback"},
     "plot/_graphic_primitives.py": {"StraightLine.orientation"},
     # Read the intervals kept from the last set_intervals call, not the C++ timeline.
     "plot/_timeline.py": {"Interval.duration", "Timeline.interval"},
@@ -44,7 +44,7 @@ NOT_MARSHALED_ON_PURPOSE = {
                        "is_time_series_plot", "is_xy_plot", "to_product_path"},
     "virtual_products/__init__.py": {"VirtualProduct.path", "VirtualProduct.product_type",
                                      "list_virtual_products"},
-    "virtual_products/registry.py": {"MutableCallback.callback", "VPRegistry.get", "VPRegistry.register"},
+    "virtual_products/registry.py": {"VPRegistry.get", "VPRegistry.register"},
     # Only call marshaled functions, or reach Qt through sciqlop_app()'s proxy.
     "gui/__init__.py": {"get_main_window"},
     "themes/__init__.py": {"apply_theme", "current_theme", "list_themes"},
@@ -55,6 +55,7 @@ NOT_MARSHALED_ON_PURPOSE = {
     "plot/_speasy_backend.py": {"SciQLopBackend.colormap", "SciQLopBackend.line"},
     # Run on the main thread at startup; they only contribute and register, no Qt object is touched.
     "magics/__init__.py": {"contribute_core_magics", "register_all_magics"},
+    "layers/_provider.py#startup": {"follow_layers"},
     "magics/install_magic.py": {"install_magic"},
     "magics/job_magic.py": {"job_magic"},
     "magics/plot_magic.py": {"create_plot_panel", "plot_magic", "plot_panel"},

@@ -1257,14 +1257,15 @@ def _dispose_layer(renderer, target):
 
 
 def attach_layer(plot, product: list[str], panel=None):
-    from SciQLop.user_api.layers._provider import _layer_providers
+    from SciQLop.user_api.layers._provider import LAYERS
 
     node = ProductsModel.node(product)
     if node is None:
         return None
-    provider = _layer_providers.get(node.provider())
-    if provider is None:
+    matches = LAYERS.list(name=node.provider())
+    if not matches:
         return None
+    provider = matches[0]
 
     return wire_layer_renderer(plot, provider.callback,
                                 specs=provider.get_knobs(), panel=panel,

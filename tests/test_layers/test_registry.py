@@ -1,6 +1,6 @@
-import numpy as np
 import pytest
 from SciQLop.user_api.layers.types import Marker
+from ..fixtures import *  # noqa: F401,F403
 
 
 def _peaks_a(start: float, stop: float, threshold: float = 0.5):
@@ -48,35 +48,45 @@ class TestMutableCallback:
         assert ann.get("return") is list
 
 
-class TestLayerRegistry:
-    def test_register_new(self):
-        from SciQLop.user_api.layers.registry import LayerRegistry
-        reg = LayerRegistry()
-        entry = reg.register("find_peaks", _peaks_a)
-        assert entry.wrapper(0.0, 1000.0)[0].time == 100.0
-        assert entry.signature_changed is False
+def test_signature_kwargs_skips_the_named_parameters():
+    from SciQLop.user_api.layers.registry import signature_kwargs
 
-    def test_re_register_same_sig_swaps(self):
-        from SciQLop.user_api.layers.registry import LayerRegistry
-        reg = LayerRegistry()
-        entry1 = reg.register("find_peaks", _peaks_a)
-        wrapper1 = entry1.wrapper
-        entry2 = reg.register("find_peaks", _peaks_b)
-        assert entry2.wrapper is wrapper1
-        assert entry2.signature_changed is False
-        assert entry2.wrapper(0.0, 1000.0)[0].time == 200.0
+    def f(start, stop, data=None, threshold: float = 0.5):
+        return []
 
-    def test_re_register_different_sig_rebuilds(self):
-        from SciQLop.user_api.layers.registry import LayerRegistry
-        reg = LayerRegistry()
-        entry1 = reg.register("find_peaks", _peaks_a)
-        entry2 = reg.register("find_peaks", _peaks_new_sig)
-        assert entry2.wrapper is not entry1.wrapper
-        assert entry2.signature_changed is True
+    assert signature_kwargs(f) == (("threshold", float),)
+    assert signature_kwargs(f, skip=("start", "stop")) == (("data", type(None)), ("threshold", float))
 
-    def test_get_existing(self):
-        from SciQLop.user_api.layers.registry import LayerRegistry
-        reg = LayerRegistry()
-        reg.register("find_peaks", _peaks_a)
-        assert reg.get("find_peaks") is not None
-        assert reg.get("nonexistent") is None
+
+@pytest.fixture
+def define(main_window):
+    from SciQLop.user_api.layers._provider import LAYERS, define_layer, follow_layers
+    follow_layers()
+    yield define_layer
+    for key in LAYERS.keys():
+        if key.startswith("Layers/lr/"):
+            LAYERS.remove(key)
+
+
+class TestDefineLayer:
+    def test_define_new(self, define):
+        provider = define("lr/find_peaks", _peaks_a)
+        assert provider.callback(0.0, 1000.0)[0].time == 100.0
+
+    def test_redefine_same_sig_swaps(self, define):
+        wrapper1 = define("lr/find_peaks", _peaks_a).callback
+        provider = define("lr/find_peaks", _peaks_b)
+        assert provider.callback is wrapper1
+        assert provider.callback(0.0, 1000.0)[0].time == 200.0
+
+    def test_redefine_different_sig_rebuilds(self, define):
+        wrapper1 = define("lr/find_peaks", _peaks_a).callback
+        provider = define("lr/find_peaks", _peaks_new_sig)
+        assert provider.callback is not wrapper1
+        assert "window" in {k.name for k in provider.get_knobs()}
+
+    def test_lookup_by_path(self, define):
+        from SciQLop.user_api.layers._provider import LAYERS
+        provider = define("lr/find_peaks", _peaks_a)
+        assert LAYERS.get("Layers/lr/find_peaks") is provider
+        assert "Layers/lr/nonexistent" not in LAYERS
