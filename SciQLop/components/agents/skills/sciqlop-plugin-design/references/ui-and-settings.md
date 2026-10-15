@@ -253,6 +253,21 @@ def activate(ctx):
 - Between plugins, the first contribution of a name wins. When it is withdrawn, the next one takes over.
 - A magic that raises prints its traceback in the cell. The kernel keeps running.
 
+A kernel name is a contribution to `sciqlop.kernel_namespace`. It is pushed into the kernel's namespace at once.
+
+```python
+from SciQLop.core.kernel_namespace import NamespaceEntry
+
+def activate(ctx):
+    ctx.contribute("sciqlop.kernel_namespace", NamespaceEntry("my_plugin.stats", "stats", my_stats))
+```
+
+- `name` is an identifier. The value is the object itself, so keep it importable and cheap.
+- The core names (`main_window`, `workspace`, `app`, `background_run`, `plugins`) always keep their name.
+  A plugin entry with the same name is logged and ignored.
+- Between plugins, the first contribution of a name wins. When it is withdrawn, the next one takes over.
+- Withdrawing removes the name only if the user did not rebind it. A name the user reassigned stays.
+
 ## Drop rules
 
 What a drop on a plot does is a contribution to `sciqlop.drop_rules`

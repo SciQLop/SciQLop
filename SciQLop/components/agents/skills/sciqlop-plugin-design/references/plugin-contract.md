@@ -110,6 +110,7 @@ def activate(ctx):
 | `sciqlop.export_targets` | `ExportTarget(id, label, suffixes, write, scalable)` | `id` |
 | `sciqlop.inspector_sections` | `InspectorSection(id, title, target, build, applies, priority)` | `id` |
 | `sciqlop.magics` | `Magic(id, name, kind, function, completer)` | `id` |
+| `sciqlop.kernel_namespace` | `NamespaceEntry(id, name, value)` | `id` |
 
 Locations, argument values and examples: the "Commands and menu entries", "Export targets", "Inspector sections"
 and "Keyboard shortcuts" sections of [ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws them all.

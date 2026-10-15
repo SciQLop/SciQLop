@@ -34,6 +34,7 @@ _shared_main_window = []
 def _build_main_window(qapp):
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
     from SciQLop.components.plugins import loaded_plugins
+    from SciQLop.core.kernel_namespace import contribute_name
 
     mw = SciQLopMainWindow()
     mw.show()
@@ -41,7 +42,7 @@ def _build_main_window(qapp):
     from SciQLop.components.extension_points import prepare_extension_points, start_plugins
     prepare_extension_points()
     start_plugins(qapp, mw)
-    mw.push_variables_to_console({"plugins": loaded_plugins})
+    contribute_name("sciqlop.plugins", "plugins", loaded_plugins, replace=True)
     qapp.processEvents()
     return mw
 

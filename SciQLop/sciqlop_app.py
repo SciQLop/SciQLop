@@ -16,6 +16,7 @@ os.environ['TZ'] = 'UTC'
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from SciQLop.core.kernel_namespace import contribute_name
 from SciQLop.sciqlop_launcher import EXIT_RESTART, EXIT_SWITCH_WORKSPACE, SWITCH_WORKSPACE_FILE
 
 
@@ -206,7 +207,7 @@ def build_sciqlop():
     from SciQLop.components.plugins.backend.live_loader import PluginsLiveLoader
     main_windows._plugins_live_loader = PluginsLiveLoader(main_windows, parent=main_windows)
 
-    main_windows.push_variables_to_console({"plugins": kernel_plugins_view()})
+    contribute_name("sciqlop.plugins", "plugins", kernel_plugins_view())
 
     app.processEvents()
     return main_windows

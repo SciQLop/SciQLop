@@ -28,6 +28,7 @@ from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components.command_palette.menu_entries import add_menu_entries
 from SciQLop.core.menus import MAIN_TOOLS
 from SciQLop.components.sciqlop_logging import getLogger
+from SciQLop.core.kernel_namespace import contribute_name
 from SciQLopPlots import SciQLopMultiPlotPanel
 from SciQLop.components.settings.ui import SettingsPanel
 from SciQLop.components.shortcuts import bind_shortcut, bind_tooltip
@@ -421,7 +422,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.panel_added.connect(self.catalogs_browser.connect_to_panel)
 
         wm = workspaces_manager_instance()
-        wm.push_variables({"main_window": wm.wrap_qt(self)})
+        contribute_name("sciqlop.main_window", "main_window", wm.wrap_qt(self))
         wm.workspace_loaded.connect(self._show_workspace_name_in_title)
         from SciQLop.components.onboarding.backend.registry import register_builtin_tours
         register_builtin_tours()

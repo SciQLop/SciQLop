@@ -16,6 +16,7 @@ from SciQLop.core.sciqlop_application import sciqlop_app
 from SciQLop.user_api.threading import on_main_thread
 from SciQLop.components.jupyter.kernel import KernelManager
 from SciQLop.core.common import background_run
+from SciQLop.core.kernel_namespace import contribute_name
 from SciQLop.components.sciqlop_logging import getLogger
 import uuid
 from pathlib import Path
@@ -203,7 +204,7 @@ class WorkspaceManager(QObject):
         self._workspace = Workspace(manifest=manifest)
         self._workspace.activate()
         self.workspace_loaded.emit(self._workspace)
-        self.push_variables({"workspace": self._workspace})
+        contribute_name("sciqlop.workspace", "workspace", self._workspace)
         return self._workspace
 
     @Slot(str)
@@ -255,10 +256,8 @@ class WorkspaceManager(QObject):
         self._kernel_manager.push_variables(variable_dict)
 
     def start(self):
-        self.push_variables({
-            "app": self.wrap_qt(sciqlop_app()),
-            "background_run": background_run,
-        })
+        contribute_name("sciqlop.app", "app", self.wrap_qt(sciqlop_app()))
+        contribute_name("sciqlop.background_run", "background_run", background_run)
         cwd = self.workspace.workspace_dir
         from SciQLop.components.workspaces.ui.notebook_environment import install_notebook_hooks
         self._notebook_prompt = install_notebook_hooks(self._kernel_manager.notebook_hooks, cwd, self)

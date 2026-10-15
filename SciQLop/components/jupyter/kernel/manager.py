@@ -8,6 +8,7 @@ from jupyqt import EmbeddedJupyter
 from PySide6.QtCore import QObject
 from PySide6.QtGui import QColor
 from SciQLop.user_api.magics import register_all_magics
+from SciQLop.components.jupyter.kernel.namespace import follow_jupyter_namespace
 from SciQLop.user_api.threading import init_invoker, invoke_on_main_thread  # noqa: F401 — re-export
 
 
@@ -116,6 +117,7 @@ class KernelManager(QObject):
         self._exec_count = 0
         init_invoker(self._jupyter._invoker)
         register_all_magics(self._jupyter.shell)
+        follow_jupyter_namespace(self._jupyter)
 
     @property
     def shell(self):
