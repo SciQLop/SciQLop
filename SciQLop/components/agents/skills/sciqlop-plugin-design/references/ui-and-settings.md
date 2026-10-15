@@ -231,6 +231,28 @@ A shortcut registered while the help panel or Settings is open shows up there at
 Plugins register shortcuts in `activate(ctx)`. `register_shortcut` also works from a notebook cell: it is
 marshalled to the main thread.
 
+## Kernel: magics and namespace
+
+An IPython magic is a contribution to `sciqlop.magics`. It is applied to the SciQLop kernel at once, and
+removed again when your plugin is withdrawn.
+
+```python
+from SciQLop.core.magics import Magic
+
+def hello(line):
+    return f"hi {line}"
+
+def activate(ctx):
+    ctx.contribute("sciqlop.magics", Magic("my_plugin.hello", "hello", "line", hello))
+```
+
+- `kind` is `"line"`, `"cell"` or `"line_cell"`. `name` is an identifier, without the `%`.
+- `completer` is optional: an IPython matcher (API v2) for tab completion. It is removed with the magic.
+- The core magics (`%vp`, `%layer`, `%plot`, `%timerange`, `%install`, `%workspace`, `%job`) always keep their name.
+  A plugin magic with the same name is logged and ignored.
+- Between plugins, the first contribution of a name wins. When it is withdrawn, the next one takes over.
+- A magic that raises prints its traceback in the cell. The kernel keeps running.
+
 ## Drop rules
 
 What a drop on a plot does is a contribution to `sciqlop.drop_rules`

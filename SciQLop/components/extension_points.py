@@ -14,6 +14,8 @@ def prepare_extension_points() -> None:
     import SciQLop.core.drop_rules  # noqa: F401  declares sciqlop.drop_rules
     import SciQLop.core.menus  # noqa: F401  declares sciqlop.menus
     import SciQLop.core.inspector_sections  # noqa: F401  declares sciqlop.inspector_sections
+    from SciQLop.core.magics import contribute_core_magics
+    contribute_core_magics()  # declares sciqlop.magics, contributes the core magics
     import SciQLop.components.plotting.export  # noqa: F401  declares sciqlop.export_targets, contributes the core formats
     from SciQLop.components.command_palette.backend import registry as command_registry  # noqa: F401  declares sciqlop.commands
     from SciQLop.components.shortcuts import registry as _shortcuts  # noqa: F401  declares sciqlop.shortcuts
