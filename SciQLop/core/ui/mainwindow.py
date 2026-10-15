@@ -27,6 +27,8 @@ from SciQLop.core.ui import Metrics
 from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components.command_palette.menu_entries import add_menu_entries
 from SciQLop.core.menus import MAIN_TOOLS
+from SciQLop.core.docks import DOCKS, Dock, _ExistingWidget
+from SciQLop.core.extensions import current_owner, owned_by
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.kernel_namespace import contribute_name
 from SciQLopPlots import SciQLopMultiPlotPanel
@@ -132,6 +134,32 @@ def _destroy_content_before_its_window(dock_widget: QtAds.CDockWidget) -> None:
         shiboken6.delete(content)
 
 
+_SIDE_BAR = QtAds.PySide6QtAds.ads.SideBarLocation
+_SIDE_BARS = {"left": _SIDE_BAR.SideBarLeft, "right": _SIDE_BAR.SideBarRight, "bottom": _SIDE_BAR.SideBarBottom}
+# simplify: no caller docks on the top side bar, so it maps to "bottom"; add a "top" placement if one does.
+_PLACEMENT_OF_SIDE_BAR = {_SIDE_BAR.SideBarLeft: "left", _SIDE_BAR.SideBarRight: "right",
+                          _SIDE_BAR.SideBarBottom: "bottom", _SIDE_BAR.SideBarTop: "bottom"}
+
+
+def _dock_icon(icon: Optional[str], widget: QWidget) -> QIcon:
+    if icon is None:
+        return widget.windowIcon()
+    return QIcon(icon) if os.path.exists(icon) else get_icon(icon)
+
+
+def _new_dock_widget(dock: Dock, widget: QWidget) -> QtAds.CDockWidget:
+    dock_widget = QtAds.CDockWidget(dock.title)
+    if dock.placement == "center":
+        dock_widget.setWidget(widget)
+    else:
+        dock_widget.setWidget(widget, QtAds.CDockWidget.ForceNoScrollArea)
+    dock_widget.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
+    icon = _dock_icon(dock.icon, widget)
+    if not icon.isNull():
+        dock_widget.setIcon(icon)
+    return dock_widget
+
+
 def _surface(size: QtCore.QSize):
     return size.width() * size.height()
 
@@ -218,7 +246,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, self.welcome)
 
         self.setWindowTitle("SciQLop")
-        self._setup_side_panels()
+        self.follow_docks()
+        with owned_by("sciqlop"):
+            self._setup_side_panels()
         self._setup_toolbar()
         self._setup_status_bar()
         self._setup_command_palette()
@@ -396,6 +426,14 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         bind_shortcut(self.shortcutsHelpAction, "app.shortcuts_help")
         bind_tooltip(self.shortcutsHelpAction, "app.shortcuts_help",
                      "Keyboard shortcuts", "List every keyboard shortcut.")
+        self._create_toolbar()
+
+    def _create_toolbar(self):
+        """Created with the menus, before follow_docks() replays docks that put their toggle on it."""
+        self.toolBar = QtWidgets.QToolBar(self)
+        self.toolBar.setWindowTitle("Toolbar")
+        self.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, self.toolBar)
+        self.toolBar.setVisible(False)
 
     def show_shortcuts_help(self):
         if self._shortcuts_help is None:
@@ -468,10 +506,6 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _setup_toolbar(self):
         self.setWindowIcon(QtGui.QIcon("://icons/SciQLop.png"))
-        self.toolBar = QtWidgets.QToolBar(self)
-        self.toolBar.setWindowTitle("Toolbar")
-        self.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, self.toolBar)
-        self.toolBar.setVisible(False)
         toolbar_toggle = self.toolBar.toggleViewAction()
         self.viewMenu.addAction(toolbar_toggle)
         toolbar_tooltip = _dock_view_tooltip("Toolbar")
@@ -649,28 +683,110 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def default_range(self):
         return self._default_time_range
 
+    def central_area(self) -> Optional[QtAds.CDockAreaWidget]:
+        """Where center docks go: the biggest visible area, else the Welcome page's area."""
+        area = self._find_biggest_area()
+        if area is not None:
+            return area
+        welcome = self.dock_manager.findDockWidget("Welcome")
+        return welcome.dockAreaWidget() if welcome is not None else None
+
     def add_side_pan(self, widget: QWidget, location=QtAds.PySide6QtAds.ads.SideBarLocation.SideBarLeft, icon=None):
-        if widget is not None:
-            doc = QtAds.CDockWidget(widget.windowTitle())
-            doc.setWidget(widget, QtAds.CDockWidget.ForceNoScrollArea)
-            doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
-            if icon is not None:
-                if os.path.exists(icon):
-                    doc.setIcon(QIcon(icon))
-                else:
-                    doc.setIcon(get_icon(icon))
-            elif widget.windowIcon() is not None:
-                doc.setIcon(widget.windowIcon())
-            container = self.dock_manager.addAutoHideDockWidget(location, doc)
-            container.autoHideTab().setIconSize(Metrics.icon_size(self.AUTO_HIDE_TAB_ICON))
-            self._track_autohide_widget_focus(doc)
-            if location == QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom or location == QtAds.PySide6QtAds.ads.SideBarLocation.SideBarTop:
-                container.setSize(widget.sizeHint().height())
-            else:
-                container.setSize(widget.sizeHint().width())
-            action = doc.toggleViewAction()
-            self.viewMenu.addAction(action)
-            _apply_dock_view_tooltip(doc, action)
+        if widget is None:
+            return
+        owner, title = current_owner(), widget.windowTitle()
+        dock_id = f"{owner}.{title}"
+        self._refuse_live_duplicate(dock_id, title)
+        DOCKS.contribute(Dock(id=dock_id, title=title, build=_ExistingWidget(widget, self),
+                              placement=_PLACEMENT_OF_SIDE_BAR[location], icon=icon),
+                         owner=owner, replace=True)
+
+    def _refuse_live_duplicate(self, dock_id: str, title: str) -> None:
+        build = DOCKS.get(dock_id).build if dock_id in DOCKS else None
+        if isinstance(build, _ExistingWidget) and build.host is self and build.alive():
+            raise ValueError(f"a side pane titled {title!r} is already docked in this window")
+
+    def follow_docks(self) -> None:
+        """Place every contributed dock, now and as contributions come and go.
+        Bound methods, not a receiver context (this PySide6 refuses one): each slot checks the window is alive."""
+        self._docks: dict = {}
+        DOCKS.signals.added.connect(self._on_dock_added)
+        DOCKS.signals.removed.connect(self._on_dock_removed)
+        for dock in DOCKS.list():
+            self._on_dock_added(dock)
+
+    def _places(self, dock: Dock) -> bool:
+        build = dock.build
+        if not isinstance(build, _ExistingWidget):
+            return True
+        if build.host is not self:
+            return False
+        if not build.alive():
+            log.debug(f"Dock {dock.id!r} is not placed: its widget was deleted")
+            return False
+        return True
+
+    def _on_dock_added(self, dock: Dock) -> None:
+        if not shiboken6.isValid(self) or not self._places(dock):
+            return
+        self._close_dock(dock.id)
+        self._docks[dock.id] = (dock, self._place_dock(dock))
+
+    def _on_dock_removed(self, dock: Dock) -> None:
+        if not shiboken6.isValid(self):
+            return
+        placed = self._docks.get(dock.id)
+        if placed is not None and placed[0] is dock:
+            self._close_dock(dock.id)
+
+    def _place_dock(self, dock: Dock) -> QtAds.CDockWidget:
+        widget = dock.build()
+        if not widget.windowTitle():
+            widget.setWindowTitle(dock.title)
+        dock_widget = _new_dock_widget(dock, widget)
+        if dock.placement == "center":
+            self._place_center_dock(dock_widget, dock.visible)
+        else:
+            self._place_side_pane(dock_widget, widget, _SIDE_BARS[dock.placement])
+        self._add_dock_action(dock_widget, dock.toolbar)
+        return dock_widget
+
+    def _place_center_dock(self, dock_widget: QtAds.CDockWidget, visible: bool) -> None:
+        area = self.central_area()
+        if area is not None:
+            self.dock_manager.addDockWidgetTabToArea(dock_widget, area)
+        else:
+            self.dock_manager.addDockWidget(QtAds.DockWidgetArea.TopDockWidgetArea, dock_widget)
+        dock_widget.toggleView(visible)
+
+    def _place_side_pane(self, dock_widget: QtAds.CDockWidget, widget: QWidget, location) -> None:
+        container = self.dock_manager.addAutoHideDockWidget(location, dock_widget)
+        container.autoHideTab().setIconSize(Metrics.icon_size(self.AUTO_HIDE_TAB_ICON))
+        self._track_autohide_widget_focus(dock_widget)
+        hint = widget.sizeHint()
+        container.setSize(hint.height() if location == _SIDE_BAR.SideBarBottom else hint.width())
+
+    def _dock_action_holders(self) -> tuple:
+        return self.viewMenu, self.toolBar, self.toolsMenu
+
+    def _add_dock_action(self, dock_widget: QtAds.CDockWidget, toolbar: bool) -> None:
+        action = dock_widget.toggleViewAction()
+        action.setIcon(dock_widget.icon())
+        holders = self._dock_action_holders() if toolbar else (self.viewMenu,)
+        for holder in holders:
+            holder.addAction(action)
+        _apply_dock_view_tooltip(dock_widget, action)
+
+    def _close_dock(self, dock_id: str) -> None:
+        """Delete-on-close + closeDockWidget(): QtAds' own path for a docked, floating or auto-hidden dock."""
+        _, dock_widget = self._docks.pop(dock_id, (None, None))
+        if dock_widget is None or not shiboken6.isValid(dock_widget):
+            return
+        action = dock_widget.toggleViewAction()
+        for holder in self._dock_action_holders():
+            holder.removeAction(action)
+        dock_widget.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
+        dock_widget.closeDockWidget()
 
     def remove_native_plot_panel(self, panel: TimeSyncPanel):
         self.remove_panel(panel)

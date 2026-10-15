@@ -9,7 +9,6 @@ AutoHideDockContainer.cpp: `collapseView(false)` calls `setDockWidgetFocused`,
 closed, SciQLop has to hand focus to another still-open panel itself.
 """
 import pytest
-import shiboken6
 from PySide6 import QtWidgets
 import PySide6QtAds as QtAds
 
@@ -37,10 +36,9 @@ def two_side_panels(main_window):
 
     yield left_dw, right_dw
 
-    for dw in (left_dw, right_dw):
-        if dw is not None and shiboken6.isValid(dw):
-            dw.takeWidget()
-            dw.closeDockWidget()
+    from SciQLop.core.docks import DOCKS
+    for side in ("left", "right"):
+        DOCKS.remove(f"user.Focus tracking probe ({side})")
 
 
 def test_hiding_the_focused_panel_moves_the_cue_to_the_still_open_one(main_window, qtbot, two_side_panels):

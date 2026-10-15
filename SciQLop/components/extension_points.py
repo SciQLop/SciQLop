@@ -14,6 +14,7 @@ def prepare_extension_points() -> None:
     import SciQLop.core.plot_kinds  # noqa: F401  declares sciqlop.plot_kinds
     import SciQLop.core.drop_rules  # noqa: F401  declares sciqlop.drop_rules
     import SciQLop.core.menus  # noqa: F401  declares sciqlop.menus
+    import SciQLop.core.docks  # noqa: F401  declares sciqlop.docks; every main window follows it on its own
     import SciQLop.core.inspector_sections  # noqa: F401  declares sciqlop.inspector_sections
     import SciQLop.core.kernel_namespace  # noqa: F401  declares sciqlop.kernel_namespace
     import SciQLop.components.settings.backend.entry  # noqa: F401  declares sciqlop.settings

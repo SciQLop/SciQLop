@@ -20,33 +20,34 @@ The rules below apply to both. `activate(ctx)` reaches the main window as
 
 ## Docks
 
+Contribute a `Dock` to `sciqlop.docks`. The main window builds and places it.
+
 ```python
-import PySide6QtAds as QtAds
+from SciQLop.core.docks import Dock
 
-def _central_area(main_window):
-    welcome = main_window.dock_manager.findDockWidget("Welcome")
-    return welcome.dockAreaWidget() if welcome is not None else None
-
-def add_dock(main_window, widget, title):
-    widget.setWindowTitle(title)                         # becomes the dock title
-    main_window.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, widget,
-                                  area=_central_area(main_window))
-    dock = main_window.dock_manager.findDockWidget(title)
-    dock.toggleView(False)                               # start hidden
-    action = dock.toggleViewAction()
-    main_window.toolsMenu.addAction(action)              # same action everywhere
-    main_window.toolBar.addAction(action)
-    return dock
+def activate(ctx):
+    ctx.contribute("sciqlop.docks", Dock(
+        id="radio.spectrum", title="Radio spectrum",
+        build=lambda: SpectrumWidget(),   # called by the window that places it
+        placement="center",               # "center", "left", "right" or "bottom"
+        icon=None,                        # registered icon name or image path; None: the widget's windowIcon
+        visible=False,                    # center docks start hidden
+        toolbar=True))                    # toggle also in the toolbar and the Tools menu
 ```
 
-- Pass `area=` explicitly. With `area=None`, SciQLop picks the biggest
-  *visible* area — and at load time the window is not laid out yet, so nothing
-  is visible. The dock then lands in a new area stacked above the welcome page
-  instead of tabbed beside it.
-- Show and hide the dock only through `dock.toggleViewAction()`. Calling
-  `widget.show()` or your own toggle bypasses the docking system and pops the
-  dock into a fresh area.
-- `addWidgetIntoDock` already adds the toggle to the View menu.
+- `center` tabs the dock beside the Welcome page (`main_window.central_area()`).
+  `left`/`right`/`bottom` make an auto-hide side pane, collapsed until clicked.
+- The toggle action always goes to the View menu. Show and hide the dock only
+  through it; `widget.show()` bypasses the docking system.
+- Withdrawing the contribution (plugin disabled or failed) closes and deletes
+  the dock and removes its toggle from every menu and toolbar.
+- Contributing the same `id` again with `replace=True` rebuilds the dock.
+- This replaces the old dance: a `_find_central_area` helper,
+  `addWidgetIntoDock(..., area=...)`, `findDockWidget(title)`,
+  `toggleView(False)`, then adding the toggle by hand.
+- `main_window.add_side_pan(widget, location, icon)` still works. It
+  contributes `Dock(id=f"{owner}.{title}", ...)` for an existing widget, so a
+  second side pane with the same title from the same plugin raises `ValueError`.
 
 ## Threading
 
