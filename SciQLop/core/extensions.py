@@ -91,6 +91,10 @@ class ExtensionPoint(Generic[T]):
             raise NotRegistered(f"no {self._what} named {key!r}; available: {', '.join(sorted(self._items))}")
         return self._items[key]
 
+    def find(self, key: str) -> T | None:
+        """The item under `key`, or None. A single dict read, safe from any thread."""
+        return self._items.get(key)
+
     def __contains__(self, key: str) -> bool:
         return key in self._items
 

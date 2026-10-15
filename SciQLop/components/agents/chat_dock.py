@@ -50,6 +50,7 @@ from .chat.usage_refresh import UsageRefresher
 from .guidance import load_guidance, strip_legacy_alignment
 from .registry import AGENT_BACKENDS, AgentBackendEntry, available_backends, create_backend
 from .settings import AgentChatSettings, AgentSessionMeta, AgentWriteMode
+from .skills import AGENT_SKILLS, sync_skills
 from .tools import AGENT_TOOLS, build_sciqlop_tools
 from .workspace import current_workspace_dir
 
@@ -70,6 +71,7 @@ class _AgentSession:
     resume_id: Optional[str] = None
     version_reminder: Optional[str] = None
     source: Optional[AgentBackendEntry] = None
+    stale: bool = False
 
 
 class AgentChatDock(QWidget):
@@ -78,13 +80,14 @@ class AgentChatDock(QWidget):
         self.setWindowTitle("Agents")
         self.setWindowIcon(get_icon("assistant"))
         self._main_window = main_window
-        self._tools = build_sciqlop_tools(main_window)
+        self._contributions_pending = False
         self._tempdir = Path(tempfile.mkdtemp(prefix="sciqlop_agents_"))
         self._sessions: Dict[str, _AgentSession] = {}
         self._current: Optional[str] = None
         self._write_mode = AgentChatSettings().write_mode
         self._session_filter = ""
         self._turn_task: Optional[asyncio.Task] = None
+        self._turn_session: Optional[_AgentSession] = None
         self._bg_tasks: set[asyncio.Task] = set()
         self._pending_pane_width = 0
         self._pane_width_timer = QTimer(self)
@@ -105,15 +108,39 @@ class AgentChatDock(QWidget):
         self.refresh_backends()
         AGENT_BACKENDS.signals.added.connect(self._follow_backends)
         AGENT_BACKENDS.signals.removed.connect(self._follow_backends)
-        AGENT_TOOLS.signals.added.connect(self._rebuild_tools)
-        AGENT_TOOLS.signals.removed.connect(self._rebuild_tools)
+        for signal in (AGENT_TOOLS.signals.added, AGENT_TOOLS.signals.removed,
+                       AGENT_SKILLS.signals.added, AGENT_SKILLS.signals.removed):
+            signal.connect(self._schedule_contributions_refresh)
 
-    def _rebuild_tools(self, _tool) -> None:
-        """simplify: only the next session sees the change; no live tools/list_changed
-        notification to a running session. Add it when a backend supports it."""
+    def _schedule_contributions_refresh(self, _item) -> None:
+        """Plugins load one by one on the main thread: a zero-delay timer coalesces the burst into
+        one refresh once they are all loaded."""
+        if not shiboken6.isValid(self) or self._contributions_pending:
+            return
+        self._contributions_pending = True
+        QTimer.singleShot(0, self._refresh_contributions)
+
+    def _refresh_contributions(self) -> None:
+        """simplify: a session with messages keeps its tools until New session; no live
+        tools/list_changed notification to a running session. Add it when a backend supports it."""
         if not shiboken6.isValid(self):
             return
-        self._tools = build_sciqlop_tools(self._main_window)
+        self._contributions_pending = False
+        sync_skills(current_workspace_dir())
+        for session in self._sessions.values():
+            session.stale = True
+        session = self._sessions.get(self._current)
+        if session is not None and not session.messages and self._turn_task is None:
+            self._rebuild_current_session()
+
+    def _rebuild_current_session(self) -> None:
+        self._forget_session(self._current)
+        self._on_backend_changed(self._backend_combo.findData(self._current))
+
+    def _forget_session(self, name: str) -> None:
+        session = self._sessions.pop(name)
+        if session is self._turn_session and self._turn_task is not None:
+            self._turn_task.cancel()
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -269,7 +296,7 @@ class AgentChatDock(QWidget):
         for name in [n for n, s in self._sessions.items() if self._is_stale(n, s)]:
             # simplify: drops the reference only; AgentBackend has no shutdown hook, so a withdrawn
             # backend's subprocess ends when its object is collected. Add a close() call when the protocol has one.
-            del self._sessions[name]
+            self._forget_session(name)
 
     def _is_stale(self, name: str, session: _AgentSession) -> bool:
         if name not in AGENT_BACKENDS:
@@ -399,7 +426,7 @@ class AgentChatDock(QWidget):
         guidance = load_guidance(current_workspace_dir())
         ctx = BackendContext(
             main_window=self._main_window,
-            tools=self._tools,
+            tools=build_sciqlop_tools(self._main_window),
             tempdir=be_tempdir,
             confirm_cb=self._confirm_tool_call,
             write_mode=self._write_mode,
@@ -539,7 +566,15 @@ class AgentChatDock(QWidget):
     def _on_reset(self) -> None:
         if self._current is None:
             return
+        if self._needs_new_backend(self._sessions[self._current]):
+            self._purge_replay_tempdir(self._current)
+            self._rebuild_current_session()
+            return
         self._spawn(self._reset_backend(self._clear_session()))
+
+    def _needs_new_backend(self, session: _AgentSession) -> bool:
+        """Tools or skills changed since it was built, or its backend was replaced (kept alive while in use)."""
+        return session.stale or AGENT_BACKENDS.find(self._current) != session.source
 
     def draft_conversation(self, prompt: str, backend: Optional[str] = None) -> None:
         """Open a fresh session with *prompt* in the input box, unsent, for
@@ -878,6 +913,7 @@ class AgentChatDock(QWidget):
             user_blocks.append(ImageBlock(path=path))
         session.messages.append(ChatMessage(role="user", blocks=user_blocks, done=True))
         self._transcript.render_messages(session.messages)
+        self._turn_session = session
         self._turn_task = asyncio.ensure_future(
             self._run_turn(session, body, image_paths)
         )
@@ -915,7 +951,8 @@ class AgentChatDock(QWidget):
                     done=True,
                 )
             )
-            self._transcript.render_messages(session.messages)
+            if self._is_current(session):
+                self._transcript.render_messages(session.messages)
             self._set_status("Cancelled.")
             raise
         except Exception as e:
@@ -930,7 +967,8 @@ class AgentChatDock(QWidget):
             self._set_status("Error. See history.")
         finally:
             self._set_running(False)
-            self._turn_task = None
+            if self._turn_session in (session, None):
+                self._turn_task, self._turn_session = None, None
             self._sessions_after_turn(session)
 
     def _sessions_after_turn(self, session: _AgentSession) -> None:
@@ -949,10 +987,9 @@ class AgentChatDock(QWidget):
         )
 
     def _on_stop(self) -> None:
-        if self._current is None or self._turn_task is None:
+        if self._turn_task is None or self._turn_session is None:
             return
-        backend = self._sessions[self._current].backend
-        self._spawn(backend.cancel())
+        self._spawn(self._turn_session.backend.cancel())
 
     def _set_running(self, running: bool) -> None:
         self._send_btn.setVisible(not running)

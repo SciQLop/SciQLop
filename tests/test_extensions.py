@@ -60,6 +60,12 @@ def test_missing_key_names_what_exists(ep):
         ep.get("zz")
 
 
+def test_find_returns_the_item_or_none(ep):
+    item = ep.contribute(Kind("a.x"), owner="a")
+    assert ep.find("a.x") is item
+    assert ep.find("zz") is None
+
+
 def test_owner_defaults_to_the_current_owner(ep):
     assert current_owner() == "user"
     with owned_by("legacy:old"):

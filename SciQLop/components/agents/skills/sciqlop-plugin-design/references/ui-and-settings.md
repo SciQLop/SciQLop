@@ -402,9 +402,11 @@ def activate(ctx):
   by your plugin; withdrawing the plugin removes it. Any thread may call it. The legacy
   `register_agent_backend("Name", factory)` form still works.
 - Registering a name again replaces the backend. A name another plugin registered is taken over with a warning.
-  A replacement takes effect for new sessions: the conversation open on that backend keeps its instance.
+  A replacement takes effect for new sessions: the conversation open on that backend keeps its instance until
+  New session.
 - The dock follows the extension point: a backend installed later appears in its list without disturbing the
-  open conversation. Withdrawing the backend in use drops its session and falls back to the first available.
+  open conversation. Withdrawing the backend in use cancels its running turn, drops its session and falls back to the first
+  available.
 
 ### Tools (`sciqlop.agent_tools`)
 
@@ -425,7 +427,8 @@ def activate(ctx):
 - `gated=True` for anything that changes state: it is denied when writes are off, and the user confirms each call.
 - `thread=True` runs `call` in a worker thread: only for Qt-free code. Otherwise it runs on the GUI thread.
 - A name already used by a core tool or an earlier contribution is ignored and logged: core tools always win.
-- Sessions get a snapshot. A tool installed or withdrawn later reaches the next session, not the running one. A
+- Sessions get a snapshot. The dock picks up new or withdrawn tools once all plugins have loaded: a chat with no
+  messages yet is rebuilt with them at once, a chat with messages gets them when the user clicks New session. A
   running session calling a withdrawn tool is told it was withdrawn.
 
 ### Skills (`sciqlop.agent_skills`)
@@ -443,7 +446,9 @@ def activate(ctx):
 - The folder holds `SKILL.md` plus any reference `*.md` files, in sub-folders if you like.
 - `name` matches `^[a-z0-9][a-z0-9-]{0,63}$` and the folder must hold `SKILL.md`, else `ValueError`. Prefix names
   with your plugin; they share `.claude/skills/` with SciQLop's and the user's own.
-- Skills are copied into `<workspace>/.claude/skills/<name>/` when the next agent session starts, not at once.
+- Skills are copied into `<workspace>/.claude/skills/<name>/` once all plugins have loaded (and whenever a session
+  starts). A chat with no messages yet is restarted so its agent sees them; a chat with messages gets them on New
+  session.
 - SciQLop records what it published in `.claude/skills/.sciqlop-published`. A skill withdrawn later (plugin
-  disabled or unloaded) is removed from the workspace at the next session; folders not in that record, such as
-  the user's own skills, are never touched.
+  disabled or unloaded) is removed from the workspace the same way; folders not in that record, such as the
+  user's own skills, are never touched.

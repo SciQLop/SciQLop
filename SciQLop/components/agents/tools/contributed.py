@@ -7,7 +7,7 @@ from operator import attrgetter
 from typing import Any, Callable, Dict, List, Set
 
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.core.extensions import ExtensionPoint, NotRegistered, declare
+from SciQLop.core.extensions import ExtensionPoint, declare
 
 log = getLogger(__name__)
 
@@ -37,15 +37,12 @@ AGENT_TOOLS = declare(ExtensionPoint(
 
 
 def _is_installed(tool: AgentTool) -> bool:
-    try:
-        return AGENT_TOOLS.get(tool.name) is tool
-    except NotRegistered:
-        return False
+    return AGENT_TOOLS.find(tool.name) is tool
 
 
 def _guarded(tool: AgentTool) -> Callable[[dict], Any]:
-    """Runs in the I/O pool for `thread=True` tools, so it only does plain dict reads on the
-    extension point (`get`), never `contribute`/`remove`, which are main-thread only."""
+    """Runs in the I/O pool for `thread=True` tools, so it only does a single dict read on the
+    extension point (`find`), never `contribute`/`remove`, which are main-thread only."""
     def _call(payload: dict) -> Any:
         return tool.call(payload) if _is_installed(tool) else _WITHDRAWN
     return _call

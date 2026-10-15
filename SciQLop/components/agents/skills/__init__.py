@@ -131,8 +131,9 @@ def sync_skills(workspace_dir: Path) -> None:
     ones SciQLop published earlier that are no longer contributed. Best-effort, like `sync_agents_md`:
     a read-only or missing workspace must never break chat.
 
-    May run off the main thread, so it only reads the extension point and never contributes: the core
-    skills are contributed by `contribute_core_skills` at startup, and published here from the bundle."""
+    Main thread: the chat dock calls it when it builds a session and once after skills are contributed or
+    withdrawn. It only reads the extension point and never contributes: the core skills are contributed by
+    `contribute_core_skills` at startup, and published here from the bundle."""
     workspace_dir = Path(workspace_dir)
     if not workspace_dir.is_dir():
         return

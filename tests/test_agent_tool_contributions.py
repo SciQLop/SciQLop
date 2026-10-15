@@ -1,4 +1,4 @@
-"""Agent tools are contributions to `sciqlop.agent_tools`; the chat dock rebuilds its tool list on changes."""
+"""Agent tools are contributions to `sciqlop.agent_tools`; the dock side is in test_agent_dock_follows_contributions."""
 import asyncio
 import threading
 from unittest.mock import MagicMock
@@ -10,7 +10,6 @@ from SciQLop.components.agents.tools import build_sciqlop_tools
 from SciQLop.core.extensions import owned_by
 
 from .fixtures import *  # noqa: F401,F403
-from .test_agent_chat_dock_wiring import _settle, dock  # noqa: F401 — fixture
 
 _OWNER = "tool_demo"
 _SCHEMA = {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}
@@ -87,13 +86,3 @@ def test_bad_names_are_refused(name):
 def test_an_empty_description_is_refused():
     with pytest.raises(ValueError):
         AgentTool("demo_echo", "", _SCHEMA, lambda p: "")
-
-
-def test_the_dock_rebuilds_its_tools_for_the_next_session(dock, qtbot):
-    names = lambda: {t["name"] for t in dock._tools}  # noqa: E731
-    assert "demo_echo" not in names()
-    with owned_by(_OWNER):
-        AGENT_TOOLS.contribute(AgentTool("demo_echo", "Echo.", _SCHEMA, lambda p: "hi"))
-    assert "demo_echo" in names()
-    AGENT_TOOLS.remove_owner(_OWNER)
-    assert "demo_echo" not in names()
