@@ -11,7 +11,7 @@ from .fixtures import *  # noqa: F401,F403
 from SciQLop.components.plugins.backend.loader import context, loader
 from SciQLop.core import extensions
 
-_OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell", "vp_maker", "vp_user")
+_OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell", "vp_maker", "vp_user", "ui_maker")
 
 
 @pytest.fixture
@@ -205,3 +205,45 @@ def test_plugin_contributes_a_virtual_product_and_a_layer_and_withdraws_them(tmp
     assert provider_name not in providers
     assert nodes.node(["vp_maker", "b"]) is None
     assert nodes.node(["Layers", "vp_maker", "peaks"]) is None
+
+
+_UI_MAKER = """
+    from typing import ClassVar
+    from pydantic import BaseModel
+    from PySide6.QtWidgets import QLabel
+    from SciQLop.components.settings.backend.entry import ConfigEntry
+    from SciQLop.components.workspaces.backend.workspace_sections import WorkspaceSection
+    from SciQLop.core.docks import Dock
+
+    class UiMakerSettings(ConfigEntry):
+        category: ClassVar[str] = "ui_maker"
+        subcategory: ClassVar[str] = "general"
+        knob: int = 1
+
+    class UiMakerModel(BaseModel):
+        value: int = 0
+
+    def activate(ctx):
+        ctx.contribute("sciqlop.docks", Dock("ui_maker.panel", "UiMakerPanel", build=lambda: QLabel("ui")))
+        ctx.contribute("sciqlop.workspace_sections", WorkspaceSection("ui_maker", UiMakerModel))
+"""
+
+
+def test_plugin_contributes_settings_a_dock_and_a_workspace_section(tmp_path, main_window, qtbot, fresh):
+    from SciQLop.components.settings.backend.entry import ConfigEntry, SETTINGS
+    from SciQLop.components.workspaces.backend.workspace_sections import WORKSPACE_SECTIONS
+    dock_manager = main_window.dock_manager
+    loader.activate_all([_plugin(tmp_path, "ui_maker", _UI_MAKER)], main_window=main_window, ep_plugins={})
+    assert context.STATES["ui_maker"].status == "active", context.STATES["ui_maker"].reason
+
+    assert SETTINGS.owner_of("UiMakerSettings") == "ui_maker"
+    dock = dock_manager.findDockWidget("UiMakerPanel")
+    assert dock is not None
+    assert dock.dockAreaWidget() is dock_manager.findDockWidget("Welcome").dockAreaWidget()
+    assert WORKSPACE_SECTIONS.owner_of("ui_maker") == "ui_maker"
+
+    loader._withdraw("ui_maker")
+    qtbot.wait(50)
+    assert "UiMakerSettings" not in ConfigEntry.list_entries()
+    assert dock_manager.findDockWidget("UiMakerPanel") is None
+    assert "ui_maker" not in WORKSPACE_SECTIONS.keys()

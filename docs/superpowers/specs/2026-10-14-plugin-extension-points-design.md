@@ -193,7 +193,7 @@ candidates migrated only when a plugin needs one or when the cleanup is touched 
 | 2 | `sciqlop.inspector_sections` | core-only `add_inspector_extension`; **implemented**: docs/superpowers/plans/2026-10-15-export-targets-inspector-sections.md |
 | 2 | `sciqlop.agent_tools`, `sciqlop.agent_backends`, `sciqlop.agent_skills` | fixed tool list, backend dict, package-only skills dir |
 | 2 | `sciqlop.magics`, `sciqlop.kernel_namespace` | fixed magics list, ad-hoc `push_variables`; the embedded shell exists before plugins activate and lives for the process, so contributions apply immediately; **implemented**: docs/superpowers/plans/2026-10-15-magics-kernel-namespace.md |
-| 2 | `sciqlop.workspace_sections`, `sciqlop.docks`, `sciqlop.settings` | fixed manifest tables, `add_side_pan`, ConfigEntry auto-registration (keeps working, gains owner) |
+| 2 | `sciqlop.workspace_sections`, `sciqlop.docks`, `sciqlop.settings` | fixed manifest tables, `add_side_pan`, ConfigEntry auto-registration (keeps working, gains owner); **implemented**: docs/superpowers/plans/2026-10-15-settings-docks-workspace-sections.md |
 | 2 | `sciqlop.layers`, `sciqlop.virtual_products` | VPRegistry and LayerRegistry (near copies) on one hot-reload EP; **implemented**: docs/superpowers/plans/2026-10-15-layers-virtual-products.md |
 | 3 | `sciqlop.value_editors` | settings delegates + knob widgets (4 type→widget tables) |
 | 3 | `sciqlop.themes`, `sciqlop.icons`, `sciqlop.colormaps`, `sciqlop.time_presets` | palette names ×3, icons, colormap lists, range presets |
