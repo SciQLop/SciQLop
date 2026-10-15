@@ -7,10 +7,11 @@ import textwrap
 
 import pytest
 
+from .fixtures import *  # noqa: F401,F403
 from SciQLop.components.plugins.backend.loader import context, loader
 from SciQLop.core import extensions
 
-_OWNERS = ("io_vdf", "io_study", "io_late")
+_OWNERS = ("io_vdf", "io_study", "io_late", "io_export")
 
 
 @pytest.fixture
@@ -92,3 +93,38 @@ def test_plugins_share_kinds_providers_and_extension_points(tmp_path, fresh):
                         main_window=object(), ep_plugins={})
     assert api.seen == ["io_study.moments", "io_late.fit"]
     assert sys.modules["io_late"] is not None
+
+
+_EXPORT = """
+    from PySide6.QtWidgets import QLabel
+    from SciQLop.core.export_targets import ExportTarget
+    from SciQLop.core.inspector_sections import InspectorSection
+
+    def activate(ctx):
+        ctx.contribute("sciqlop.export_targets", ExportTarget(
+            "io_export.txt", "Text", (".txt",), write=lambda panel, path, w, h, scale: open(path, "w").write(panel.name)))
+        ctx.contribute("sciqlop.inspector_sections", InspectorSection(
+            "io_export.note", "Note", "panel", build=lambda panel, parent: QLabel(panel.name, parent)))
+"""
+
+
+def _contributed_ids(panel):
+    from SciQLop.components.plotting.ui.contributed_sections import ContributedSection
+    return [e.objectName() for e in panel._impl.inspector_extensions() if isinstance(e, ContributedSection)]
+
+
+def test_plugin_adds_an_export_format_and_a_panel_inspector_section(tmp_path, plot_panel, fresh):
+    from SciQLop.core.export_targets import EXPORT_TARGETS
+    from SciQLop.core.inspector_sections import INSPECTOR_SECTIONS
+    loader.activate_all([_plugin(tmp_path, "io_export", _EXPORT)], main_window=object(), ep_plugins={})
+    assert context.STATES["io_export"].status == "active", context.STATES["io_export"].reason
+
+    plot_panel.save(str(tmp_path / "p.txt"))
+    assert (tmp_path / "p.txt").read_text() == plot_panel.name
+    assert "io_export.note" in _contributed_ids(plot_panel)
+
+    EXPORT_TARGETS.remove_owner("io_export")
+    INSPECTOR_SECTIONS.remove_owner("io_export")
+    assert "io_export.note" not in _contributed_ids(plot_panel)
+    with pytest.raises(Exception):
+        plot_panel.save(str(tmp_path / "q.txt"))

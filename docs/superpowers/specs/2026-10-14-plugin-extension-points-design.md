@@ -189,8 +189,8 @@ candidates migrated only when a plugin needs one or when the cleanup is touched 
 | 1 | `sciqlop.scenes.bodies/boundaries/scenes` | scenes registries; `planetary_scenes` contributes like a third party |
 | 2 | `sciqlop.panel_kinds` + slots | `new_plot_panel(backend="native")`; designed in the panels sub-project |
 | 2 | `sciqlop.commands`, `sciqlop.menus`, `sciqlop.shortcuts` | CommandRegistry, one-shot QAction harvest, panel_menus, fixed product-tree / export / graph / catalog menus; **implemented**: docs/superpowers/plans/2026-10-14-commands-menus-shortcuts.md |
-| 2 | `sciqlop.export_targets` | Export submenu, `PlotPanel.save` formats, proxy share |
-| 2 | `sciqlop.inspector_sections` | core-only `add_inspector_extension` |
+| 2 | `sciqlop.export_targets` | Export submenu, `PlotPanel.save` formats, proxy share; **implemented**: docs/superpowers/plans/2026-10-15-export-targets-inspector-sections.md |
+| 2 | `sciqlop.inspector_sections` | core-only `add_inspector_extension`; **implemented**: docs/superpowers/plans/2026-10-15-export-targets-inspector-sections.md |
 | 2 | `sciqlop.agent_tools`, `sciqlop.agent_backends`, `sciqlop.agent_skills` | fixed tool list, backend dict, package-only skills dir |
 | 2 | `sciqlop.magics`, `sciqlop.kernel_namespace` | fixed magics list, ad-hoc `push_variables`; these EPs replay their contributions when a kernel starts (the shell does not exist at activation) |
 | 2 | `sciqlop.workspace_sections`, `sciqlop.docks`, `sciqlop.settings` | fixed manifest tables, `add_side_pan`, ConfigEntry auto-registration (keeps working, gains owner) |
