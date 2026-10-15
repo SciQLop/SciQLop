@@ -40,6 +40,11 @@ class RemoteRegistry:
         self._specs[_key(path)] = (blob, arity, plugin_key_for(callback))
         (self._colored.add if colored else self._colored.discard)(_key(path))
 
+    def unregister(self, product_path) -> None:
+        # simplify: a plugin's worker outlives its last product until shutdown_all; stop it here when idle workers show up in memory reports.
+        self._specs.pop(_key(product_path), None)
+        self._colored.discard(_key(product_path))
+
     def is_remote(self, product_path: list) -> bool:
         return _key(product_path) in self._specs
 

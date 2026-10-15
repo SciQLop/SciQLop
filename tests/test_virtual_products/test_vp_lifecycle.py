@@ -1,9 +1,8 @@
-"""list_virtual_products: the single source of truth is `providers`, the same
-dict create_virtual_product and the %%vp magic both register into — see the
-module docstring in SciQLop/user_api/virtual_products/__init__.py for why
-there is no remove_virtual_product (SciQLopPlots' ProductsModel has no public
-node-removal API that keeps the Qt model consistent; verified experimentally,
-not shipped)."""
+"""list_virtual_products: the single source of truth is the
+sciqlop.virtual_products extension point, which create_virtual_product and the
+%%vp magic both contribute to. remove_virtual_product (and a plugin's
+withdrawal) takes a path out of it, with its tree node and provider: see
+tests/test_virtual_product_contributions.py."""
 from tests.fixtures import *  # noqa: F401,F403
 
 

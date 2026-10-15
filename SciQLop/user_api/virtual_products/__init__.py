@@ -27,6 +27,7 @@ from enum import Enum
 from SciQLop.components.plotting.backend.easy_provider import EasyVector as _EasyVector, EasyScalar as _EasyScalar, \
     EasySpectrogram as _EasySpectrogram, EasyMultiComponent as _EasyMultiComponent, VirtualProductCallback
 from SciQLop.components.plotting.backend.dependencies import Depends
+from SciQLop.user_api.threading import on_main_thread
 
 
 class VirtualProductType(Enum):
@@ -245,22 +246,28 @@ def _annotated_labels(callback) -> Optional[List[str]]:
 
 def list_virtual_products() -> List[str]:
     """Full `//`-joined product-tree paths of every virtual product currently
-    registered, whether created via ``create_virtual_product`` or the ``%%vp``
-    cell magic (the magic calls ``create_virtual_product`` too, so both go
-    through the same ``EasyProvider`` registration and there is one list to
-    read here).
-
-    Deduplicated by path: redeclaring the same path leaves the stale
-    ``EasyProvider`` python object registered too (nothing currently prunes
-    it), but the product tree itself only ever has one node per path.
+    registered, whether created via ``create_virtual_product``, the ``%%vp``
+    cell magic or a plugin: one entry per path, read from the
+    ``sciqlop.virtual_products`` extension point (a snapshot, safe from the
+    kernel thread).
     """
-    from SciQLop.components.plotting.backend.data_provider import providers
-    from SciQLop.components.plotting.backend.easy_provider import EasyProvider
-    # list() snapshots the dict in one step: another thread may register a
-    # provider while the paths below are being read.
-    seen = dict.fromkeys(
-        "//".join(p.path) for p in list(providers.values()) if isinstance(p, EasyProvider))
-    return list(seen)
+    from SciQLop.components.plotting.backend.easy_provider import VIRTUAL_PRODUCTS
+    return VIRTUAL_PRODUCTS.keys()
+
+
+@on_main_thread
+def remove_virtual_product(path: str) -> None:
+    """Remove the virtual product at `path` ("a/b" or "a//b"): its product-tree
+    node and its provider. Graphs already plotted keep the data they have.
+
+    Raises
+    ------
+    LookupError
+        If no virtual product exists at `path`; the message lists the available paths.
+    """
+    from SciQLop.components.plotting.backend.easy_provider import VIRTUAL_PRODUCTS
+    from SciQLop.core.snippets import split_product_path
+    VIRTUAL_PRODUCTS.remove("//".join(split_product_path(path)))
 
 
 from SciQLop.user_api.virtual_products.types import Scalar, Vector, MultiComponent, Spectrogram

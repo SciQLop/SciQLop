@@ -202,6 +202,13 @@ def _inject_type_names(user_ns: dict):
     user_ns.setdefault("Colored", Colored)
 
 
+def _is_contributed(path: str) -> bool:
+    """False after remove_virtual_product: the cell's re-run must register the product again."""
+    from SciQLop.components.plotting.backend.easy_provider import VIRTUAL_PRODUCTS
+    from SciQLop.core.snippets import split_product_path
+    return "//".join(split_product_path(path)) in VIRTUAL_PRODUCTS
+
+
 @needs_local_scope
 def vp_magic(line: str, cell: str, local_ns=None):
     """%%vp cell magic — define a virtual product from a function in the cell."""
@@ -272,7 +279,7 @@ def vp_magic(line: str, cell: str, local_ns=None):
         type_info = VPTypeInfo(product_type="scalar", labels=None)
 
     # Register (or hot-reload) the virtual product
-    is_new = vp_key not in _registry._entries
+    is_new = vp_key not in _registry._entries or not _is_contributed(vp_key)
     entry = _registry.register(vp_key, func, type_info.product_type, type_info.labels,
                                colored=type_info.colored)
 

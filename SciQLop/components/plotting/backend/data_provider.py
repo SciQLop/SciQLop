@@ -11,7 +11,7 @@ from SciQLop.core import tracing
 from SciQLop.components import sciqlop_logging
 from speasy.products import SpeasyVariable, VariableAxis
 from speasy.core import datetime64_to_epoch
-from SciQLop.core.extensions import ExtensionPoint, NotRegistered, current_owner, declare
+from SciQLop.core.extensions import ExtensionPoint, NotRegistered, contribute_taking_over, declare
 from SciQLop.user_api.data_types import Colored
 from SciQLop.user_api.threading import on_main_thread
 from .color_axis import ColorAxis
@@ -59,11 +59,7 @@ providers = _ProvidersView()
 def register_provider(provider) -> None:
     """A provider re-created under its name replaces the old one, as the `providers` dict always did (spec §7);
     taking over another owner's name is logged, because the spec's raise would break virtual-product re-runs."""
-    owner = current_owner()
-    previous = DATA_PROVIDERS.owner_of(provider.name) if provider.name in DATA_PROVIDERS else None
-    if previous not in (None, owner):
-        log.warning(f"data provider {provider.name!r} of {previous} is replaced by one from {owner}")
-    DATA_PROVIDERS.contribute(provider, owner=owner, replace=True)
+    contribute_taking_over(DATA_PROVIDERS, provider, log)
 
 
 def _ensure_contiguous(v):

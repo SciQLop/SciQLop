@@ -1,25 +1,24 @@
 """list_virtual_products runs on the kernel thread while the GUI thread (or a
-plugin) can register providers; iterating the live dict could raise
-'dictionary changed size during iteration'."""
+plugin) can register virtual products; iterating the live registry could raise
+'dictionary changed size during iteration', so the listing is a snapshot."""
+from tests.fixtures import *  # noqa: F401,F403
 
 
-def test_a_registration_during_the_listing_does_not_break_it(monkeypatch):
-    from SciQLop.components.plotting.backend import data_provider
-    from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+def test_the_listing_is_the_extension_point_keys(qapp):
+    from SciQLop.components.plotting.backend.easy_provider import VIRTUAL_PRODUCTS
     from SciQLop.user_api.virtual_products import list_virtual_products
+    assert list_virtual_products() == VIRTUAL_PRODUCTS.keys()
 
-    live = {}
 
-    class _RegistersWhileListed(EasyProvider):
-        def __init__(self):
-            pass
+def test_a_registration_after_the_listing_does_not_change_it(qapp):
+    from SciQLop.core.extensions import ExtensionPoint
 
-        @property
-        def path(self):
-            live[f"late{len(live)}"] = object()  # another thread registering meanwhile
-            return ["folder", "vp"]
+    class Item:
+        def __init__(self, id):
+            self.id = id
 
-    live["vp"] = _RegistersWhileListed()
-    monkeypatch.setattr(data_provider, "providers", live)
-
-    assert list_virtual_products() == ["folder//vp"]
+    ep = ExtensionPoint("test.snapshot", Item)
+    ep.contribute(Item("a"))
+    keys = ep.keys()
+    ep.contribute(Item("b"))
+    assert keys == ["a"]

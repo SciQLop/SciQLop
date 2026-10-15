@@ -71,6 +71,7 @@ def activate(ctx):
 | Extension point | Contribution | Key | How a plugin contributes |
 |---|---|---|---|
 | `sciqlop.data_providers` | `DataProvider` | provider name | `MyProvider("myplugin")` registers itself, owned by the active plugin |
+| `sciqlop.virtual_products` | `EasyProvider` | `//`-joined product path | `create_virtual_product(...)` in `activate()` contributes it, owned by the active plugin; withdrawal removes its tree node and provider |
 | `sciqlop.mime_types` | `MimeType` | MIME string | `ctx.contribute(...)`, or `register_mime(...)` |
 | `sciqlop.source_kinds` | `SourceKind` | `id` | `ctx.contribute(...)`; a provider points at it with its `source_kind` attribute |
 | `sciqlop.product_kinds` | `ProductKind` | `id` | `ctx.contribute(...)`; tag product-tree nodes with `PRODUCT_KIND_KEY` |

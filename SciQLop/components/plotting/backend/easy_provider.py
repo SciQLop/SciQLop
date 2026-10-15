@@ -10,10 +10,14 @@ from datetime import datetime, timezone
 from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis, VariableAxis
 from PySide6.QtGui import QIcon
 from SciQLop.core.unique_names import make_simple_incr_name
-from SciQLop.core.models import add_product_node, ProductsModelNodeType
+from SciQLop.core.models import add_product_node, remove_product_node, ProductsModelNodeType
+from SciQLop.core.extensions import ExtensionPoint, contribute_taking_over, declare
+from SciQLop.user_api.threading import on_main_thread
 from SciQLop.core.enums import ParameterType
 from SciQLop.core.product_kinds import PRODUCT_KIND_KEY, PRODUCT_KINDS, kind_id_for
-from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder, DataProviderReturnType
+from SciQLop.components.plotting.backend.data_provider import (
+    DATA_PROVIDERS, DataProvider, DataOrder, DataProviderReturnType,
+)
 from SciQLop.components.plotting.backend.color_axis import ColorAxis
 from SciQLop.components.plotting.backend.remote.reduction import ensure_overlaps_request, epoch_seconds
 from SciQLop.user_api.data_types import Colored
@@ -218,6 +222,7 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
         # Last: the node announces the provider, GUI code may call it right away.
         add_product_node(product_path, product_name, self.name, metadata, ProductsModelNodeType.PARAMETER,
                          parameter_type, "", None, display_name=display_name)
+        _contribute_virtual_product(self)
 
     @staticmethod
     def _compute_knob_specs(callback, knobs_model):
@@ -409,6 +414,39 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
                 for s in self._dependency_specs
             ],
         }
+
+
+def _vp_key(provider) -> str:
+    return "//".join(provider.path)
+
+
+VIRTUAL_PRODUCTS = declare(ExtensionPoint(
+    "sciqlop.virtual_products", EasyProvider, what="virtual product", key=_vp_key,
+    doc="Virtual products by '//'-joined product path."))
+
+
+@on_main_thread
+def _contribute_virtual_product(provider: EasyProvider) -> None:
+    contribute_taking_over(VIRTUAL_PRODUCTS, provider, log)
+
+
+def _withdraw_virtual_product(provider: EasyProvider) -> None:
+    """Redeclaring a path keeps the old provider registered (plotted graphs look it up by name);
+    only a withdrawal drops it, and only while it is still the one under its name."""
+    from SciQLop.components.plotting.backend.remote.registry import remote_registry
+    remove_product_node(provider.path)
+    if provider.name in DATA_PROVIDERS and DATA_PROVIDERS.get(provider.name) is provider:
+        DATA_PROVIDERS.remove(provider.name)
+    remote_registry().unregister(provider.path)
+
+
+def follow_virtual_products() -> None:
+    """Withdraw a virtual product's node, provider and remote spec when it leaves sciqlop.virtual_products.
+
+    Main thread only. Marks the signals object it connected, so it is idempotent."""
+    if not getattr(VIRTUAL_PRODUCTS.signals, "_withdrawal_follows", False):
+        VIRTUAL_PRODUCTS.signals.removed.connect(_withdraw_virtual_product)
+        VIRTUAL_PRODUCTS.signals._withdrawal_follows = True
 
 
 class EasyScalar(EasyProvider):

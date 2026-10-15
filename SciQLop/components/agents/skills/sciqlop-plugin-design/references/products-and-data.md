@@ -121,10 +121,19 @@ vp = create_virtual_product("myplugin/b_total", b_total,
   on your plugin object). Plot it with `panel.plot(vp)` or by path with
   `panel.plot_product("myplugin//b_total")`.
 - Registering again at the same path replaces the tree node, but the old
-  provider object stays alive. Register each path once: keep a
-  `{path: VirtualProduct}` dict and reuse the entry. There is no public removal
-  call yet; `list_virtual_products()` lists what exists.
+  provider object stays alive (graphs already plotted still use it). Register
+  each path once: keep a `{path: VirtualProduct}` dict and reuse the entry.
+  `list_virtual_products()` lists what exists, one entry per path.
 - `display_name=` sets the tree label without changing the path.
+
+### Removing and withdrawing
+
+Every virtual product is a contribution to `sciqlop.virtual_products`, keyed
+by its `//`-joined path. `remove_virtual_product(path)` removes its tree node
+and its provider ("a/b" and "a//b" name the same product; an unknown path
+raises `LookupError`). A virtual product made in `activate()` belongs to the
+plugin: when the plugin is withdrawn, its virtual products leave the tree on
+their own. Graphs already plotted keep the data they have.
 
 ### `cachable=True`
 

@@ -102,6 +102,10 @@ class ExtensionPoint(Generic[T]):
         self.signals.removed.emit(item)
         return item
 
+    def keys(self) -> list[str]:
+        """A snapshot of the keys, safe to call from any thread: one C-level copy under the GIL."""
+        return list(self._items)
+
     def list(self, **filters) -> list[T]:
         return [i for i in self._items.values() if all(getattr(i, k, None) == v for k, v in filters.items())]
 
@@ -119,6 +123,16 @@ class ExtensionPoint(Generic[T]):
             self._owners.pop(self._key(item), None)
             self.signals.removed.emit(item)
         return removed
+
+
+def contribute_taking_over(ep: ExtensionPoint, item: T, log) -> T:
+    """Contribute `item` for the current owner, replacing whatever holds its key; a takeover from another
+    owner is logged, not refused, so a re-run notebook cell or plugin can redeclare what it made before."""
+    owner, key = current_owner(), ep._key(item)
+    previous = ep._owners.get(key) if key in ep else None
+    if previous not in (None, owner):
+        log.warning(f"{ep._what} {key!r} of {previous} is replaced by one from {owner}")
+    return ep.contribute(item, owner=owner, replace=True)
 
 
 def declare(ep: ExtensionPoint) -> ExtensionPoint:
