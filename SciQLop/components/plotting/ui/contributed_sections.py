@@ -55,17 +55,23 @@ class ContributedSection(InspectorExtension):
         super().__init__(host)
         self.setObjectName(section_id)
 
-    def _section(self) -> InspectorSection:
-        return INSPECTOR_SECTIONS.get(self.objectName())
+    def _section(self) -> InspectorSection | None:
+        """None once withdrawn: remove_owner empties the registry before the inspector drops each section."""
+        section_id = self.objectName()
+        return INSPECTOR_SECTIONS.get(section_id) if section_id in INSPECTOR_SECTIONS else None
 
     def section_title(self) -> str:
-        return self._section().title
+        section = self._section()
+        return section.title if section is not None else self.objectName()
 
     def priority(self) -> int:
-        return self._section().priority
-
-    def build_widget(self, parent: QWidget) -> QWidget:
         section = self._section()
+        return section.priority if section is not None else 0
+
+    def build_widget(self, parent: QWidget) -> QWidget | None:
+        section = self._section()
+        if section is None:
+            return None  # SciQLopPlots skips a null section widget
         try:
             return section.build(_wrap(self.parent(), section.target), parent)
         except Exception:
@@ -96,6 +102,9 @@ def attach_sections(host, target: str) -> None:
     """Add every section of ``target`` that applies to ``host`` and is not on it yet. Idempotent."""
     missing = [s for s in INSPECTOR_SECTIONS.list(target=target) if s.id not in _section_ids_on(host)]
     obj = _wrap(host, target) if missing else None
+    # simplify: a rejected section is re-checked on every graph_list_changed of its plot, so each change costs
+    # O(graphs) applies() calls and one wrapper (one destroyed connection) per graph. Rejections are not cached
+    # because graph context attaches after graph_list_changed fires. Upgrade: re-check on a context-attached signal.
     for section in missing:
         if _applies(section, obj):
             _add_section(host, section.id)
@@ -137,8 +146,8 @@ def _on_section_added(section: InspectorSection) -> None:
 def _on_section_removed(section: InspectorSection) -> None:
     for ext in [e for e in _alive if shiboken6.isValid(e) and e.objectName() == section.id]:
         _alive.discard(ext)
-        ext.parent().remove_inspector_extension(ext)
         ext.deleteLater()
+        ext.parent().remove_inspector_extension(ext)
 
 
 def follow_inspector_sections() -> None:

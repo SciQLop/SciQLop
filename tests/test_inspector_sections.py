@@ -113,8 +113,47 @@ def test_removing_a_graph_with_a_section_is_safe(plot_panel, qtbot):
     plot_panel.remove_plot(0)
     qtbot.wait(0)
     _contribute("is_demo.second", GRAPH_TARGET)
+    assert not [e for e in contributed_sections._alive if e.objectName() == "is_demo.second"]
     INSPECTOR_SECTIONS.remove_owner("is_demo")
     qtbot.wait(0)
+    assert not [e for e in contributed_sections._alive if e.objectName().startswith("is_demo.")]
+
+
+def _show_in_inspector(name, qtbot):
+    from PySide6.QtCore import QModelIndex
+    from SciQLopPlots import PlotsTreeView, PropertiesPanel
+    inspector = PropertiesPanel()
+    qtbot.addWidget(inspector)
+    inspector.show()
+    tree = inspector.findChild(PlotsTreeView)
+    model = tree.model()
+
+    def find(parent=QModelIndex()):
+        for row in range(model.rowCount(parent)):
+            index = model.index(row, 0, parent)
+            if index.data() == name:
+                return index
+            found = find(index)
+            if found is not None:
+                return found
+        return None
+
+    tree.setCurrentIndex(find())
+    qtbot.wait(0)
+
+
+def test_withdrawing_two_sections_while_the_inspector_shows_their_host(plot_panel, qtbot, monkeypatch):
+    errors = []
+    monkeypatch.setattr(contributed_sections.log, "error", lambda *a, **k: errors.append(a))
+    _contribute("is_demo.one", PLOT_TARGET)
+    _contribute("is_demo.two", PLOT_TARGET)
+    plot, _graph = _plot_line(plot_panel)
+    _show_in_inspector(plot._impl.objectName(), qtbot)
+    INSPECTOR_SECTIONS.remove_owner("is_demo")
+    qtbot.wait(0)
+    assert _sections(plot._impl) == []
+    assert not [e for e in contributed_sections._alive if e.objectName().startswith("is_demo.")]
+    assert errors == []
 
 
 def test_target_and_priority_are_validated():
