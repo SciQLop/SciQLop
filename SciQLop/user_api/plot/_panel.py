@@ -887,14 +887,15 @@ class PlotPanel(GuardedImpl):
     @on_main_thread
     def save(self, path: str, *, width: int = 0, height: int = 0,
              scale: Optional[float] = None) -> None:
-        """Save the panel as an image (PNG, PDF, JPG, JPEG, or BMP).
+        """Save the panel as an image or document.
 
-        The format is inferred from the file extension.
+        The format comes from the file extension: .png, .pdf, .jpg, .jpeg, .bmp,
+        plus any format a loaded plugin adds.
 
         Parameters
         ----------
         path : str
-            Destination file path. Supported extensions: .png, .pdf, .jpg, .jpeg, .bmp
+            Destination file path. Extension picks the format (see above)
         width, height : int
             Image size in pixels (points for PDF). 0 keeps the panel's size.
         scale : float, optional
@@ -907,27 +908,8 @@ class PlotPanel(GuardedImpl):
         --------
         >>> panel.save("quicklook.png", width=1600, height=900)
         """
-        import os
-        impl = self._get_impl_or_raise()
-        ext = os.path.splitext(path)[1].lower()
-        if ext == '.pdf' and scale is not None:
-            raise ValueError("scale only applies to raster formats; give width and height for a PDF")
-        if scale is None:
-            scale = impl.devicePixelRatioF()
-        exporters = {
-            '.png': lambda: impl.save_png(path, width, height, scale),
-            '.pdf': lambda: impl.save_pdf(path, width, height),
-            '.jpg': lambda: impl.save_jpg(path, width, height, scale),
-            '.jpeg': lambda: impl.save_jpg(path, width, height, scale),
-            '.bmp': lambda: impl.save_bmp(path, width, height, scale),
-        }
-        exporter = exporters.get(ext)
-        if exporter is None:
-            raise ValueError(f"Unsupported format '{ext}'. Use one of: {', '.join(exporters)}")
-        if not exporter():
-            raise OSError(
-                f"failed to save {path!r}: check that the directory exists "
-                "and is writable")
+        from SciQLop.components.plotting.export import export_panel
+        export_panel(self, path, width=width, height=height, scale=scale)
 
     @on_main_thread
     def save_template(self, name_or_path: str) -> None:

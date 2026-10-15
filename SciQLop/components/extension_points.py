@@ -13,6 +13,7 @@ def prepare_extension_points() -> None:
     import SciQLop.core.plot_kinds  # noqa: F401  declares sciqlop.plot_kinds
     import SciQLop.core.drop_rules  # noqa: F401  declares sciqlop.drop_rules
     import SciQLop.core.menus  # noqa: F401  declares sciqlop.menus
+    import SciQLop.components.plotting.export  # noqa: F401  declares sciqlop.export_targets, contributes the core formats
     from SciQLop.components.command_palette.backend import registry as command_registry  # noqa: F401  declares sciqlop.commands
     from SciQLop.components.shortcuts import registry as _shortcuts  # noqa: F401  declares sciqlop.shortcuts
     from SciQLop.components.catalogs.backend import catalog_mime, event_mime  # noqa: F401
