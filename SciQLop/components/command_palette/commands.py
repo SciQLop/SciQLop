@@ -174,3 +174,6 @@ def register_builtin_commands(registry):
         keywords=["F11"],
         replaces_qaction="Full screen",
     ))
+
+    from SciQLop.components.plotting.ui.proxy_share import register_proxy_share
+    register_proxy_share(registry)

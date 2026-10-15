@@ -7,6 +7,8 @@ from PySide6.QtWidgets import QWidget
 
 from SciQLopPlots import SciQLopPlot, SciQLopGraphInterface
 
+from .fixtures import *  # noqa: F401,F403
+
 
 class _Range:
     def __init__(self, start, stop):
@@ -120,34 +122,38 @@ def test_no_speasy_graph_gives_no_url(qtbot):
     assert proxy_plot_url(p, "http://x/cache") is None
 
 
-def test_export_share_menu_opens_proxy_url_in_browser(panel, qtbot, monkeypatch):
-    from PySide6.QtWidgets import QMenu
-    from SciQLop.components.plotting.ui import time_sync_panel as tsp
+def test_proxy_url_of_a_panel_with_speasy_graphs(panel, monkeypatch):
+    from SciQLop.components.plotting.ui import proxy_share
 
     opened = []
-    monkeypatch.setattr(tsp, "_speasy_proxy_url", lambda: "http://proxy/cache")
-    monkeypatch.setattr(tsp.QDesktopServices, "openUrl", lambda url: opened.append(url.toString()))
-    menu = QMenu()
-    tsp.TimeSyncPanel._add_proxy_share_actions(panel, menu)
-    labels = [a.text() for a in menu.actions() if not a.isSeparator()]
-    assert labels == ["Open in Speasy web viewer"]
-    menu.actions()[-1].trigger()
+    monkeypatch.setattr(proxy_share, "_speasy_proxy_url", lambda: "http://proxy/cache")
+    monkeypatch.setattr(proxy_share.QDesktopServices, "openUrl", lambda url: opened.append(url.toString()))
+    monkeypatch.setattr(proxy_share, "_panel_named", lambda name: panel)
+    assert proxy_share.proxy_url_of(panel).startswith("http://proxy/cache/plot?config=")
+    proxy_share.open_in_speasy_viewer("P")
     assert len(opened) == 1 and opened[0].startswith("http://proxy/cache/plot?config=")
 
 
-def test_export_share_menu_hides_proxy_actions_without_speasy_graphs(qtbot, monkeypatch):
-    from PySide6.QtWidgets import QMenu
-    from SciQLop.components.plotting.ui import time_sync_panel as tsp
+def test_no_proxy_url_without_speasy_graphs(qtbot, monkeypatch):
+    from SciQLop.components.plotting.ui import proxy_share
 
-    monkeypatch.setattr(tsp, "_speasy_proxy_url", lambda: "http://proxy/cache")
+    monkeypatch.setattr(proxy_share, "_speasy_proxy_url", lambda: "http://proxy/cache")
     plot = SciQLopPlot()
     graph = _graph(plot, "static", kind="static")
     p = _FakePanel([plot], start=0.0, stop=1.0)
     p._graphs = [graph]
     qtbot.addWidget(p)
-    menu = QMenu()
-    tsp.TimeSyncPanel._add_proxy_share_actions(p, menu)
-    assert menu.actions() == []
+    assert proxy_share.proxy_url_of(p) is None
+
+
+def test_the_share_link_entry_is_shown_only_for_shareable_panels(main_window):
+    from SciQLop.components.command_palette.backend.registry import COMMANDS
+    from SciQLop.core.menus import MENUS
+    entry = MENUS.get("sciqlop.open_in_speasy_viewer")
+    fresh = main_window.new_plot_panel()
+    assert "sciqlop.open_in_speasy_viewer" in COMMANDS
+    assert entry.when({"panel": fresh.name}) is False
+    assert entry.when({}) is False
 
 
 # --- reverse direction: pasted proxy URL → panel ---------------------------

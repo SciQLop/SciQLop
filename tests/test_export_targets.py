@@ -61,3 +61,53 @@ def test_scale_is_refused_by_a_non_scalable_plugin_target(plot_panel, csv_target
 def test_suffixes_are_validated(qapp):
     with pytest.raises(ValueError):
         ExportTarget("et_demo.bad", "Bad", ("csv",), write=lambda *a: None)
+
+
+@pytest.fixture
+def menu(qtbot):
+    from PySide6.QtWidgets import QMenu
+    return QMenu()
+
+
+def _export_submenu(plot_panel, menu):
+    plot_panel._get_impl_or_raise()._build_export_share_menu(menu)
+    return next(a.menu() for a in menu.actions() if a.menu() and a.text() == "Export")
+
+
+def _action(submenu, text):
+    return next(a for a in submenu.actions() if a.text() == text)
+
+
+def test_the_export_submenu_lists_every_target(plot_panel, menu, csv_target):
+    texts = [a.text() for a in _export_submenu(plot_panel, menu).actions() if not a.isSeparator()]
+    assert texts[:5] == ["Export as PNG\u2026", "Export as PDF\u2026", "Export as JPEG\u2026",
+                         "Export as BMP\u2026", "Export as CSV\u2026"]
+
+
+def _answer_dialog(monkeypatch, path):
+    from SciQLop.components.plotting.ui import time_sync_panel as tsp
+    monkeypatch.setattr(tsp.QFileDialog, "getSaveFileName", lambda *a, **k: (path, ""))
+    return tsp
+
+
+def test_export_appends_the_suffix_the_user_left_out(plot_panel, menu, csv_target, tmp_path, monkeypatch):
+    _answer_dialog(monkeypatch, str(tmp_path / "quicklook"))
+    _action(_export_submenu(plot_panel, menu), "Export as CSV\u2026").trigger()
+    (_, path, *_), = csv_target
+    assert path.endswith("quicklook.csv")
+
+
+def test_a_failing_export_is_shown_not_raised(plot_panel, menu, tmp_path, monkeypatch):
+    def full_disk(*args):
+        raise OSError("disk full")
+    with owned_by("et_demo"):
+        EXPORT_TARGETS.contribute(ExportTarget("et_demo.bad", "Bad", (".bad",), write=full_disk))
+    try:
+        tsp = _answer_dialog(monkeypatch, str(tmp_path / "x.bad"))
+        shown = []
+        monkeypatch.setattr(tsp.QMessageBox, "warning", lambda parent, title, text: shown.append(text))
+        monkeypatch.setattr(tsp.log, "error", lambda *a, **k: None)
+        _action(_export_submenu(plot_panel, menu), "Export as Bad\u2026").trigger()
+    finally:
+        EXPORT_TARGETS.remove_owner("et_demo")
+    assert shown == ["disk full"]

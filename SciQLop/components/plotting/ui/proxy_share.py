@@ -17,9 +17,12 @@ from datetime import datetime
 from typing import Iterable, Optional
 from urllib.parse import parse_qs, urlsplit
 
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QDesktopServices
 from SciQLopPlots import ProductsModel
 
 from SciQLop.components import sciqlop_logging
+from SciQLop.core.menus import PANEL_EXPORT, MENUS, MenuEntry
 from SciQLop.core.source_kinds import SPEASY, source_kind
 from SciQLop.components.plotting.panel_template import (
     AxisModel, PanelTemplate, PlotModel, ProductModel, TimeRangeModel,
@@ -29,6 +32,15 @@ log = sciqlop_logging.getLogger(__name__)
 
 
 # --- panel → proxy URL ---------------------------------------------------------
+
+def _speasy_proxy_url() -> str:
+    from speasy.config import proxy
+    return str(proxy.url())
+
+
+def proxy_url_of(panel) -> Optional[str]:
+    return proxy_plot_url(panel, _speasy_proxy_url())
+
 
 def proxy_plot_url(panel, base_url: str) -> Optional[str]:
     config = proxy_plot_config(panel)
@@ -177,3 +189,38 @@ def _product_model(product: dict, path: list[str]) -> ProductModel:
              **(product.get("product_inputs") or {})}
     return ProductModel(path="//".join(path), label=product.get("label") or product["path"],
                         kind=SPEASY, speasy_id=product["path"], knobs=knobs)
+
+
+# --- the "Open in Speasy web viewer" command -----------------------------------
+
+SHARE_COMMAND = "sciqlop.open_in_speasy_viewer"
+
+
+def _panel_named(name: str):
+    from SciQLop.components.command_palette.commands import _get_win
+    return _get_win().plot_panel(name)
+
+
+def _shareable(context: dict) -> bool:
+    panel = _panel_named(context.get("panel", ""))
+    return panel is not None and proxy_url_of(panel) is not None
+
+
+def open_in_speasy_viewer(panel: str = "") -> None:
+    target = _panel_named(panel)
+    url = proxy_url_of(target) if target is not None else None
+    if url is not None:
+        QDesktopServices.openUrl(QUrl(url))
+
+
+def register_proxy_share(registry) -> None:
+    from SciQLop.components.command_palette.arg_types import PanelArg
+    from SciQLop.components.command_palette.backend.registry import PaletteCommand
+    registry.register(PaletteCommand(
+        id=SHARE_COMMAND,
+        name="Open in Speasy web viewer",
+        description="Open this panel as a shareable Speasy proxy web page.",
+        callback=open_in_speasy_viewer,
+        args=[PanelArg(name="panel")],
+    ))
+    MENUS.contribute(MenuEntry(SHARE_COMMAND, PANEL_EXPORT, SHARE_COMMAND, when=_shareable), owner="sciqlop")

@@ -157,6 +157,33 @@ def activate(ctx):
 Plugins register commands in `activate(ctx)`. `CommandRegistry().register(...)` also works from a notebook cell:
 it is marshalled to the main thread.
 
+## Export targets
+
+A file format for `PlotPanel.save(path)` and the panel's Export menu is a contribution to `sciqlop.export_targets`.
+Each target adds an "Export as <label>..." action.
+
+`ExportTarget(id, label, suffixes, write, scalable=True)` (`from SciQLop.core.export_targets import ExportTarget`):
+
+- `suffixes`: lowercase, each starting with `.`. The first one is the dialog's default and the one appended when the user leaves it out.
+- `write(panel, path, width, height, scale)`: `panel` is the user_api `PlotPanel`. `width` and `height` are 0 when unset, `scale` is `None` when unset. Raise on failure: the menu shows the message, `save` lets it propagate.
+- `scalable=False`: `save(..., scale=...)` is refused for this target.
+
+Two targets claiming the same suffix: the core ones (PNG, PDF, JPEG, BMP) win, then the lowest id.
+The menu lists core targets first, then plugin targets in contribution order.
+
+```python
+from SciQLop.core.export_targets import ExportTarget
+
+
+def write_csv(panel, path, width, height, scale):
+    with open(path, "w") as f:
+        f.write(f"panel,plots\n{panel.name},{len(panel.plots)}\n")
+
+
+def activate(ctx):
+    ctx.contribute("sciqlop.export_targets", ExportTarget("my_plugin.csv", "CSV", (".csv",), write_csv, scalable=False))
+```
+
 ## Keyboard shortcuts
 
 A shortcut is a contribution to `sciqlop.shortcuts`. It is listed in the help panel and in Settings, and the

@@ -7,7 +7,7 @@ import traceback
 import numpy as np
 from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QIcon
-from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
 from PySide6.QtGui import QColor
 from SciQLopPlots import SciQLopMultiPlotPanel, SciQLopTheme, ProductsModel, SciQLopPlot, \
     GraphType, SciQLopNDProjectionPlot, OverlayLevel, OverlaySizeMode, OverlayPosition, \
@@ -659,9 +659,9 @@ def _dispose_graph_knobs(graph):
     graph._knobs_slot = None
 
 
-def _speasy_proxy_url() -> str:
-    from speasy.config import proxy
-    return str(proxy.url())
+def _targets_in_menu_order():
+    from SciQLop.core.export_targets import EXPORT_TARGETS
+    return sorted(EXPORT_TARGETS.list(), key=lambda t: EXPORT_TARGETS.owner_of(t.id) != "sciqlop")
 
 
 def _build_knob_reset_action(state, parent):
@@ -1504,25 +1504,11 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         menu.addMenu(sub)
         sub.menuAction().setToolTip(
             "Save this panel as an image, share it, or copy its Python code.")
-        export_png = sub.addAction("Export as PNG\u2026", self._export_png)
-        export_png.setToolTip("Save this panel as a PNG image.")
-        export_pdf = sub.addAction("Export as PDF\u2026", self._export_pdf)
-        export_pdf.setToolTip("Save this panel as a PDF document.")
-        self._add_proxy_share_actions(sub)
+        for target in _targets_in_menu_order():
+            action = sub.addAction(f"Export as {target.label}\u2026", lambda t=target: self._export_to(t))
+            action.setToolTip(f"Save this panel as {target.label} ({', '.join(target.suffixes)}).")
         add_graph_context_actions(sub, self)
         add_menu_entries(sub, PANEL_EXPORT, self._menu_context())
-
-    def _add_proxy_share_actions(self, menu):
-        from SciQLop.components.plotting.ui.proxy_share import proxy_plot_url
-        url = proxy_plot_url(self, _speasy_proxy_url())
-        if url is None:
-            return
-        menu.addSeparator()
-        action = menu.addAction(
-            "Open in Speasy web viewer",
-            lambda: QDesktopServices.openUrl(QUrl(url)))
-        action.setToolTip(
-            "Open this panel as a shareable Speasy proxy web page.")
 
     def _build_templates_menu(self, menu):
         from PySide6.QtWidgets import QMenu
@@ -1560,25 +1546,21 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
             for a in actions:
                 menu.addAction(a)
 
-    def _export_png(self):
-        from PySide6.QtWidgets import QFileDialog
+    def _export_to(self, target):
+        from SciQLop.components.plotting.export import export_panel
+        from SciQLop.user_api.plot import PlotPanel
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export as PNG",
-            f"{self.windowTitle()}.png",
-            "PNG (*.png)",
-        )
-        if path:
-            self.save_png(path)
-
-    def _export_pdf(self):
-        from PySide6.QtWidgets import QFileDialog
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Export as PDF",
-            f"{self.windowTitle()}.pdf",
-            "PDF (*.pdf)",
-        )
-        if path:
-            self.save_pdf(path)
+            self, f"Export as {target.label}", f"{self.name}{target.suffixes[0]}",
+            f"{target.label} ({' '.join('*' + s for s in target.suffixes)})")
+        if not path:
+            return
+        if not path.lower().endswith(tuple(target.suffixes)):
+            path += target.suffixes[0]
+        try:
+            export_panel(PlotPanel(self), path)
+        except Exception as e:
+            log.error(f"export to {path} failed: {e}", exc_info=True)
+            QMessageBox.warning(self, "Export failed", str(e))
 
     def _update_template(self):
         self._save_template_with_preview(self._template_source_path)
