@@ -16,7 +16,10 @@ from dataclasses import dataclass
 from operator import attrgetter
 from pathlib import Path
 
+from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.extensions import ExtensionPoint, NotRegistered, declare
+
+log = getLogger(__name__)
 
 BUNDLED_SKILLS_DIR = Path(__file__).parent
 SKILLS_SUBDIR = Path(".claude") / "skills"
@@ -53,13 +56,14 @@ def contribute_core_skills() -> None:
             AGENT_SKILLS.contribute(AgentSkill(name, BUNDLED_SKILLS_DIR / name), owner=_CORE_OWNER)
 
 
-def _plugin_skills() -> list[AgentSkill]:
+def _plugin_skills() -> list[tuple[AgentSkill, str]]:
     """Any thread: `keys()` is a snapshot, and a key may vanish before it is read."""
     found = []
     for name in AGENT_SKILLS.keys():
         try:
-            if AGENT_SKILLS.owner_of(name) != _CORE_OWNER:
-                found.append(AGENT_SKILLS.get(name))
+            owner = AGENT_SKILLS.owner_of(name)
+            if owner != _CORE_OWNER:
+                found.append((AGENT_SKILLS.get(name), owner))
         except NotRegistered:
             continue
     return found
@@ -85,12 +89,41 @@ def _publish(skill: AgentSkill, destination: Path) -> None:
 def _recorded_names(record: Path) -> set[str]:
     if not record.is_file():
         return set()
-    return {line for line in record.read_text(encoding="utf-8").splitlines() if _NAME.match(line)}
+    return {line for line in record.read_text(encoding="utf-8").splitlines() if _NAME.fullmatch(line)}
 
 
-def _remove_withdrawn(destination: Path, recorded: set[str], current: set[str]) -> None:
-    for name in recorded - current - set(_bundled_names()):
+def _claimable(skill: AgentSkill, owner: str, destination: Path, recorded: set[str], bundled: set[str]) -> bool:
+    if skill.name in bundled:
+        log.error(f"agent skill {skill.name!r} from {owner} ignored: the name is already taken by a SciQLop skill")
+        return False
+    if (destination / skill.name).exists() and skill.name not in recorded:
+        log.warning(f"agent skill {skill.name!r} from {owner} not published: "
+                    f"{destination / skill.name} already exists and is not SciQLop's")
+        return False
+    return True
+
+
+def _try_publish(skill: AgentSkill, destination: Path) -> bool:
+    try:
+        _publish(skill, destination)
+    except OSError:
+        return False
+    return True
+
+
+def _remove_withdrawn(destination: Path, names: set[str]) -> None:
+    for name in names:
         shutil.rmtree(destination / name, ignore_errors=True)
+
+
+def _sync_plugin_skills(destination: Path, bundled: set[str]) -> None:
+    record = destination / PUBLISHED_RECORD
+    recorded = _recorded_names(record) - bundled
+    wanted = [s for s, owner in _plugin_skills() if _claimable(s, owner, destination, recorded, bundled)]
+    published = {s.name for s in wanted if _try_publish(s, destination)}
+    _remove_withdrawn(destination, recorded - {s.name for s in wanted})
+    still_there = {n for n in recorded if (destination / n).exists()}
+    record.write_text("".join(f"{n}\n" for n in sorted(published | still_there)), encoding="utf-8")
 
 
 def sync_skills(workspace_dir: Path) -> None:
@@ -107,12 +140,6 @@ def sync_skills(workspace_dir: Path) -> None:
     try:
         for source in _bundled_files():
             _write_if_changed(source, destination / source.relative_to(BUNDLED_SKILLS_DIR))
-        skills = [s for s in _plugin_skills() if s.name not in _bundled_names()]
-        for skill in skills:
-            _publish(skill, destination)
-        record = destination / PUBLISHED_RECORD
-        current = {s.name for s in skills}
-        _remove_withdrawn(destination, _recorded_names(record), current)
-        record.write_text("".join(f"{n}\n" for n in sorted(current)), encoding="utf-8")
+        _sync_plugin_skills(destination, set(_bundled_names()))
     except OSError:
         pass
