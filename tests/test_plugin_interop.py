@@ -11,7 +11,7 @@ from .fixtures import *  # noqa: F401,F403
 from SciQLop.components.plugins.backend.loader import context, loader
 from SciQLop.core import extensions
 
-_OWNERS = ("io_vdf", "io_study", "io_late", "io_export")
+_OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell")
 
 
 @pytest.fixture
@@ -126,3 +126,29 @@ def test_plugin_adds_an_export_format_and_a_panel_inspector_section(tmp_path, pl
     assert "io_export.note" not in _contributed_ids(plot_panel)
     with pytest.raises(ValueError, match="Unsupported format"):
         plot_panel.save(str(tmp_path / "q.txt"))
+
+
+_SHELL = """
+    from SciQLop.core.kernel_namespace import NamespaceEntry
+    from SciQLop.core.magics import Magic
+
+    API = object()
+
+    def activate(ctx):
+        ctx.contribute("sciqlop.magics", Magic("io_shell.shout", "shout", "line", lambda line: line.upper()))
+        ctx.contribute("sciqlop.kernel_namespace", NamespaceEntry("io_shell.api", "io_shell_api", API))
+"""
+
+
+def test_plugin_adds_a_magic_and_a_kernel_name_to_the_app_shell(tmp_path, main_window, fresh):
+    from SciQLop.components.workspaces.backend.workspaces_manager import workspaces_manager_instance
+    shell = workspaces_manager_instance()._kernel_manager.shell
+    loader.activate_all([_plugin(tmp_path, "io_shell", _SHELL)], main_window=object(), ep_plugins={})
+    assert context.STATES["io_shell"].status == "active", context.STATES["io_shell"].reason
+
+    assert shell.run_line_magic("shout", "hi") == "HI"
+    assert shell.user_ns["io_shell_api"] is sys.modules["io_shell"].API
+
+    loader._withdraw("io_shell")
+    assert "io_shell_api" not in shell.user_ns
+    assert "shout" not in shell.magics_manager.magics["line"]

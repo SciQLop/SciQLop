@@ -192,7 +192,7 @@ candidates migrated only when a plugin needs one or when the cleanup is touched 
 | 2 | `sciqlop.export_targets` | Export submenu, `PlotPanel.save` formats, proxy share; **implemented**: docs/superpowers/plans/2026-10-15-export-targets-inspector-sections.md |
 | 2 | `sciqlop.inspector_sections` | core-only `add_inspector_extension`; **implemented**: docs/superpowers/plans/2026-10-15-export-targets-inspector-sections.md |
 | 2 | `sciqlop.agent_tools`, `sciqlop.agent_backends`, `sciqlop.agent_skills` | fixed tool list, backend dict, package-only skills dir |
-| 2 | `sciqlop.magics`, `sciqlop.kernel_namespace` | fixed magics list, ad-hoc `push_variables`; these EPs replay their contributions when a kernel starts (the shell does not exist at activation) |
+| 2 | `sciqlop.magics`, `sciqlop.kernel_namespace` | fixed magics list, ad-hoc `push_variables`; the embedded shell exists before plugins activate and lives for the process, so contributions apply immediately; **implemented**: docs/superpowers/plans/2026-10-15-magics-kernel-namespace.md |
 | 2 | `sciqlop.workspace_sections`, `sciqlop.docks`, `sciqlop.settings` | fixed manifest tables, `add_side_pan`, ConfigEntry auto-registration (keeps working, gains owner) |
 | 2 | `sciqlop.layers`, `sciqlop.virtual_products` | VPRegistry and LayerRegistry (near copies) on one hot-reload EP |
 | 3 | `sciqlop.value_editors` | settings delegates + knob widgets (4 type→widget tables) |
