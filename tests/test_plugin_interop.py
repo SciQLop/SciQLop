@@ -11,7 +11,7 @@ from .fixtures import *  # noqa: F401,F403
 from SciQLop.components.plugins.backend.loader import context, loader
 from SciQLop.core import extensions
 
-_OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell")
+_OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell", "vp_maker", "vp_user")
 
 
 @pytest.fixture
@@ -152,3 +152,54 @@ def test_plugin_adds_a_magic_and_a_kernel_name_to_the_app_shell(tmp_path, main_w
     loader._withdraw("io_shell")
     assert "io_shell_api" not in shell.user_ns
     assert "shout" not in shell.magics_manager.magics["line"]
+
+
+_VP_MAKER = """
+    from SciQLop.user_api.layers import Marker, register_layer
+    from SciQLop.user_api.virtual_products import VirtualProductType, create_virtual_product
+
+    def series(start, stop):
+        return [start, stop], [0.0, 1.0]
+
+    def peaks(start, stop):
+        return [Marker(time=start, value=1.0)]
+
+    def activate(ctx):
+        create_virtual_product("vp_maker/b", series, VirtualProductType.Scalar, labels=["y"])
+        register_layer("vp_maker/peaks")(peaks)
+"""
+
+_VP_USER = """
+    from SciQLop.components.plotting.backend.easy_provider import VIRTUAL_PRODUCTS
+    from SciQLop.user_api.layers._provider import LAYERS
+
+    class Api:
+        vp_owner = layer_owner = None
+
+    def activate(ctx):
+        ctx.plugin("vp_maker")
+        api = Api()
+        api.vp_owner = VIRTUAL_PRODUCTS.owner_of("vp_maker//b")
+        api.layer_owner = LAYERS.owner_of("Layers/vp_maker/peaks")
+        return api
+"""
+
+
+def test_plugin_contributes_a_virtual_product_and_a_layer_and_withdraws_them(tmp_path, main_window, fresh):
+    from SciQLopPlots import ProductsModel
+    from SciQLop.components.plotting.backend.easy_provider import VIRTUAL_PRODUCTS
+    from SciQLop.user_api.layers._provider import LAYERS
+    loader.activate_all([_plugin(tmp_path, "vp_user", _VP_USER, dependencies=["vp_maker"]),
+                         _plugin(tmp_path, "vp_maker", _VP_MAKER)], main_window=object(), ep_plugins={})
+    assert context.STATES["vp_user"].status == "active", context.STATES["vp_user"].reason
+    api = context.STATES["vp_user"].api
+    assert (api.vp_owner, api.layer_owner) == ("vp_maker", "vp_maker")
+
+    nodes = ProductsModel.instance()
+    assert nodes.node(["vp_maker", "b"]) is not None
+    assert nodes.node(["Layers", "vp_maker", "peaks"]) is not None
+
+    VIRTUAL_PRODUCTS.remove_owner("vp_maker")
+    LAYERS.remove_owner("vp_maker")
+    assert nodes.node(["vp_maker", "b"]) is None
+    assert nodes.node(["Layers", "vp_maker", "peaks"]) is None
