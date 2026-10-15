@@ -30,8 +30,8 @@ def _wrap_panel(impl):
 
 
 def _wrap_plot(impl):
-    from SciQLop.user_api.plot._panel import wrap_plot
-    return wrap_plot(impl)
+    from SciQLop.user_api.plot import _panel
+    return _panel._wrap_plot(impl)
 
 
 def _wrap_graph(impl):

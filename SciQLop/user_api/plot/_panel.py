@@ -153,7 +153,7 @@ def _follow_panel_time_range(panel_impl, function_graph) -> None:
         function_graph.set_range(current)
 
 
-def wrap_plot(impl):
+def _wrap_plot(impl):
     """The user_api plot for a SciQLopPlots plot, or None for a plot kind it has no wrapper for."""
     if is_time_series_plot(impl):
         return TimeSeriesPlot(impl)
@@ -883,7 +883,7 @@ class PlotPanel(GuardedImpl):
     @property
     @on_main_thread
     def plots(self):
-        return list(filter(lambda p: p is not None, map(wrap_plot, self._get_impl_or_raise().plots())))
+        return list(filter(lambda p: p is not None, map(_wrap_plot, self._get_impl_or_raise().plots())))
 
     @on_main_thread
     def save(self, path: str, *, width: int = 0, height: int = 0,
