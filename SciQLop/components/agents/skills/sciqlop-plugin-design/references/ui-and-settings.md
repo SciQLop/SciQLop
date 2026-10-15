@@ -262,7 +262,7 @@ def activate(ctx):
     ctx.contribute("sciqlop.kernel_namespace", NamespaceEntry("my_plugin.stats", "stats", my_stats))
 ```
 
-- `name` is an identifier. The value is the object itself, so keep it importable and cheap.
+- `name` is an identifier. The value is pushed as it is when you contribute; keep it cheap to create.
 - The core names (`main_window`, `workspace`, `app`, `background_run`, `plugins`) always keep their name.
   A plugin entry with the same name is logged and ignored.
 - Between plugins, the first contribution of a name wins. When it is withdrawn, the next one takes over.

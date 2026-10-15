@@ -2,6 +2,7 @@ import pytest
 from IPython.core.interactiveshell import InteractiveShell
 
 from SciQLop.core import kernel_namespace as kn
+from SciQLop.components.jupyter.kernel.namespace import _poster
 from SciQLop.core.kernel_namespace import (
     KERNEL_NAMESPACE, NamespaceEntry, contribute_name, follow_kernel_namespace, unfollow_kernel_namespace,
 )
@@ -32,6 +33,13 @@ def shell(qapp):
 def errors(monkeypatch):
     logged = []
     monkeypatch.setattr(kn.log, "error", lambda message, *a, **kw: logged.append(message))
+    return logged
+
+
+@pytest.fixture
+def warnings(monkeypatch):
+    logged = []
+    monkeypatch.setattr(kn.log, "warning", lambda message, *a, **kw: logged.append(message))
     return logged
 
 
@@ -116,3 +124,53 @@ def test_core_names_are_contributions(main_window):
         id = f"sciqlop.{name}"
         assert KERNEL_NAMESPACE.owner_of(id) == "sciqlop"
         assert user_ns[name] is KERNEL_NAMESPACE.get(id).value
+
+
+def test_a_promotion_leaves_a_name_the_user_rebound(shell, warnings):
+    contribute("kn_demo.a", "mydata", 1)
+    contribute("kn_demo2.b", "mydata", 2, owner="kn_demo2")
+    shell.user_ns["mydata"] = 3
+    KERNEL_NAMESPACE.remove_owner("kn_demo")
+    assert shell.user_ns["mydata"] == 3
+    assert any("kn_demo2.b" in message for message in warnings)
+
+
+def test_a_replace_leaves_a_name_the_user_rebound(shell, warnings):
+    contribute("kn_demo.x", "mydata", 1)
+    shell.user_ns["mydata"] = 3
+    contribute("kn_demo.x", "mydata", 2, replace=True)
+    assert shell.user_ns["mydata"] == 3
+    assert any("kn_demo.x" in message for message in warnings)
+
+
+def test_renaming_an_entry_promotes_the_next_under_the_old_name(shell):
+    contribute("kn_demo.a", "mydata", 1)
+    contribute("kn_demo2.b", "mydata", 2, owner="kn_demo2")
+    contribute("kn_demo.a", "other", 5, replace=True)
+    assert shell.user_ns["mydata"] == 2
+    assert shell.user_ns["other"] == 5
+
+
+class _StandInKernelThread:
+    def __init__(self, loop):
+        self.loop = loop
+
+
+class _StandInLoop:
+    def __init__(self):
+        self.posted = []
+
+    def call_soon_threadsafe(self, function, *args):
+        self.posted.append((function, args))
+
+
+def test_the_poster_posts_to_a_running_kernel_loop():
+    loop, done = _StandInLoop(), []
+    _poster(_StandInKernelThread(loop))(done.append, 1)
+    assert done == [] and loop.posted == [(done.append, (1,))]
+
+
+def test_the_poster_runs_inline_before_the_kernel_starts():
+    done = []
+    _poster(_StandInKernelThread(None))(done.append, 1)
+    assert done == [1]
