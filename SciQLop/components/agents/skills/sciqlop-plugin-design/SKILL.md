@@ -32,7 +32,7 @@ against the current API — plugins carry workarounds for bugs fixed since.
 | Stream archived data (files, web service) | One virtual product **per source/channel**; the callback fetches whatever covers `[start, stop]` | One product per downloaded file |
 | Let the user tune a product (threshold, smoothing) | Extra callback kwargs with defaults → knobs | A custom form in a dock |
 | Plot static data the plugin already holds | `panel.plot_data(x, y[, z])` on a `create_plot_panel()` | Direct SciQLopPlots calls |
-| Show a browser / search UI | A `QWidget` in a dock (`main_window.addWidgetIntoDock`) | A modal dialog |
+| Show a browser / search UI | A `Dock` contributed to `sciqlop.docks` (`ctx.contribute("sciqlop.docks", Dock(...))`) | A modal dialog |
 | Draw a small plot inside that dock | SciQLopPlots, graphs created once and updated with `set_data` | matplotlib |
 | Save panels in a new file format | A `sciqlop.export_targets` contribution (`ExportTarget`) | Your own "Save as" menu |
 | Show extra controls for a panel, plot or graph | A `sciqlop.inspector_sections` contribution (`InspectorSection`) | A dock that tracks the selection |
@@ -88,7 +88,7 @@ Commands, menu entries and shortcuts: the "Commands, menu entries and shortcuts"
 | Spectrogram blank or scrambled | `y` (energy/frequency) not ascending. Products get a fully reversed axis flipped for them; `plot_data` and unordered bins don't | Sort `y` ascending (`argsort`), reorder `z` |
 | Log scale or units right on one window, wrong after panning | Hints from a returned `SpeasyVariable` are applied once per plot, from the first non-empty fetch | Put the same `UNITS`/`SCALETYP` on every return, don't derive them from the data |
 | Products only appear on the 2nd launch | Plugin added a Speasy inventory after the tree was built | Use virtual products, or republish the tree node |
-| Dock appears above the welcome page, not tabbed | `addWidgetIntoDock(area=None)` at load time | Pass `area=` explicitly |
+| Dock appears above the welcome page, not tabbed | `addWidgetIntoDock(area=None)` at load time | Contribute a `Dock` (`placement="center"`) to `sciqlop.docks`; the window tabs it with Welcome |
 | Settings test passes on CI, fails locally | `ConfigEntry` reads the real user YAML instead of kwargs | Monkeypatch `entry.SCIQLOP_CONFIG_DIR` to a temp dir in every test |
 | Works in-process, empty with `out_of_process=True` | Worker process has a different environment; no ISTP hints come back | Test the callback in a subprocess; keep metadata-rich products in-process |
 

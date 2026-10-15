@@ -1,6 +1,7 @@
 """Docks and side panes: the sciqlop.docks extension point (spec §4). Every main window follows it."""
 from __future__ import annotations
 
+import weakref
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -31,7 +32,7 @@ class _ExistingWidget:
     placed only in the window (`host`) that docked it."""
 
     def __init__(self, widget, host):
-        self.widget, self.host = widget, host
+        self.widget, self.host = widget, weakref.ref(host)
 
     def __call__(self):
         return self.widget

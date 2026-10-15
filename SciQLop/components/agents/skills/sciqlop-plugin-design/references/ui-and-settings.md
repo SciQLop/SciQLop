@@ -48,6 +48,7 @@ def activate(ctx):
 - `main_window.add_side_pan(widget, location, icon)` still works. It
   contributes `Dock(id=f"{owner}.{title}", ...)` for an existing widget, so a
   second side pane with the same title from the same plugin raises `ValueError`.
+  Withdrawing that pane deletes the widget you passed in: don't keep using it.
 
 ## Threading
 

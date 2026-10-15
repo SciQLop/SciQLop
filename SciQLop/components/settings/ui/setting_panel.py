@@ -1,3 +1,4 @@
+import shiboken6
 from PySide6.QtCore import Slot, QModelIndex, Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QListView, QLineEdit,
@@ -344,7 +345,7 @@ class SettingsPanel(QWidget):
 
     @Slot(object)
     def _on_settings_changed(self, _entry_cls):
-        if self._initialized:
+        if shiboken6.isValid(self) and self._initialized:
             self._refresh(keep=self._category_view._current)
 
     def _row_of(self, category: str | None) -> int:

@@ -157,6 +157,14 @@ def _contribute_entry(cls, owner: str) -> None:
     on_main_thread(SETTINGS.contribute)(cls, owner=owner)
 
 
+def _owner_of(cls) -> str:
+    """Core classes belong to SciQLop whoever imports their module first (often a plugin)."""
+    module = cls.__module__
+    if module.startswith("SciQLop.") and not module.startswith("SciQLop.plugins."):
+        return "sciqlop"
+    return current_owner()
+
+
 class _EntriesView(Mapping):
     def __getitem__(self, name: str) -> Type["ConfigEntry"]:
         if name not in SETTINGS:
@@ -203,7 +211,7 @@ class ConfigEntry(BaseModel):
             if not isinstance(value, str) or value == "":
                 raise ValueError(f"Entry class {cls.__name__} must have a non-empty string '{attr}' attribute")
         cls._notifier = _SettingsNotifier()
-        _contribute_entry(cls, current_owner())
+        _contribute_entry(cls, _owner_of(cls))
 
     def __setattr__(self, name, value):
         super().__setattr__(name, value)

@@ -11,7 +11,8 @@ from .fixtures import *  # noqa: F401, F403
 from SciQLop.components.settings.backend.entry import ConfigEntry, SETTINGS
 from SciQLop.core.extensions import owned_by
 
-CREATED = ("SetContribA", "SetContribB", "SetContribDup", "SetContribWorker", "SetContribLive")
+CREATED = ("SetContribA", "SetContribB", "SetContribDup", "SetContribWorker", "SetContribLive",
+           "SetContribCore", "SetContribDeadPanel")
 
 
 @pytest.fixture(autouse=True)
@@ -65,6 +66,18 @@ def test_a_plugin_config_entry_is_owned_by_the_plugin(qapp):
     assert "SetContribB" not in ConfigEntry.list_entries()
     with pytest.raises(ValueError):
         ConfigEntry.get_entry("SetContribB")
+
+
+def test_a_core_config_entry_is_owned_by_sciqlop_whoever_imports_it(qapp):
+    with owned_by("set_demo"):
+        type("SetContribCore", (ConfigEntry,), {
+            "__module__": "SciQLop.components.x",
+            "__annotations__": {"category": ClassVar[str], "subcategory": ClassVar[str]},
+            "category": "set_contrib_category", "subcategory": "general"})
+
+    assert SETTINGS.owner_of("SetContribCore") == "sciqlop"
+    SETTINGS.remove_owner("set_demo")
+    assert "SetContribCore" in ConfigEntry.list_entries()
 
 
 def test_duplicate_name_still_raises(qapp):
@@ -124,3 +137,39 @@ def test_the_panel_follows_live_settings(qapp, qtbot):
     view = panel._category_view
     assert view._current in _categories(panel)
     assert shiboken6.isValid(view._stack.currentWidget())
+
+
+def _record_slot_errors(monkeypatch, panel_cls) -> list:
+    errors = []
+    original = panel_cls._on_settings_changed
+
+    def recording(self, cls):
+        try:
+            original(self, cls)
+        except Exception as e:
+            errors.append(e)
+
+    monkeypatch.setattr(panel_cls, "_on_settings_changed", recording)
+    return errors
+
+
+def test_a_destroyed_windows_settings_panel_ignores_new_settings(qapp, qtbot, monkeypatch):
+    from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+    from SciQLop.components.settings.ui.setting_panel import SettingsPanel
+    errors = _record_slot_errors(monkeypatch, SettingsPanel)
+    previous = getattr(qapp, "main_window", None)
+    mw = SciQLopMainWindow()
+    panels = mw.findChildren(SettingsPanel)
+    assert len(panels) == 1
+    panels[0].show()
+    qtbot.wait(10)
+    panels[0]._initialized = True
+    del panels
+    destroy_main_window(mw)
+    del mw
+    qapp.main_window = previous
+
+    _define("SetContribDeadPanel")
+    qtbot.wait(10)
+
+    assert errors == []

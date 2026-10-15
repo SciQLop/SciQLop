@@ -67,7 +67,7 @@ def _side_pane(dw):
 
 @pytest.mark.parametrize("placement, holder_of", [("center", _docked), ("center", _floating), ("left", _side_pane)],
                          ids=["docked", "floating", "side-pane"])
-def test_withdrawal_closes_the_dock_and_its_actions(main_window, qtbot, placement, holder_of):
+def test_withdrawal_closes_the_dock_and_its_actions(main_window, qtbot, demo_docks, placement, holder_of):
     _contribute(**_label_dock("Withdrawn probe", placement=placement, toolbar=True))
     dw = main_window.dock_manager.findDockWidget("Withdrawn probe")
     holder = holder_of(dw)
@@ -80,6 +80,21 @@ def test_withdrawal_closes_the_dock_and_its_actions(main_window, qtbot, placemen
     assert main_window.dock_manager.findDockWidget("Withdrawn probe") is None
     assert not shiboken6.isValid(dw) and not shiboken6.isValid(holder)
     assert all("Withdrawn probe" not in texts for texts in _action_texts(main_window).values())
+
+
+def test_withdrawing_a_floating_dock_that_holds_a_plot(main_window, qtbot, demo_docks):
+    """Run it with MALLOC_PERTURB_=165 too: glibc otherwise hides a read of the freed QRhi
+    (docs/qt-bugs/qrhiwidget_reparent_uaf.py)."""
+    from SciQLopPlots import SciQLopPlot
+    plot = SciQLopPlot()
+    _contribute(id="dock_demo.Plot probe", title="Plot probe", build=lambda: plot)
+    window = _floating(main_window.dock_manager.findDockWidget("Plot probe"))
+    qtbot.wait(300)
+
+    DOCKS.remove_owner("dock_demo")
+    qtbot.wait(300)
+
+    assert not shiboken6.isValid(plot) and not shiboken6.isValid(window)
 
 
 def test_replace_rebuilds(main_window, qtbot, demo_docks):
@@ -128,6 +143,13 @@ def test_a_raising_build_is_logged_not_raised(main_window, demo_docks, logged_er
 
     assert main_window.dock_manager.findDockWidget("Broken probe") is None
     assert len(logged_errors) == 1 and "dock_demo.broken" in logged_errors[0]
+
+
+def test_a_build_returning_no_widget_is_logged(main_window, demo_docks, logged_errors):
+    _contribute(id="dock_demo.not_a_widget", title="Not a widget probe", build=lambda: "text")
+
+    assert main_window.dock_manager.findDockWidget("Not a widget probe") is None
+    assert len(logged_errors) == 1 and "dock_demo.not_a_widget" in logged_errors[0]
 
 
 def test_a_raising_build_does_not_break_a_new_window(qapp, main_window, demo_docks, logged_errors):

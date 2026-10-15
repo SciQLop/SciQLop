@@ -147,12 +147,28 @@ def _dock_icon(icon: Optional[str], widget: QWidget) -> QIcon:
     return QIcon(icon) if os.path.exists(icon) else get_icon(icon)
 
 
+def _queue_content_delete(dock_widget: QtAds.CDockWidget) -> None:
+    """Call before closeDockWidget(): the content's deferred delete is then posted before
+    QtAds' deletion of a floating dock's window, so the content dies while that window and
+    its QRhi are alive; taken out of that window later, Qt's QRhiWidget would keep a QRhi
+    freed with it (docs/qt-bugs/qrhiwidget_reparent_uaf.py). Not deleted right away: a
+    withdrawal can come from a signal of a widget inside the content."""
+    content = dock_widget.takeWidget()
+    if content is not None:
+        content.hide()
+        content.deleteLater()
+
+
 def _build_dock_content(dock: Dock) -> Optional[QWidget]:
     try:
-        return dock.build()
+        widget = dock.build()
     except Exception:
         log.error(f"dock {dock.id} failed to build", exc_info=True)
         return None
+    if not isinstance(widget, QWidget):
+        log.error(f"dock {dock.id}: build() returned {type(widget).__name__}, not a QWidget")
+        return None
+    return widget
 
 
 def _new_dock_widget(dock: Dock, widget: QWidget) -> QtAds.CDockWidget:
@@ -711,7 +727,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _refuse_live_duplicate(self, dock_id: str, title: str) -> None:
         build = DOCKS.get(dock_id).build if dock_id in DOCKS else None
-        if isinstance(build, _ExistingWidget) and build.host is self and build.alive():
+        if isinstance(build, _ExistingWidget) and build.host() is self and build.alive():
             raise ValueError(f"a side pane titled {title!r} is already docked in this window")
 
     def follow_docks(self) -> None:
@@ -727,7 +743,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         build = dock.build
         if not isinstance(build, _ExistingWidget):
             return True
-        if build.host is not self:
+        if build.host() is not self:
             return False
         if not build.alive():
             log.debug(f"Dock {dock.id!r} is not placed: its widget was deleted")
@@ -795,6 +811,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         for holder in self._dock_action_holders():
             holder.removeAction(action)
         dock_widget.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
+        _queue_content_delete(dock_widget)
         dock_widget.closeDockWidget()
 
     def remove_native_plot_panel(self, panel: TimeSyncPanel):
@@ -808,14 +825,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             dw = self._dock_of(panel)
             if dw:
                 release_name(panel.name)
-                container = dw.takeWidget()
-                container.hide()
-                # Posted before closeDockWidget() so the plots die before QtAds destroys a
-                # floating dock's window: taking them out of that window leaves Qt's
-                # QRhiWidget holding its QRhi, freed along with the window
-                # (docs/qt-bugs/qrhiwidget_reparent_uaf.py). Not deleted right away:
-                # delete_me, emitted by the panel itself, also lands here.
-                container.deleteLater()
+                _queue_content_delete(dw)
                 dw.closeDockWidget()
                 self._notify_panels_list_changed()
 
