@@ -59,6 +59,34 @@ def test_core_and_malformed_table_names_are_refused(table):
         WorkspaceSection(table, Demo)
 
 
+class WithOptional(BaseModel):
+    n: int = 0
+    label: str | None = None
+    values: list[int | None] = []
+
+
+def test_none_fields_are_left_out_so_save_works(qapp, tmp_path):
+    WORKSPACE_SECTIONS.contribute(WorkspaceSection("opt", WithOptional), owner="test")
+    try:
+        m = WorkspaceManifest.default_manifest("w")
+        m.set_section("opt", WithOptional(n=1))
+        m.save(tmp_path / "w.sciqlop")
+        assert WorkspaceManifest.load(tmp_path / "w.sciqlop").section("opt") == WithOptional(n=1)
+    finally:
+        WORKSPACE_SECTIONS.remove("opt")
+
+
+def test_none_inside_a_list_fails_in_set_section(qapp):
+    WORKSPACE_SECTIONS.contribute(WorkspaceSection("opt", WithOptional), owner="test")
+    try:
+        m = WorkspaceManifest.default_manifest("w")
+        with pytest.raises(ValueError, match="opt"):
+            m.set_section("opt", WithOptional(values=[1, None]))
+        assert "opt" not in m.extra_tables
+    finally:
+        WORKSPACE_SECTIONS.remove("opt")
+
+
 def test_set_section_with_the_wrong_model_is_refused(demo_section):
     m = WorkspaceManifest.default_manifest("w")
     with pytest.raises(ValueError):

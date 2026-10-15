@@ -93,16 +93,22 @@ class WorkspaceManifest:
             return datetime.fromtimestamp(manifest.stat().st_mtime).isoformat()
         return ""
 
+    @staticmethod
+    def _section_model(table: str):
+        from SciQLop.components.workspaces.backend.workspace_sections import WORKSPACE_SECTIONS
+        return WORKSPACE_SECTIONS.get(table).model if table in WORKSPACE_SECTIONS else None
+
     def section(self, table: str):
-        """The contributed model of ``table``, or None if no section owns it, it is absent, or it is invalid.
+        """The contributed model of ``table``, or None if no section owns it, it is absent, or it is invalid
+        (logged once per loaded manifest).
 
         simplify: no change notification; add a ``section_changed`` signal when a plugin needs to react
         to another writer."""
-        from SciQLop.components.workspaces.backend.workspace_sections import WORKSPACE_SECTIONS
-        if table not in WORKSPACE_SECTIONS or table not in self.extra_tables:
+        model = self._section_model(table)
+        if model is None or table not in self.extra_tables:
             return None
         try:
-            return WORKSPACE_SECTIONS.get(table).model.model_validate(self.extra_tables[table])
+            return model.model_validate(self.extra_tables[table])
         except ValidationError as exc:
             self._warn_invalid_once(table, exc)
             return None
@@ -111,14 +117,23 @@ class WorkspaceManifest:
         if table in self._warned:
             return
         self._warned.add(table)
-        log.warning("Invalid [%s] table in workspace manifest, ignoring it: %s", table, exc.errors()[0])
+        first = exc.errors()[0]
+        log.warning("Invalid [%s] table in workspace manifest, ignoring it: %s: %s",
+                    table, first["loc"], first["msg"])
 
     def set_section(self, table: str, value) -> None:
-        """Replace ``table`` with ``value``; persisting is the caller's ``save()``."""
-        from SciQLop.components.workspaces.backend.workspace_sections import WORKSPACE_SECTIONS
-        if table not in WORKSPACE_SECTIONS or WORKSPACE_SECTIONS.get(table).model is not type(value):
+        """Replace ``table`` with ``value``; persisting is the caller's ``save()``.
+
+        Fails here, not in ``save()``, when the model dumps something TOML cannot write
+        (None is dropped from fields, but not inside a list)."""
+        if self._section_model(table) is not type(value):
             raise ValueError(f"no workspace section {table!r} takes a {type(value).__name__}")
-        self.extra_tables[table] = value.model_dump(mode="json")
+        dumped = value.model_dump(mode="json", exclude_none=True)
+        try:
+            tomli_w.dumps({table: dumped})
+        except TypeError as exc:
+            raise ValueError(f"workspace section {table!r} is not writable as TOML: {exc}") from exc
+        self.extra_tables[table] = dumped
 
     @classmethod
     def default_manifest(cls, name: str) -> WorkspaceManifest:

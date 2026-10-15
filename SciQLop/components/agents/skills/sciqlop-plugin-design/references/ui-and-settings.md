@@ -363,9 +363,12 @@ ctx.contribute("sciqlop.workspace_sections", WorkspaceSection("my_plugin", MyPlu
 ```
 
 - Read with `manifest.section("my_plugin")`. You get a model instance, or `None` when the table is absent, the
-  section is not contributed, or the table does not validate (logged once; the table is kept as is).
+  section is not contributed, or the table does not validate (logged once per loaded manifest, so a plugin reading
+  through `edit_manifest` warns on each call; the table is kept as is).
 - Write with `manifest.set_section("my_plugin", MyPluginWorkspace(...))`, then `manifest.save(path)`. Use
   `edit_manifest(path)` so you do not overwrite what others saved.
+- TOML has no null: fields that are `None` are left out of the file, and `set_section` raises `ValueError` for a
+  `None` inside a list. Give optional fields a `None` default so they read back.
 - The table name cannot be `workspace`, `plugins`, `dependencies` or `examples` (SciQLop's), and must be a bare
   TOML key (`[A-Za-z0-9_-]+`).
 - Withdrawing the plugin leaves the table in the file, untouched.
