@@ -2,7 +2,7 @@ import pytest
 from IPython.core.interactiveshell import InteractiveShell
 
 from SciQLop.core import kernel_namespace as kn
-from SciQLop.components.jupyter.kernel.namespace import _poster
+from SciQLop.components.jupyter.kernel.namespace import kernel_poster
 from SciQLop.core.kernel_namespace import (
     KERNEL_NAMESPACE, NamespaceEntry, contribute_name, follow_kernel_namespace, unfollow_kernel_namespace,
 )
@@ -164,13 +164,13 @@ class _StandInLoop:
         self.posted.append((function, args))
 
 
-def test_the_poster_posts_to_a_running_kernel_loop():
+def test_thekernel_poster_posts_to_a_running_kernel_loop():
     loop, done = _StandInLoop(), []
-    _poster(_StandInKernelThread(loop))(done.append, 1)
+    kernel_poster(_StandInKernelThread(loop))(done.append, 1)
     assert done == [] and loop.posted == [(done.append, (1,))]
 
 
-def test_the_poster_runs_inline_before_the_kernel_starts():
+def test_thekernel_poster_runs_inline_before_the_kernel_starts():
     done = []
-    _poster(_StandInKernelThread(None))(done.append, 1)
+    kernel_poster(_StandInKernelThread(None))(done.append, 1)
     assert done == [1]

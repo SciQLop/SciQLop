@@ -2,7 +2,7 @@
 from SciQLop.core.kernel_namespace import follow_kernel_namespace
 
 
-def _poster(kernel_thread):
+def kernel_poster(kernel_thread):
     """Runs on the kernel thread once it is up, immediately before; same rule as jupyqt's push."""
     def post(function, *args):
         loop = kernel_thread.loop
@@ -14,4 +14,4 @@ def _poster(kernel_thread):
 
 
 def follow_jupyter_namespace(jupyter) -> None:
-    follow_kernel_namespace(jupyter.shell, _poster(jupyter.kernel_thread))
+    follow_kernel_namespace(jupyter.shell, kernel_poster(jupyter.kernel_thread))

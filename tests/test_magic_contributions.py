@@ -3,8 +3,8 @@ from IPython.core.interactiveshell import InteractiveShell
 
 from SciQLop.core import magics as magics_module
 from SciQLop.core.extensions import owned_by
-from SciQLop.core.magics import CORE_MAGICS, MAGICS, Magic, contribute_core_magics, unfollow_magics
-from SciQLop.user_api.magics import register_all_magics
+from SciQLop.core.magics import MAGICS, Magic, unfollow_magics
+from SciQLop.user_api.magics import _core_magics, register_all_magics
 
 CORE_NAMES = ("vp", "layer", "plot", "timerange", "install", "workspace", "job")
 OWNERS = ("mg_demo", "mg_demo2")
@@ -51,7 +51,7 @@ def test_core_magics_are_contributions(shell):
 
 
 def test_core_magics_carry_their_completers(shell):
-    completers = {m.name: m.completer for m in CORE_MAGICS}
+    completers = {m.name: m.completer for m in _core_magics()}
     assert all(completers[n] is not None for n in ("vp", "plot", "timerange", "workspace", "job"))
     assert all(completers[n] is None for n in ("layer", "install"))
     assert all(c in shell.Completer.custom_matchers for c in completers.values() if c is not None)
@@ -111,8 +111,7 @@ def test_a_core_magic_arriving_after_a_plugin_takes_the_name(shell, errors):
         assert registered(shell, "line", "qq") is core.function
         assert len(errors) == 1 and "mg_demo.qq" in errors[0]
     finally:
-        MAGICS.remove_owner("sciqlop")
-        contribute_core_magics()
+        MAGICS.remove("sciqlop.qq")
 
 
 def test_a_line_cell_magic_clashes_with_both_kinds(shell, errors):
@@ -182,3 +181,36 @@ def test_renaming_a_magic_promotes_the_next_under_the_old_name(shell):
 
     assert registered(shell, "line", "zz") is second.function
     assert registered(shell, "line", "yy") is not None
+
+
+class _StandInLoop:
+    def __init__(self):
+        self.posted = []
+
+    def call_soon_threadsafe(self, function, *args):
+        self.posted.append((function, args))
+
+
+def test_registration_is_posted_to_a_running_kernel_loop(qapp):
+    from SciQLop.components.jupyter.kernel.namespace import kernel_poster
+
+    class StandInKernelThread:
+        loop = _StandInLoop()
+
+    fresh = InteractiveShell()
+    try:
+        register_all_magics(fresh, kernel_poster(StandInKernelThread))
+        assert registered(fresh, "line", "plot") is None
+        assert StandInKernelThread.loop.posted
+        for function, args in StandInKernelThread.loop.posted:
+            function(*args)
+        assert registered(fresh, "line", "plot") is MAGICS.get("sciqlop.plot").function
+    finally:
+        unfollow_magics(fresh)
+
+
+def test_core_magics_do_not_import_user_api():
+    import subprocess
+    import sys
+    code = "import sys, SciQLop.core.magics; sys.exit(any(m.startswith('SciQLop.user_api') for m in sys.modules))"
+    assert subprocess.run([sys.executable, "-c", code]).returncode == 0

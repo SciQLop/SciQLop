@@ -53,7 +53,8 @@ NOT_MARSHALED_ON_PURPOSE = {
                         "PanelBuilder.subplot", "PanelBuilder.time_range", "PanelBuilder.y_range",
                         "new_panel", "panel"},
     "plot/_speasy_backend.py": {"SciQLopBackend.colormap", "SciQLopBackend.line"},
-    "magics/__init__.py": {"register_all_magics"},
+    # Run on the main thread at startup; they only contribute and register, no Qt object is touched.
+    "magics/__init__.py": {"contribute_core_magics", "register_all_magics"},
     "magics/install_magic.py": {"install_magic"},
     "magics/job_magic.py": {"job_magic"},
     "magics/plot_magic.py": {"create_plot_panel", "plot_magic", "plot_panel"},

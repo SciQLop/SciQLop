@@ -6,7 +6,7 @@ from typing import Callable, Optional
 
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.extensions import ExtensionPoint, declare
-from SciQLop.core.name_follower import CORE_OWNER, Follower
+from SciQLop.core.name_follower import Follower
 
 log = getLogger(__name__)
 
@@ -34,38 +34,6 @@ MAGICS = declare(ExtensionPoint("sciqlop.magics", Magic, what="magic",
 
 def _kinds(magic: Magic) -> tuple[str, ...]:
     return (LINE, CELL) if magic.kind == LINE_CELL else (magic.kind,)
-
-
-def _core_magics() -> tuple[Magic, ...]:
-    from SciQLop.user_api.virtual_products.magic import vp_magic
-    from SciQLop.user_api.layers.magic import layer_magic
-    from SciQLop.user_api.magics.plot_magic import plot_magic
-    from SciQLop.user_api.magics.timerange_magic import timerange_magic
-    from SciQLop.user_api.magics.install_magic import install_magic
-    from SciQLop.user_api.magics.workspace_magic import workspace_magic
-    from SciQLop.user_api.magics.job_magic import job_magic
-    from SciQLop.user_api.magics.completions import (
-        _match_plot, _match_timerange, _match_vp, _match_workspace, _match_job,
-    )
-    return (
-        Magic("sciqlop.vp", "vp", CELL, vp_magic, _match_vp),
-        Magic("sciqlop.layer", "layer", CELL, layer_magic),
-        Magic("sciqlop.plot", "plot", LINE, plot_magic, _match_plot),
-        Magic("sciqlop.timerange", "timerange", LINE, timerange_magic, _match_timerange),
-        Magic("sciqlop.install", "install", LINE, install_magic),
-        Magic("sciqlop.workspace", "workspace", LINE, workspace_magic, _match_workspace),
-        Magic("sciqlop.job", "job", LINE, job_magic, _match_job),
-    )
-
-
-CORE_MAGICS = _core_magics()
-
-
-def contribute_core_magics() -> None:
-    """Idempotent. Called by prepare_extension_points and register_all_magics, whichever runs first."""
-    for magic in CORE_MAGICS:
-        if magic.id not in MAGICS:
-            MAGICS.contribute(magic, owner=CORE_OWNER)
 
 
 def _may_register(shell, magic: Magic, replaced: tuple) -> bool:
@@ -97,9 +65,13 @@ def _unapply(shell, magic: Magic) -> None:
 _FOLLOWER = Follower(MAGICS, log, lambda m: f"magic %{m.name}", _kinds, _apply, _unapply)
 
 
-def follow_magics(shell) -> None:
-    """Apply every contributed magic to ``shell`` and follow the extension point. Main thread; idempotent per shell."""
-    _FOLLOWER.follow(shell)
+def follow_magics(shell, post: Optional[Callable] = None) -> None:
+    """Apply every contributed magic to ``shell`` and follow the extension point. Main thread; idempotent per shell.
+
+    ``post(function, *args)`` runs ``function`` where the shell's tables may be touched
+    (the kernel thread); by default it runs immediately.
+    """
+    _FOLLOWER.follow(shell, post)
 
 
 def unfollow_magics(shell) -> None:
