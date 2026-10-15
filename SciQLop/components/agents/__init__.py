@@ -22,10 +22,13 @@ from .registry import (
     register_agent_backend,
     unregister_agent_backend,
 )
+from .skills import AGENT_SKILLS, AgentSkill
 from .tools import AGENT_TOOLS, AgentTool
 
 __all__ = [
     "AGENT_BACKENDS",
+    "AGENT_SKILLS",
+    "AgentSkill",
     "AGENT_TOOLS",
     "AgentBackend",
     "AgentBackendEntry",

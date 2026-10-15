@@ -427,3 +427,23 @@ def activate(ctx):
 - A name already used by a core tool or an earlier contribution is ignored and logged: core tools always win.
 - Sessions get a snapshot. A tool installed or withdrawn later reaches the next session, not the running one. A
   running session calling a withdrawn tool is told it was withdrawn.
+
+### Skills (`sciqlop.agent_skills`)
+
+A plugin ships a skill folder and contributes it from `activate` (main thread):
+
+```python
+from pathlib import Path
+from SciQLop.components.agents import AGENT_SKILLS, AgentSkill
+
+def activate(ctx):
+    AGENT_SKILLS.contribute(AgentSkill("myplugin-howto", Path(__file__).parent / "skills" / "myplugin-howto"))
+```
+
+- The folder holds `SKILL.md` plus any reference `*.md` files, in sub-folders if you like.
+- `name` matches `^[a-z0-9][a-z0-9-]{0,63}$` and the folder must hold `SKILL.md`, else `ValueError`. Prefix names
+  with your plugin; they share `.claude/skills/` with SciQLop's and the user's own.
+- Skills are copied into `<workspace>/.claude/skills/<name>/` when the next agent session starts, not at once.
+- SciQLop records what it published in `.claude/skills/.sciqlop-published`. A skill withdrawn later (plugin
+  disabled or unloaded) is removed from the workspace at the next session; folders not in that record, such as
+  the user's own skills, are never touched.
