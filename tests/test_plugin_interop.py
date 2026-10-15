@@ -11,7 +11,8 @@ from .fixtures import *  # noqa: F401,F403
 from SciQLop.components.plugins.backend.loader import context, loader
 from SciQLop.core import extensions
 
-_OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell", "vp_maker", "vp_user", "ui_maker")
+_OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell", "vp_maker", "vp_user", "ui_maker",
+           "agent_maker")
 
 
 @pytest.fixture
@@ -247,3 +248,48 @@ def test_plugin_contributes_settings_a_dock_and_a_workspace_section(tmp_path, ma
     assert "UiMakerSettings" not in ConfigEntry.list_entries()
     assert dock_manager.findDockWidget("UiMakerPanel") is None
     assert "ui_maker" not in WORKSPACE_SECTIONS.keys()
+
+
+_AGENT_MAKER = """
+    from pathlib import Path
+    from SciQLop.components.agents import AgentSkill, AgentTool, register_agent_backend
+
+    class Fake:
+        display_name = "AgentMakerFake"
+
+    def activate(ctx):
+        register_agent_backend(Fake)
+        ctx.contribute("sciqlop.agent_tools", AgentTool(
+            "agent_maker_ping", "Ping.", {{"type": "object", "properties": {{}}}}, lambda p: "pong"))
+        ctx.contribute("sciqlop.agent_skills", AgentSkill("agent-maker", Path({skill_dir!r})))
+"""
+
+
+def test_plugin_contributes_an_agent_backend_a_tool_and_a_skill(tmp_path, main_window, fresh):
+    from SciQLop.components.agents import (
+        AGENT_BACKENDS, AGENT_SKILLS, AGENT_TOOLS, available_backends)
+    from SciQLop.components.agents.skills import sync_skills
+    from SciQLop.components.agents.tools import build_sciqlop_tools
+    skill_dir = tmp_path / "skill_src"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text("---\nname: agent-maker\ndescription: Demo.\n---\nBody.\n")
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    published = workspace / ".claude" / "skills" / "agent-maker" / "SKILL.md"
+    code = _AGENT_MAKER.format(skill_dir=str(skill_dir))
+    loader.activate_all([_plugin(tmp_path, "agent_maker", code)], main_window=main_window, ep_plugins={})
+    assert context.STATES["agent_maker"].status == "active", context.STATES["agent_maker"].reason
+
+    assert AGENT_BACKENDS.owner_of("AgentMakerFake") == "agent_maker"
+    assert AGENT_TOOLS.owner_of("agent_maker_ping") == "agent_maker"
+    assert AGENT_SKILLS.owner_of("agent-maker") == "agent_maker"
+    assert "AgentMakerFake" in available_backends()
+    assert "agent_maker_ping" in [t["name"] for t in build_sciqlop_tools(main_window)]
+    sync_skills(workspace)
+    assert published.is_file()
+
+    loader._withdraw("agent_maker")
+    assert "AgentMakerFake" not in available_backends()
+    assert "agent_maker_ping" not in [t["name"] for t in build_sciqlop_tools(main_window)]
+    sync_skills(workspace)
+    assert not published.parent.exists()
