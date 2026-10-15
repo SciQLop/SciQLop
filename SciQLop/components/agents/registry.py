@@ -1,13 +1,34 @@
-"""Agent backend registry."""
+"""Agent backends: contributions to the `sciqlop.agent_backends` extension point."""
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Type, Union
+from dataclasses import dataclass
+from operator import attrgetter
+from typing import Callable, List, Type, Union
+
+from SciQLop.components.sciqlop_logging import getLogger
+from SciQLop.core.extensions import ExtensionPoint, NotRegistered, contribute_taking_over, current_owner, declare
+from SciQLop.user_api.threading import on_main_thread
 
 from .backend import AgentBackend, BackendContext
 
+log = getLogger(__name__)
+
 BackendFactory = Callable[[BackendContext], AgentBackend]
 
-_BACKENDS: Dict[str, BackendFactory] = {}
+
+@dataclass(frozen=True)
+class AgentBackendEntry:
+    name: str
+    factory: BackendFactory
+
+    def __post_init__(self):
+        if not self.name:
+            raise ValueError("an agent backend needs a non-empty name")
+
+
+AGENT_BACKENDS = declare(ExtensionPoint(
+    "sciqlop.agent_backends", AgentBackendEntry, what="agent backend", key=attrgetter("name"),
+    doc="Agent chat backends by display name."))
 
 
 def register_agent_backend(
@@ -23,21 +44,30 @@ def register_agent_backend(
             raise TypeError(
                 "register_agent_backend(factory) requires factory.display_name"
             )
-        _BACKENDS[name] = factory_or_name
+        entry = AgentBackendEntry(name, factory_or_name)
     else:
-        _BACKENDS[str(factory_or_name)] = factory
+        entry = AgentBackendEntry(str(factory_or_name), factory)
+    _contribute_backend(entry, current_owner())
 
 
+@on_main_thread
+def _contribute_backend(entry: AgentBackendEntry, owner: str) -> None:
+    contribute_taking_over(AGENT_BACKENDS, entry, log, owner=owner)
+
+
+@on_main_thread
 def unregister_agent_backend(name: str) -> None:
-    _BACKENDS.pop(name, None)
+    if name in AGENT_BACKENDS:
+        AGENT_BACKENDS.remove(name)
 
 
 def available_backends() -> List[str]:
-    return sorted(_BACKENDS.keys())
+    return sorted(AGENT_BACKENDS.keys())
 
 
 def create_backend(name: str, ctx: BackendContext) -> AgentBackend:
-    factory = _BACKENDS.get(name)
-    if factory is None:
-        raise KeyError(f"no agent backend registered: {name!r}")
-    return factory(ctx)
+    try:
+        entry = AGENT_BACKENDS.get(name)
+    except NotRegistered:
+        raise KeyError(f"no agent backend registered: {name!r}") from None
+    return entry.factory(ctx)

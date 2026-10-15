@@ -125,10 +125,11 @@ class ExtensionPoint(Generic[T]):
         return removed
 
 
-def contribute_taking_over(ep: ExtensionPoint, item: T, log) -> T:
-    """Contribute `item` for the current owner, replacing whatever holds its key; a takeover from another
-    owner is logged, not refused, so a re-run notebook cell or plugin can redeclare what it made before."""
-    owner, key = current_owner(), ep._key(item)
+def contribute_taking_over(ep: ExtensionPoint, item: T, log, owner: str | None = None) -> T:
+    """Contribute `item` for `owner` (default: the current owner), replacing whatever holds its key; a takeover
+    from another owner is logged, not refused, so a re-run notebook cell or plugin can redeclare what it made
+    before. Pass `owner` when the call was marshalled from another thread: the owner context does not follow."""
+    owner, key = owner or current_owner(), ep._key(item)
     previous = ep._owners.get(key) if key in ep else None
     if previous not in (None, owner):
         log.warning(f"{ep._what} {key!r} of {previous} is replaced by one from {owner}")

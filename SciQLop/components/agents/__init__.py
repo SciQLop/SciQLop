@@ -15,6 +15,8 @@ from .backend import (
 )
 from .chat_dock import AgentChatDock, ensure_agent_dock
 from .registry import (
+    AGENT_BACKENDS,
+    AgentBackendEntry,
     available_backends,
     create_backend,
     register_agent_backend,
@@ -22,7 +24,9 @@ from .registry import (
 )
 
 __all__ = [
+    "AGENT_BACKENDS",
     "AgentBackend",
+    "AgentBackendEntry",
     "AgentChatDock",
     "BackendContext",
     "CarbonFootprint",

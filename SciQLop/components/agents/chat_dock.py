@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import shiboken6
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut, QTextCursor
 from PySide6.QtWidgets import (
@@ -47,7 +48,7 @@ from .chat.sessions_view import grouped_sessions, all_groups, all_tags, claimed_
 from .chat.settings_popup import AgentSettingsPopup
 from .chat.usage_refresh import UsageRefresher
 from .guidance import load_guidance, strip_legacy_alignment
-from .registry import available_backends, create_backend
+from .registry import AGENT_BACKENDS, AgentBackendEntry, available_backends, create_backend
 from .settings import AgentChatSettings, AgentSessionMeta, AgentWriteMode
 from .tools import build_sciqlop_tools
 from .workspace import current_workspace_dir
@@ -68,6 +69,7 @@ class _AgentSession:
     messages: List[ChatMessage] = field(default_factory=list)
     resume_id: Optional[str] = None
     version_reminder: Optional[str] = None
+    source: Optional[AgentBackendEntry] = None
 
 
 class AgentChatDock(QWidget):
@@ -101,6 +103,8 @@ class AgentChatDock(QWidget):
         self._set_writes_combo(self._write_mode)
         self._on_write_mode_changed(0)  # ensure badge text/style is set
         self.refresh_backends()
+        AGENT_BACKENDS.signals.added.connect(self._follow_backends)
+        AGENT_BACKENDS.signals.removed.connect(self._follow_backends)
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -232,29 +236,62 @@ class AgentChatDock(QWidget):
             self._writes_combo.setCurrentIndex(index)
 
     def refresh_backends(self) -> None:
+        if self._rebuild_backend_combo():
+            self._on_backend_changed(self._backend_combo.currentIndex())
+
+    def _follow_backends(self, _entry) -> None:
+        """A backend was installed or withdrawn: list it, and rebind only when
+        the one in use is gone — an open conversation must survive a plugin
+        being added next to it."""
+        if not shiboken6.isValid(self):
+            return
+        self._drop_stale_sessions()
+        names = self._rebuild_backend_combo()
+        if self._current in names:
+            return
+        if not names:
+            self._current = None
+            return
+        self._on_backend_changed(self._backend_combo.currentIndex())
+
+    def _drop_stale_sessions(self) -> None:
+        """Forget sessions whose backend was withdrawn, or replaced while not in use, so the next
+        selection builds one from the current factory. The live session survives a replacement."""
+        for name in [n for n, s in self._sessions.items() if self._is_stale(n, s)]:
+            # simplify: drops the reference only; AgentBackend has no shutdown hook, so a withdrawn
+            # backend's subprocess ends when its object is collected. Add a close() call when the protocol has one.
+            del self._sessions[name]
+
+    def _is_stale(self, name: str, session: _AgentSession) -> bool:
+        if name not in AGENT_BACKENDS:
+            return True
+        return name != self._current and AGENT_BACKENDS.get(name) != session.source
+
+    def _rebuild_backend_combo(self) -> List[str]:
         names = available_backends()
-        current = self._current
         self._backend_combo.blockSignals(True)
         self._backend_combo.clear()
         for name in names:
             self._backend_combo.addItem(name, name)
+        if names:
+            self._backend_combo.setCurrentIndex(names.index(self._preferred_backend(names)))
         self._backend_combo.blockSignals(False)
         if not names:
             self._set_empty(
                 "No agent backends registered. Install sciqlop_claude or a "
                 "similar plugin to enable the chat."
             )
-            return
+            return names
         self._set_enabled()
+        return names
+
+    def _preferred_backend(self, names: List[str]) -> str:
         # `available_backends()` is sorted, so falling straight to names[0]
         # always reopens on whichever backend sorts first rather than the one
         # actually in use — with several installed that is "Albert", which
         # implements none of the usage protocol, leaving the strip blank.
         remembered = AgentChatSettings().last_backend
-        target = next((n for n in (current, remembered) if n in names), names[0])
-        idx = names.index(target)
-        self._backend_combo.setCurrentIndex(idx)
-        self._on_backend_changed(idx)
+        return next((n for n in (self._current, remembered) if n in names), names[0])
 
     def _set_empty(self, reason: str) -> None:
         self._transcript.render_messages(
@@ -361,7 +398,8 @@ class AgentChatDock(QWidget):
             guidance=guidance,
         )
         backend = create_backend(name, ctx)
-        return _AgentSession(backend=backend)
+        source = AGENT_BACKENDS.get(name) if name in AGENT_BACKENDS else None
+        return _AgentSession(backend=backend, source=source)
 
     def _clear_effort(self) -> None:
         """Drop the previous backend's effort levels from the shared popup.

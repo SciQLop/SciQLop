@@ -375,7 +375,9 @@ ctx.contribute("sciqlop.workspace_sections", WorkspaceSection("my_plugin", MyPlu
 - Withdrawing the plugin leaves the table in the file, untouched.
 - No change notification: call `section()` when you need the value.
 
-## Agent backend plugins
+## Agents: backends, tools, skills
+
+### Backends (`sciqlop.agent_backends`)
 
 The chat dock belongs to SciQLop. A backend plugin contributes a class only:
 
@@ -396,3 +398,10 @@ def activate(ctx):
   chat. A backend raising during construction fails the dock and every agent
   plugin loaded after it.
 - Read API keys at request time, not in `__init__`.
+- `register_agent_backend` contributes an `AgentBackendEntry(name, factory)` to `sciqlop.agent_backends`, owned
+  by your plugin; withdrawing the plugin removes it. Any thread may call it. The legacy
+  `register_agent_backend("Name", factory)` form still works.
+- Registering a name again replaces the backend. A name another plugin registered is taken over with a warning.
+  A replacement takes effect for new sessions: the conversation open on that backend keeps its instance.
+- The dock follows the extension point: a backend installed later appears in its list without disturbing the
+  open conversation. Withdrawing the backend in use drops its session and falls back to the first available.

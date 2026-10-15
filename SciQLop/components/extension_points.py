@@ -24,6 +24,7 @@ def prepare_extension_points() -> None:
     import SciQLop.components.plotting.export  # noqa: F401  declares sciqlop.export_targets, contributes the core formats
     from SciQLop.components.command_palette.backend import registry as command_registry  # noqa: F401  declares sciqlop.commands
     from SciQLop.components.shortcuts import registry as _shortcuts  # noqa: F401  declares sciqlop.shortcuts
+    from SciQLop.components.agents import registry as _agent_backends  # noqa: F401  declares sciqlop.agent_backends
     from SciQLop.components.catalogs.backend import catalog_mime, event_mime  # noqa: F401
     import SciQLop.components.plotting.core_kinds  # noqa: F401  contributes sciqlop.timeseries
     import SciQLop.components.scenes.contributions  # noqa: F401  contributes sciqlop.scenes.projection

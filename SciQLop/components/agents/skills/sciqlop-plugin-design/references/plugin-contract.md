@@ -116,9 +116,10 @@ def activate(ctx):
 | `sciqlop.settings` | a `ConfigEntry` subclass (contributed by defining it) | class name |
 | `sciqlop.docks` | `Dock(id, title, build, placement, icon, visible, toolbar)` | `id` |
 | `sciqlop.workspace_sections` | `WorkspaceSection(table, model)` | `table` |
+| `sciqlop.agent_backends` | `AgentBackendEntry(name, factory)`, through `register_agent_backend(cls)` | `name` |
 
 Locations, argument values and examples: the "Commands and menu entries", "Export targets", "Inspector sections",
-"Docks" and "Keyboard shortcuts" sections of [ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws them all.
+"Docks", "Keyboard shortcuts" and "Agents: backends, tools, skills" sections of [ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws them all.
 
 ## Plot kinds, drop rules and saved panels
 
