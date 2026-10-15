@@ -242,3 +242,32 @@ def test_the_context_menu_puts_a_model_on_the_chosen_scene_plot(plot_panel, main
     plot_entry = next(a for text, a in actions.items() if text not in ("+ New plot", ""))
     plot_entry.trigger()
     assert sp._boundary_graphs["magnetopause"] is not before
+
+
+def _taken_over_by_tree_demo(ep, item):
+    from SciQLop.core.extensions import owned_by
+    with owned_by("tree_demo"):
+        ep.contribute(item, replace=True)
+
+
+def test_a_withdrawn_boundary_leaves_the_tree(registered):
+    from SciQLopPlots import ProductsModel
+    _taken_over_by_tree_demo(registry.BOUNDARIES, registry.BOUNDARIES.list()[0])
+    path = tree._boundary_path(registry.BOUNDARIES.list()[0])
+    assert ProductsModel.node(path) is not None
+    registry.BOUNDARIES.remove_owner("tree_demo")
+    assert ProductsModel.node(path) is None
+
+
+def test_a_withdrawn_scene_leaves_the_tree(registered):
+    from SciQLopPlots import ProductsModel
+    scene = registry.SCENES.list()[0]
+    _taken_over_by_tree_demo(registry.SCENES, scene)
+    assert ProductsModel.node(["Scenes", scene.name]) is not None
+    registry.SCENES.remove_owner("tree_demo")
+    assert ProductsModel.node(["Scenes", scene.name]) is None
+
+
+def test_removing_an_absent_node_is_a_no_op(main_window):
+    from SciQLop.core.models import remove_product_node
+    remove_product_node(["no", "such", "node"])

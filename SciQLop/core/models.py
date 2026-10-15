@@ -17,3 +17,10 @@ def add_product_node(path, *node_args, display_name=None):
     if display_name:
         node.set_display_name(display_name)
     products.add_node(path, node)
+
+
+@on_main_thread
+def remove_product_node(path: list[str]) -> None:
+    """Remove the node at `path`, on the GUI thread. A path with no node is ignored."""
+    # simplify: empty parent folders stay; prune them when a plugin's withdrawal leaves visible empty folders that users complain about.
+    products.remove_node(path)

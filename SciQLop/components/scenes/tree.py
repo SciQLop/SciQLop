@@ -5,7 +5,7 @@ from SciQLopPlots import OverlayLevel, OverlayPosition, OverlaySizeMode
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.enums import ParameterType
 from SciQLop.core.product_kinds import BOUNDARY, PRODUCT_KIND_KEY, SCENE
-from SciQLop.core.models import ProductsModelNodeType, add_product_node
+from SciQLop.core.models import ProductsModelNodeType, add_product_node, remove_product_node
 from .model import resolve
 from .registry import BOUNDARIES, SCENES
 from .scene_plot import scene_plot_for
@@ -54,14 +54,24 @@ def add_boundary_node(model) -> None:
     _add_node(_boundary_path(model), "boundary", f"{model.description} {model.reference}".strip())
 
 
+def remove_scene_node(scene) -> None:
+    remove_product_node(["Scenes", scene.name])
+
+
+def remove_boundary_node(model) -> None:
+    remove_product_node(_boundary_path(model))
+
+
 def follow_registries() -> None:
-    """List every boundary and scene in the products tree as it is contributed, whoever contributes it.
+    """List every boundary and scene in the products tree while it is contributed, whoever contributes it.
 
     Main thread only. Marks the signals object it connected, so it is idempotent and reconnects when a test
     swaps in fresh signals."""
-    for registry, add_node in ((BOUNDARIES, add_boundary_node), (SCENES, add_scene_node)):
+    for registry, add_node, remove_node in ((BOUNDARIES, add_boundary_node, remove_boundary_node),
+                                            (SCENES, add_scene_node, remove_scene_node)):
         if not getattr(registry.signals, "_tree_follows", False):
             registry.signals.added.connect(add_node)
+            registry.signals.removed.connect(remove_node)
             registry.signals._tree_follows = True
 
 
