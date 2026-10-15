@@ -107,9 +107,11 @@ def activate(ctx):
 | `sciqlop.commands` | `PaletteCommand(id, name, description, callback, args)` | `id` |
 | `sciqlop.menus` | `MenuEntry(id, location, command, label, when, order)` | `id` |
 | `sciqlop.shortcuts` | `Shortcut(id, group, label, default, fixed)` | `id` |
+| `sciqlop.export_targets` | `ExportTarget(id, label, suffixes, write, scalable)` | `id` |
+| `sciqlop.inspector_sections` | `InspectorSection(id, title, target, build, applies, priority)` | `id` |
 
-Locations, argument values and examples: the "Commands and menu entries" and "Keyboard shortcuts" sections of
-[ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws all three.
+Locations, argument values and examples: the "Commands and menu entries", "Export targets", "Inspector sections"
+and "Keyboard shortcuts" sections of [ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws them all.
 
 ## Plot kinds, drop rules and saved panels
 

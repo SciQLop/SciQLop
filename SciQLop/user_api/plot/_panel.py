@@ -153,6 +153,17 @@ def _follow_panel_time_range(panel_impl, function_graph) -> None:
         function_graph.set_range(current)
 
 
+def wrap_plot(impl):
+    """The user_api plot for a SciQLopPlots plot, or None for a plot kind it has no wrapper for."""
+    if is_time_series_plot(impl):
+        return TimeSeriesPlot(impl)
+    if is_projection_plot(impl):
+        return ProjectionPlot(impl)
+    if is_xy_plot(impl):
+        return XYPlot(impl)
+    return None
+
+
 class PlotPanel(GuardedImpl):
     """A class representing a plot panel in the SciQLop application.
     This class provides methods to create and manage plots within the panel.
@@ -872,16 +883,6 @@ class PlotPanel(GuardedImpl):
     @property
     @on_main_thread
     def plots(self):
-        def wrap_plot(p):
-            if is_time_series_plot(p):
-                return TimeSeriesPlot(p)
-            elif is_projection_plot(p):
-                return ProjectionPlot(p)
-            elif is_xy_plot(p):
-                return XYPlot(p)
-            else:
-                return None
-
         return list(filter(lambda p: p is not None, map(wrap_plot, self._get_impl_or_raise().plots())))
 
     @on_main_thread

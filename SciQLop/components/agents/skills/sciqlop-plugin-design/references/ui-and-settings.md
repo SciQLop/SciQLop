@@ -184,6 +184,35 @@ def activate(ctx):
     ctx.contribute("sciqlop.export_targets", ExportTarget("my_plugin.csv", "CSV", (".csv",), write_csv, scalable=False))
 ```
 
+## Inspector sections
+
+A section in the inspector of a panel, a plot or a graph is a contribution to `sciqlop.inspector_sections`.
+
+`InspectorSection(id, title, target, build, applies=<always>, priority=0)`
+(`from SciQLop.core.inspector_sections import InspectorSection, GRAPH_TARGET`):
+
+- `target`: `PANEL_TARGET`, `PLOT_TARGET` or `GRAPH_TARGET` (`"panel"`, `"plot"`, `"graph"`).
+- `build(obj, parent)` returns the section's `QWidget`, created with `parent`. `obj` is the user_api object:
+  a `PlotPanel`, a plot (`TimeSeriesPlot`, `XYPlot`, `ProjectionPlot`) or a graph. A `build` that raises shows
+  "<title>: failed to build, see the log".
+- `applies(obj)` decides whether the section goes on that object. It runs once, when the object or the section
+  appears. A raising `applies` skips the section and logs an error.
+- `priority`: an int, ordering the sections in the inspector.
+
+The section reaches objects that already exist and every new one. Withdrawing it removes it everywhere.
+Keep no state in the section: read it from `obj` each time `build` runs.
+
+```python
+from PySide6.QtWidgets import QLabel
+from SciQLop.core.inspector_sections import GRAPH_TARGET, InspectorSection
+
+
+def activate(ctx):
+    ctx.contribute("sciqlop.inspector_sections", InspectorSection(
+        "my_plugin.about", "About", GRAPH_TARGET,
+        build=lambda graph, parent: QLabel(f"Graph {graph.name}", parent)))
+```
+
 ## Keyboard shortcuts
 
 A shortcut is a contribution to `sciqlop.shortcuts`. It is listed in the help panel and in Settings, and the

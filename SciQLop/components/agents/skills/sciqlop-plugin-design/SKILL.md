@@ -34,6 +34,8 @@ against the current API — plugins carry workarounds for bugs fixed since.
 | Plot static data the plugin already holds | `panel.plot_data(x, y[, z])` on a `create_plot_panel()` | Direct SciQLopPlots calls |
 | Show a browser / search UI | A `QWidget` in a dock (`main_window.addWidgetIntoDock`) | A modal dialog |
 | Draw a small plot inside that dock | SciQLopPlots, graphs created once and updated with `set_data` | matplotlib |
+| Save panels in a new file format | A `sciqlop.export_targets` contribution (`ExportTarget`) | Your own "Save as" menu |
+| Show extra controls for a panel, plot or graph | A `sciqlop.inspector_sections` contribution (`InspectorSection`) | A dock that tracks the selection |
 | Persist user options | A `ConfigEntry` subclass | Hand-written YAML/JSON |
 | Mark events or intervals | `SciQLop.user_api.catalogs.catalogs` | A private event list |
 | Use or extend another plugin | Declare it in plugin.json dependencies, then ctx.plugin(name) / ctx.contribute(ep_id, item) — see [references/plugin-contract.md](references/plugin-contract.md) | Importing the other plugin's package directly |

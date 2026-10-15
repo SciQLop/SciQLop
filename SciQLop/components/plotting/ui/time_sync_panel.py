@@ -1,5 +1,6 @@
 from typing import Optional, List, Union
 
+import functools
 import math
 import threading
 import time as _time
@@ -40,6 +41,8 @@ from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchO
 from SciQLop.components.plotting.ui.graph_context_menu import add_graph_context_actions
 from SciQLop.components.command_palette.menu_entries import add_menu_entries
 from SciQLop.core.menus import PANEL, PANEL_EXPORT
+from SciQLop.core.inspector_sections import PANEL_TARGET, PLOT_TARGET
+from SciQLop.components.plotting.ui.contributed_sections import attach_sections, attach_graph_sections
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -793,6 +796,13 @@ def _install_graph_context_ui(plot, graph) -> None:
         log.warning("graph_context inspector install failed", exc_info=True)
 
 
+def _attach_plot_sections(plot) -> None:
+    attach_sections(plot, PLOT_TARGET)
+    attach_graph_sections(plot)
+    # The sender owns this connection, so it dies with the plot; attach_graph_sections skips a dead plot.
+    plot.graph_list_changed.connect(functools.partial(attach_graph_sections, plot))
+
+
 def _attach_graph_context(r, provider, node, target, fetch_callback=None):
     """Attach a GraphContext + rich refs to the graph just produced.
 
@@ -1284,6 +1294,8 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
             apply_defaults_to_plot,
         )
         self.plot_added.connect(apply_defaults_to_plot)
+        attach_sections(self, PANEL_TARGET)
+        self.plot_added.connect(_attach_plot_sections)
 
         self._search_overlay = None
         if show_search_overlay:
