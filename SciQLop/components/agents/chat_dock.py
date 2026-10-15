@@ -50,7 +50,7 @@ from .chat.usage_refresh import UsageRefresher
 from .guidance import load_guidance, strip_legacy_alignment
 from .registry import AGENT_BACKENDS, AgentBackendEntry, available_backends, create_backend
 from .settings import AgentChatSettings, AgentSessionMeta, AgentWriteMode
-from .tools import build_sciqlop_tools
+from .tools import AGENT_TOOLS, build_sciqlop_tools
 from .workspace import current_workspace_dir
 
 log = getLogger(__name__)
@@ -105,6 +105,15 @@ class AgentChatDock(QWidget):
         self.refresh_backends()
         AGENT_BACKENDS.signals.added.connect(self._follow_backends)
         AGENT_BACKENDS.signals.removed.connect(self._follow_backends)
+        AGENT_TOOLS.signals.added.connect(self._rebuild_tools)
+        AGENT_TOOLS.signals.removed.connect(self._rebuild_tools)
+
+    def _rebuild_tools(self, _tool) -> None:
+        """simplify: only the next session sees the change; no live tools/list_changed
+        notification to a running session. Add it when a backend supports it."""
+        if not shiboken6.isValid(self):
+            return
+        self._tools = build_sciqlop_tools(self._main_window)
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)

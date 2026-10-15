@@ -22,12 +22,15 @@ from .registry import (
     register_agent_backend,
     unregister_agent_backend,
 )
+from .tools import AGENT_TOOLS, AgentTool
 
 __all__ = [
     "AGENT_BACKENDS",
+    "AGENT_TOOLS",
     "AgentBackend",
     "AgentBackendEntry",
     "AgentChatDock",
+    "AgentTool",
     "BackendContext",
     "CarbonFootprint",
     "ConfirmCallback",

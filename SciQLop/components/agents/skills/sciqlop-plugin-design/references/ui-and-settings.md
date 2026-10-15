@@ -405,3 +405,25 @@ def activate(ctx):
   A replacement takes effect for new sessions: the conversation open on that backend keeps its instance.
 - The dock follows the extension point: a backend installed later appears in its list without disturbing the
   open conversation. Withdrawing the backend in use drops its session and falls back to the first available.
+
+### Tools (`sciqlop.agent_tools`)
+
+A plugin offers tools to agent sessions next to SciQLop's own, from `activate` (main thread):
+
+```python
+from SciQLop.components.agents import AGENT_TOOLS, AgentTool
+
+def activate(ctx):
+    schema = {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}
+    AGENT_TOOLS.contribute(AgentTool("myplugin_echo", "Echo the text back.", schema, lambda p: p["text"]))
+    AGENT_TOOLS.contribute(AgentTool("myplugin_wipe", "Delete the cache.", {"type": "object", "properties": {}},
+                                     lambda p: wipe_cache(), gated=True, thread=True))
+```
+
+- `name` matches `^[a-zA-Z0-9_-]{1,64}$`, `description` is not empty, else `ValueError`. Prefix names with your plugin.
+- `call(payload)` returns text, a dict with `"content"` (as the core tools do), or a coroutine.
+- `gated=True` for anything that changes state: it is denied when writes are off, and the user confirms each call.
+- `thread=True` runs `call` in a worker thread: only for Qt-free code. Otherwise it runs on the GUI thread.
+- A name already used by a core tool or an earlier contribution is ignored and logged: core tools always win.
+- Sessions get a snapshot. A tool installed or withdrawn later reaches the next session, not the running one. A
+  running session calling a withdrawn tool is told it was withdrawn.

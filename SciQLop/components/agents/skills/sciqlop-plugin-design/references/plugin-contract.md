@@ -117,6 +117,7 @@ def activate(ctx):
 | `sciqlop.docks` | `Dock(id, title, build, placement, icon, visible, toolbar)` | `id` |
 | `sciqlop.workspace_sections` | `WorkspaceSection(table, model)` | `table` |
 | `sciqlop.agent_backends` | `AgentBackendEntry(name, factory)`, through `register_agent_backend(cls)` | `name` |
+| `sciqlop.agent_tools` | `AgentTool(name, description, input_schema, call, gated=False, thread=False)` | `name` |
 
 Locations, argument values and examples: the "Commands and menu entries", "Export targets", "Inspector sections",
 "Docks", "Keyboard shortcuts" and "Agents: backends, tools, skills" sections of [ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws them all.

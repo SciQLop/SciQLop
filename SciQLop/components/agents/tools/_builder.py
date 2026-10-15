@@ -71,6 +71,8 @@ def build_sciqlop_tools(main_window) -> List[Dict[str, Any]]:
         *_crash_report_tools(),
     ]
     tools.extend(_write_tools(main_window))
+    from .contributed import contributed_tool_dicts
+    tools.extend(contributed_tool_dicts({t["name"] for t in tools}))
     return _journal_all_tool_calls(tools)
 
 
