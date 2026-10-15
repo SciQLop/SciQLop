@@ -115,6 +115,7 @@ def activate(ctx):
 | `sciqlop.kernel_namespace` | `NamespaceEntry(id, name, value)` | `id` |
 | `sciqlop.settings` | a `ConfigEntry` subclass (contributed by defining it) | class name |
 | `sciqlop.docks` | `Dock(id, title, build, placement, icon, visible, toolbar)` | `id` |
+| `sciqlop.workspace_sections` | `WorkspaceSection(table, model)` | `table` |
 
 Locations, argument values and examples: the "Commands and menu entries", "Export targets", "Inspector sections",
 "Docks" and "Keyboard shortcuts" sections of [ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws them all.

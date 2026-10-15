@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Iterator
 
 import tomli_w
+from pydantic import ValidationError
 
 from SciQLop.core.common.files import write_text_atomic
 
@@ -68,6 +69,7 @@ class WorkspaceManifest:
     _directory: str = field(default="", repr=False, compare=False, init=False)
     # Tables this class does not model (a plugin's own section): kept verbatim so a save never drops them.
     extra_tables: dict = field(default_factory=dict)
+    _warned: set = field(default_factory=set, repr=False, compare=False, init=False)
 
     @property
     def directory(self) -> str:
@@ -90,6 +92,33 @@ class WorkspaceManifest:
         if manifest.exists():
             return datetime.fromtimestamp(manifest.stat().st_mtime).isoformat()
         return ""
+
+    def section(self, table: str):
+        """The contributed model of ``table``, or None if no section owns it, it is absent, or it is invalid.
+
+        simplify: no change notification; add a ``section_changed`` signal when a plugin needs to react
+        to another writer."""
+        from SciQLop.components.workspaces.backend.workspace_sections import WORKSPACE_SECTIONS
+        if table not in WORKSPACE_SECTIONS or table not in self.extra_tables:
+            return None
+        try:
+            return WORKSPACE_SECTIONS.get(table).model.model_validate(self.extra_tables[table])
+        except ValidationError as exc:
+            self._warn_invalid_once(table, exc)
+            return None
+
+    def _warn_invalid_once(self, table: str, exc: ValidationError) -> None:
+        if table in self._warned:
+            return
+        self._warned.add(table)
+        log.warning("Invalid [%s] table in workspace manifest, ignoring it: %s", table, exc.errors()[0])
+
+    def set_section(self, table: str, value) -> None:
+        """Replace ``table`` with ``value``; persisting is the caller's ``save()``."""
+        from SciQLop.components.workspaces.backend.workspace_sections import WORKSPACE_SECTIONS
+        if table not in WORKSPACE_SECTIONS or WORKSPACE_SECTIONS.get(table).model is not type(value):
+            raise ValueError(f"no workspace section {table!r} takes a {type(value).__name__}")
+        self.extra_tables[table] = value.model_dump(mode="json")
 
     @classmethod
     def default_manifest(cls, name: str) -> WorkspaceManifest:

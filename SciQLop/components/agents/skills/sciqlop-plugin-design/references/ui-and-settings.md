@@ -348,6 +348,29 @@ class MyPluginSettings(ConfigEntry):                 # class name must be unique
   `_keyring_ = KeyringMapping("server_url", "username", "password")` (from
   `SciQLop.components.settings.backend.entry`). Never store a token in YAML.
 
+## Workspace sections
+
+A plugin can own one table of the workspace's `.sciqlop` file, described by a pydantic model.
+
+```python
+from pydantic import BaseModel
+from SciQLop.components.workspaces.backend.workspace_sections import WorkspaceSection
+
+class MyPluginWorkspace(BaseModel):
+    last_catalog: str = ""
+
+ctx.contribute("sciqlop.workspace_sections", WorkspaceSection("my_plugin", MyPluginWorkspace))
+```
+
+- Read with `manifest.section("my_plugin")`. You get a model instance, or `None` when the table is absent, the
+  section is not contributed, or the table does not validate (logged once; the table is kept as is).
+- Write with `manifest.set_section("my_plugin", MyPluginWorkspace(...))`, then `manifest.save(path)`. Use
+  `edit_manifest(path)` so you do not overwrite what others saved.
+- The table name cannot be `workspace`, `plugins`, `dependencies` or `examples` (SciQLop's), and must be a bare
+  TOML key (`[A-Za-z0-9_-]+`).
+- Withdrawing the plugin leaves the table in the file, untouched.
+- No change notification: call `section()` when you need the value.
+
 ## Agent backend plugins
 
 The chat dock belongs to SciQLop. A backend plugin contributes a class only:

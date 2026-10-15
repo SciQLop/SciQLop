@@ -18,6 +18,7 @@ def prepare_extension_points() -> None:
     import SciQLop.core.inspector_sections  # noqa: F401  declares sciqlop.inspector_sections
     import SciQLop.core.kernel_namespace  # noqa: F401  declares sciqlop.kernel_namespace
     import SciQLop.components.settings.backend.entry  # noqa: F401  declares sciqlop.settings
+    import SciQLop.components.workspaces.backend.workspace_sections  # noqa: F401  declares sciqlop.workspace_sections
     from SciQLop.user_api.magics import contribute_core_magics
     contribute_core_magics()  # declares sciqlop.magics, contributes the core magics
     import SciQLop.components.plotting.export  # noqa: F401  declares sciqlop.export_targets, contributes the core formats
