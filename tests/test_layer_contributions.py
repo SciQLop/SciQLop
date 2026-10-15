@@ -103,6 +103,21 @@ def test_takeover_from_another_owner_is_logged(layers, monkeypatch):
     assert LAYERS.owner_of("Layers/lc/t") == "b"
 
 
+def test_redefining_a_plugin_layer_takes_it_over(layers, monkeypatch):
+    from SciQLop.user_api.layers import _provider
+    warnings = []
+    monkeypatch.setattr(_provider.log, "warning", warnings.append)
+    with owned_by("p"):
+        p1 = define_layer("lc/own", f1)
+    p2 = define_layer("lc/own", f2)
+    assert p1 is p2
+    assert LAYERS.owner_of("Layers/lc/own") == "user"
+    takeovers = [w for w in warnings if "Layers/lc/own" in w]
+    assert len(takeovers) == 1 and "of p" in takeovers[0] and "from user" in takeovers[0]
+    LAYERS.remove_owner("p")
+    assert "Layers/lc/own" in LAYERS
+
+
 def test_remove_layer(layers):
     register_layer("lc/a")(f1)
     remove_layer("lc/a")

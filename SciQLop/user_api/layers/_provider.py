@@ -78,8 +78,8 @@ LAYERS = declare(ExtensionPoint(
 
 
 @on_main_thread
-def _contribute_layer(provider: LayerProvider) -> None:
-    contribute_taking_over(LAYERS, provider, log)
+def _contribute_layer(provider: LayerProvider) -> LayerProvider:
+    return contribute_taking_over(LAYERS, provider, log)
 
 
 def _swaps_in_place(existing: LayerProvider, func: Callable) -> bool:
@@ -93,7 +93,8 @@ def define_layer(path: str, func: Callable, scope: str = "auto") -> LayerProvide
 
     Same knob signature: the body is swapped inside the wrapper, so attached layers run it.
     Other signature: the provider gets a new wrapper; new drops get the new knobs,
-    layers already attached keep the old wrapper."""
+    layers already attached keep the old wrapper.
+    Either way the layer is contributed again, so the redefiner becomes its owner."""
     key = f"{_LAYERS_ROOT}/{path}"
     if key not in LAYERS:
         return LayerProvider(path, MutableCallback(func), scope=scope)
@@ -103,7 +104,7 @@ def define_layer(path: str, func: Callable, scope: str = "auto") -> LayerProvide
         existing.callback.callback = func
     else:
         existing.update_callback(MutableCallback(func))
-    return existing
+    return _contribute_layer(existing)
 
 
 def _withdraw_layer(provider: LayerProvider) -> None:

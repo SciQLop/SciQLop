@@ -96,7 +96,7 @@ def test_smart_search_corpus_sees_the_model_description(registered):
 
 def test_a_layer_node_is_tagged_with_its_kind(main_window):
     from SciQLopPlots import ProductsModel
-    from SciQLop.user_api.layers._provider import LayerProvider
+    from SciQLop.user_api.layers._provider import LAYERS, LayerProvider
 
     def scene_tree_test_layer(start: float, stop: float):
         return []
@@ -107,6 +107,7 @@ def test_a_layer_node_is_tagged_with_its_kind(main_window):
         assert ProductsModel.node(provider.path).metadata()["product_kind"] == "sciqlop.layer"
     finally:
         ProductsModel.instance().remove_node(provider.path[:-1])
+        LAYERS.remove("/".join(provider.path))
 
 
 def test_a_scene_dropped_on_an_empty_panel_is_its_only_plot(plot_panel, registered, qtbot):
