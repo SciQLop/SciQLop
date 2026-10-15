@@ -328,6 +328,10 @@ class MyPluginSettings(ConfigEntry):                 # class name must be unique
 - Each class persists to `<config dir>/<classname lowercased>.yaml`, and the
   class name is a global registry key: two plugins defining `Settings` clash.
   Prefix it with the plugin name.
+- A `ConfigEntry` subclass is a contribution to `sciqlop.settings`, keyed by class name and owned by the plugin
+  that imported it. Withdrawing the plugin removes its page from the panel; the YAML file stays on disk. A plugin
+  installed while Settings is open shows up there at once. A second class with a name already in use still raises
+  `ValueError`, but a withdrawn plugin's name is free again.
 - `MyPluginSettings()` reads the YAML on every construction. Construct it when
   you need the value instead of caching an instance at load time.
   `with MyPluginSettings() as s: s.timeout_s = 30` saves on exit.

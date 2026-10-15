@@ -4,11 +4,14 @@ import yaml
 from pathlib import PurePath
 from platformdirs import *
 import os
+from collections.abc import Mapping
+from operator import attrgetter
 from typing import TypeVar, ClassVar, Type
 # Settings must load without Qt so the launcher can read them in a thin
 # install. See tests/test_launcher_thin_imports.py.
 try:
     from PySide6.QtCore import QObject, Signal
+    from SciQLop.core.extensions import ExtensionPoint, declare, current_owner
     _HAS_QT = True
 except ImportError:
     _HAS_QT = False
@@ -123,6 +126,50 @@ def _save_keyring(mapping: KeyringMapping, data: dict) -> None:
         log.error("Cannot write credentials to keyring for %s: %s", service, e)
 
 
+class _PlainRegistry(dict):
+    """Stands in for the extension point where Qt is absent (launcher in a thin install):
+    nothing there withdraws or observes entries, so owners and signals are not needed."""
+
+    def contribute(self, cls, owner=None):
+        self[cls.__name__] = cls
+
+    def get(self, key):
+        return self[key]
+
+    def keys(self):
+        return list(super().keys())
+
+
+if _HAS_QT:
+    SETTINGS = declare(ExtensionPoint("sciqlop.settings", type, what="settings entry",
+                                      key=attrgetter("__name__"),
+                                      doc="ConfigEntry subclasses by class name."))
+else:
+    SETTINGS = _PlainRegistry()
+    current_owner = lambda: "user"  # noqa: E731
+
+
+def _contribute_entry(cls, owner: str) -> None:
+    """A subclass may be defined on any thread (notebook cell, worker); the registry is main-thread only."""
+    if not _HAS_QT:
+        return SETTINGS.contribute(cls)
+    from SciQLop.user_api.threading import on_main_thread
+    on_main_thread(SETTINGS.contribute)(cls, owner=owner)
+
+
+class _EntriesView(Mapping):
+    def __getitem__(self, name: str) -> Type["ConfigEntry"]:
+        if name not in SETTINGS:
+            raise KeyError(name)
+        return SETTINGS.get(name)
+
+    def __iter__(self):
+        return iter(SETTINGS.keys())
+
+    def __len__(self) -> int:
+        return len(SETTINGS.keys())
+
+
 def is_advanced(entry_cls: type["ConfigEntry"], field_info) -> bool:
     extra = field_info.json_schema_extra
     return entry_cls.advanced or (isinstance(extra, dict) and bool(extra.get("advanced")))
@@ -135,14 +182,14 @@ class ConfigEntry(BaseModel):
     # a single field opts in with json_schema_extra={"advanced": True}.
     advanced: ClassVar[bool] = False
 
-    _entries_: ClassVar[dict[str, Type["ConfigEntry"]]] = {}
+    _entries_: ClassVar[Mapping[str, Type["ConfigEntry"]]] = _EntriesView()
     _notifier: ClassVar[_SettingsNotifier]
     _keyring_: ClassVar[KeyringMapping | None] = None
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs):
         super().__pydantic_init_subclass__(**kwargs)
-        if cls.__name__ in cls._entries_:
+        if cls.__name__ in SETTINGS:
             raise ValueError(f"Duplicate entry name: {cls.__name__}")
         for attr in ("category", "subcategory"):
             if attr in cls.model_fields:
@@ -156,7 +203,7 @@ class ConfigEntry(BaseModel):
             if not isinstance(value, str) or value == "":
                 raise ValueError(f"Entry class {cls.__name__} must have a non-empty string '{attr}' attribute")
         cls._notifier = _SettingsNotifier()
-        cls._entries_[cls.__name__] = cls
+        _contribute_entry(cls, current_owner())
 
     def __setattr__(self, name, value):
         super().__setattr__(name, value)
@@ -167,7 +214,7 @@ class ConfigEntry(BaseModel):
 
     @classmethod
     def list_entries(cls) -> dict[str, Type["ConfigEntry"]]:
-        return cls._entries_
+        return dict(cls._entries_)
 
     @classmethod
     def get_entry(cls, name: str) -> 'ConfigEntry':

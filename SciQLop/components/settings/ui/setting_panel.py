@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QFont, QPalette, QShowEvent
 from SciQLop.components.settings import SettingsCategory, ConfigEntry
 from SciQLop.components.settings.backend import SciQLopConfigEntry
-from SciQLop.components.settings.backend.entry import is_advanced
+from SciQLop.components.settings.backend.entry import is_advanced, SETTINGS
 from SciQLop.components.sciqlop_logging import getLogger
 from ..backend.model import SettingsFilterProxyModel
 from .settings_delegates import get_delegate_for_field, is_field_editable
@@ -318,6 +318,9 @@ class SettingsPanel(QWidget):
         self._apply_show_advanced(self.show_advanced.isChecked())
         self.show_advanced.toggled.connect(self._on_show_advanced_toggled)
 
+        SETTINGS.signals.added.connect(self._on_settings_changed)
+        SETTINGS.signals.removed.connect(self._on_settings_changed)
+
     def sizeHint(self):
         return Metrics.size(55, 35)
 
@@ -327,8 +330,8 @@ class SettingsPanel(QWidget):
             self._initialized = True
             self._refresh()
 
-    def _refresh(self):
-        """Rebuild the model from current ConfigEntry registry and select first item."""
+    def _refresh(self, keep: str | None = None):
+        """Rebuild the model from current ConfigEntry registry and select ``keep``, else the first item."""
         proxy = self._left_panel.categories_list.model()
         if isinstance(proxy, SettingsFilterProxyModel):
             proxy.rebuild()
@@ -336,8 +339,18 @@ class SettingsPanel(QWidget):
         model = self._left_panel.categories_list.model()
         if model.rowCount(QModelIndex()) > 0:
             self._left_panel.categories_list.setCurrentIndex(
-                model.index(0, 0, QModelIndex())
+                model.index(self._row_of(keep), 0, QModelIndex())
             )
+
+    @Slot(object)
+    def _on_settings_changed(self, _entry_cls):
+        if self._initialized:
+            self._refresh(keep=self._category_view._current)
+
+    def _row_of(self, category: str | None) -> int:
+        model = self._left_panel.categories_list.model()
+        names = [model.index(r, 0).data() for r in range(model.rowCount())]
+        return names.index(category) if category in names else 0
 
     def _apply_show_advanced(self, show: bool):
         proxy = self._left_panel.categories_list.model()
