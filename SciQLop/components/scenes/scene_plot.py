@@ -150,6 +150,7 @@ def _fetch(source: str, frame: str, start: float, stop: float):
     """The variable (None when the range has no data) and the frame its values are in."""
     import speasy
     start, stop = (np.datetime64(int(s * 1e9), "ns") for s in (start, stop))
+    source = source.removeprefix("cdpp3dview/")
     if "/" not in source:
         v = speasy.get_data(f"cdpp3dview/{source}", start, stop, coordinate_frame=frame,
                             sampling=str(_THREEDVIEW_SAMPLING_S))

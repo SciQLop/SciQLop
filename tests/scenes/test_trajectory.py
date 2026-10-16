@@ -32,6 +32,12 @@ def test_a_3dview_body_is_fetched_in_the_scene_frame_and_scaled(fake_speasy):
     assert np.allclose(x, [1.0, 2.0]) and len(t) == 2
 
 
+def test_a_3dview_product_from_the_speasy_tree_is_fetched_as_a_3dview_body(fake_speasy):
+    t, x, y, z = scene_plot.trajectory_source("cdpp3dview/ACE", EARTH)(0.0, 600.0)
+    assert fake_speasy[0] == ("cdpp3dview/ACE", {"coordinate_frame": "GSM", "sampling": "600"})
+    assert np.allclose(x, [1.0, 2.0])
+
+
 def test_a_product_is_rotated_into_the_scene_frame(fake_speasy, monkeypatch):
     from scipy.spatial.transform import Rotation
     seen = []
