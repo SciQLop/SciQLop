@@ -335,6 +335,10 @@ _VIEWER_USER = """
 """
 
 
+def _viewers(main_window):
+    return [p for p in main_window.panels() if getattr(p, "text", None) and p.text() == "from user"]
+
+
 def test_plugin_contributes_a_panel_kind_and_another_extends_it(tmp_path, main_window, fresh):
     from SciQLop.core.panel_extensions import PANEL_EXTENSIONS
     from SciQLop.core.panel_kinds import PANEL_KINDS
@@ -356,11 +360,9 @@ def test_plugin_contributes_a_panel_kind_and_another_extends_it(tmp_path, main_w
 
         loader._withdraw("viewer_maker")
         assert maker.log == [("attach", "from user"), ("cleanup", "from user")]
-        viewers = [p for p in main_window.panels() if getattr(p, "text", None) and p.text() == "from user"]
-        assert len(viewers) == 1
-        opened.extend(viewers)
+        assert len(_viewers(main_window)) == 1
         with pytest.raises(LookupError):
             main_window.open_panel("viewer_maker.viewer")
     finally:
-        for panel in opened:
+        for panel in [*opened, *_viewers(main_window)]:
             main_window.remove_panel(panel)
