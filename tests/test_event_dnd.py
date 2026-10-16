@@ -22,9 +22,7 @@ def provider(qapp):
     p = DummyProvider(num_catalogs=0, events_per_catalog=0)
     yield p
     from SciQLop.components.catalogs.backend.registry import CatalogRegistry
-    providers = CatalogRegistry.instance()._providers
-    if p in providers:
-        providers.remove(p)
+    CatalogRegistry.instance()._forget_for_tests(p)
 
 
 def test_handle_event_drop_link_keeps_event_in_source(qapp, provider):
@@ -95,10 +93,8 @@ def test_cross_provider_drop_always_duplicates(qapp):
         assert b_events[0].uuid != "cross"  # duplicated, new UUID
         assert any(x.uuid == "cross" for x in a.events(cat_a))  # source untouched
     finally:
-        registry = CatalogRegistry.instance()
         for p in (a, b):
-            if p in registry._providers:
-                registry._providers.remove(p)
+            CatalogRegistry.instance()._forget_for_tests(p)
 
 
 def _find_catalog_index(model, provider, catalog):
@@ -127,9 +123,7 @@ def tree_with_two_catalogs(qapp):
     yield model, p, src, dst, e
 
     from SciQLop.components.catalogs.backend.registry import CatalogRegistry
-    registry = CatalogRegistry.instance()
-    if p in registry._providers:
-        registry._providers.remove(p)
+    CatalogRegistry.instance()._forget_for_tests(p)
 
 
 def test_dropmime_dispatch_honors_link_action(tree_with_two_catalogs):

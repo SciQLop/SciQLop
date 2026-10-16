@@ -39,6 +39,4 @@ def test_event_table_model_emits_event_mime(qapp):
         assert sorted(payload["event_uuids"]) == ["ev-1", "ev-2"]
     finally:
         from SciQLop.components.catalogs.backend.registry import CatalogRegistry
-        registry = CatalogRegistry.instance()
-        if provider in registry._providers:
-            registry._providers.remove(provider)
+        CatalogRegistry.instance()._forget_for_tests(provider)

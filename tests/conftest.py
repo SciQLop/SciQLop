@@ -489,10 +489,12 @@ def _isolate_catalog_registry():
         yield
         return
     registry = reg_mod.CatalogRegistry.instance()
-    snapshot = set(id(p) for p in registry._providers)
-    clean_before = [p for p in registry._providers if not p.is_dirty()]
+    snapshot = set(id(p) for p in registry.providers())
+    clean_before = [p for p in registry.providers() if not p.is_dirty()]
     yield
-    registry._providers[:] = [p for p in registry._providers if id(p) in snapshot]
+    for p in registry.providers():
+        if id(p) not in snapshot:
+            registry._forget_for_tests(p)
     _forget_dirty_state(clean_before)
 
 
