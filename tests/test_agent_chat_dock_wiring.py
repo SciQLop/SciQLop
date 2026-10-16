@@ -65,7 +65,10 @@ class _FakeBackend:
 
 
 def _settle(qtbot):
-    """Let the dock's spawned tasks run — qasync steps them from the Qt loop."""
+    """Let the dock's spawned tasks run — qasync steps them from the Qt loop.
+
+    A short pump, not a drain: some tests assert on a task still in flight. Assert on an outcome
+    with `qtbot.waitUntil` instead — a slow CI runner may not step a task within 20 ms."""
     qtbot.wait(20)
 
 
@@ -592,8 +595,8 @@ def test_a_failed_resume_still_leaves_the_strip_consistent(dock, qtbot):
     backend.supports_sessions = True
     backend.snapshot = UsageSnapshot(model="stale")
     dock._spawn(dock._usage_refresher.refresh())
-    _settle(qtbot)
-    assert dock._info_bar.text() == "stale"
+    # waitUntil, not _settle: a slow CI runner (macOS) had not run the spawned tasks within 20 ms.
+    qtbot.waitUntil(lambda: dock._info_bar.text() == "stale", timeout=2000)
 
     async def _boom(session_id):
         backend.snapshot = None
@@ -601,9 +604,8 @@ def test_a_failed_resume_still_leaves_the_strip_consistent(dock, qtbot):
 
     backend.resume = _boom
     dock._on_session_selected("sess-99")
-    _settle(qtbot)
     # the stale model must not linger as if it described the resumed session
-    assert dock._info_bar.text() == ""
+    qtbot.waitUntil(lambda: dock._info_bar.text() == "", timeout=2000)
 
 
 def test_loading_a_session_does_not_block_the_gui(dock, qtbot):
