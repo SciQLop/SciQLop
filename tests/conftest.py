@@ -358,15 +358,34 @@ def _current_event_loop_is_sciqlops():
     yield
 
 
+def _kernel_window(namespace):
+    entry = namespace.find("sciqlop.main_window")
+    return entry, (namespace.owner_of(entry.id) if entry is not None else None)
+
+
+def _restore_kernel_window(namespace, saved) -> None:
+    """Every new main window publishes itself as the kernel's `main_window`; left as is,
+    that name keeps a destroyed test window alive and hides the shared one."""
+    entry, owner = saved
+    if namespace.find("sciqlop.main_window") is entry:
+        return
+    if entry is None:
+        namespace.remove("sciqlop.main_window")
+    else:
+        namespace.contribute(entry, owner=owner, replace=True)
+
+
 @pytest.fixture(autouse=True)
 def _release_gui_leftovers():
     """Every SciQLopMainWindow is a ~1GB widget tree, and close() only hides it.
     Tests build throwaway windows (and the shared one outlives every test), so
     whatever a test leaves behind accumulates until the machine runs out of
     memory. Destroy the extra windows this test created, restore
-    `app.main_window`, and remove panels it added to the shared window."""
+    `app.main_window` and the kernel's `main_window` name, and remove panels it
+    added to the shared window."""
     import shiboken6
     from PySide6.QtWidgets import QApplication
+    from SciQLop.core.kernel_namespace import KERNEL_NAMESPACE
     from tests.fixtures import destroy_main_window
     before_windows = {id(w) for w in _main_windows()}
     before_panels = {id(w) for w in _standalone_panels()}
@@ -374,9 +393,11 @@ def _release_gui_leftovers():
     main = getattr(app, "main_window", None)
     panels_before = set(main.plot_panels()) if main is not None and shiboken6.isValid(main) else None
     shortcuts_before = dict(app._quickstart_shortcuts)
+    kernel_window_before = _kernel_window(KERNEL_NAMESPACE)
     yield
     app._quickstart_shortcuts.clear()
     app._quickstart_shortcuts.update(shortcuts_before)
+    _restore_kernel_window(KERNEL_NAMESPACE, kernel_window_before)
     destroyed = False
     for w in _main_windows():
         if id(w) not in before_windows:
