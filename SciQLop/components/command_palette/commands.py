@@ -35,10 +35,14 @@ def _toggle_fullscreen():
 def _do_set_time_range(time_range: str = ""):
     from datetime import datetime, timedelta
     from SciQLop.core import TimeRange
-    from SciQLop.core.time_presets import preset_seconds
+    from SciQLop.core.time_presets import parse_duration
+    seconds = parse_duration(time_range)
+    if seconds is None:
+        _get_win().statusBar().showMessage(
+            f"Unrecognised duration {time_range!r}: use a number and a unit, e.g. 1h, 2d, 1w", 8000)
+        return
     now = datetime.utcnow()
-    tr = TimeRange((now - timedelta(seconds=preset_seconds(time_range))).timestamp(), now.timestamp())
-    _get_win()._default_time_range = tr
+    _get_win()._default_time_range = TimeRange((now - timedelta(seconds=seconds)).timestamp(), now.timestamp())
 
 
 def _do_switch_workspace(workspace: str = ""):

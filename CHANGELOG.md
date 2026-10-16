@@ -76,7 +76,8 @@
 ### Plugins
 
 - Plugins can add quickstart shortcuts, guided tours, smart-search domains, catalog providers, panel template file formats, time-range presets and themes. Everything a plugin adds goes away when the plugin is disabled.
-- The time-range bar offers "1M" (30 days), and the command palette's "Set time range" offers every duration the bar has (it uses "7d" where it used "1w").
+- The time-range bar offers "1M" (30 days), and the command palette's "Set time range" offers every duration the bar has.
+- "Set time range" in the command palette takes any typed duration: a number and a unit (m, h, d, w, M for 30 days, y), such as "2d", "90m" or "1w". Text it cannot read leaves the range unchanged and says so in the status bar. Before, anything other than 1h, 1d, 1w and 1M silently became one day.
 - `%install` now loads a new plugin right away, like the plugin store does. Before, you had to restart SciQLop. Only an upgrade of a plugin that is already loaded still asks for a restart. `install_packages()` and the agents' install tool behave the same way.
 - `%install gh:owner/repo@tag` installs a package straight from GitHub. A GitHub URL works too. The package name is taken from the repo name.
 - `%install name @ git+https://...` works without quotes. Before, the spaces split it into three separate arguments.

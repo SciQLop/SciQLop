@@ -2,7 +2,7 @@
 import pytest
 
 from SciQLop.core.extensions import owned_by
-from SciQLop.core.time_presets import TIME_PRESETS, TimePreset, duration_presets, preset_seconds
+from SciQLop.core.time_presets import TIME_PRESETS, TimePreset, duration_presets, parse_duration, preset_seconds
 
 
 @pytest.fixture
@@ -69,3 +69,51 @@ def test_the_palette_offers_every_preset(three_days):
     assert [c.value for c in completions] == ["1m", "1h", "12h", "1d", "3d", "7d", "1M"]
     assert "Last hour" in [c.display for c in completions]
     assert "Last 3d" in [c.display for c in completions]
+
+
+@pytest.mark.parametrize("text, seconds", [
+    ("1w", 604800), ("2d", 2 * 86400), ("90m", 5400), ("1.5h", 5400), (" 3 d ", 3 * 86400),
+    ("1M", 30 * 86400), ("1y", 365.25 * 86400), ("7d", 604800), ("12h", 43200)])
+def test_a_typed_duration_is_read_as_a_number_and_a_unit(text, seconds):
+    assert parse_duration(text) == pytest.approx(seconds)
+
+
+@pytest.mark.parametrize("text", ["", "week", "1x", "-1d", "0h", "d1", "1 w w"])
+def test_text_that_is_not_a_duration_is_refused(text):
+    assert parse_duration(text) is None
+
+
+def test_a_plugin_preset_is_read_by_its_id_and_label(three_days):
+    assert parse_duration("3d") == 3 * 86400
+
+
+class _Window:
+    def __init__(self):
+        from PySide6.QtWidgets import QStatusBar
+        self._default_time_range = None
+        self._bar = QStatusBar()
+
+    def statusBar(self):
+        return self._bar
+
+
+@pytest.fixture
+def window(qapp, monkeypatch):
+    from SciQLop.components.command_palette import commands
+    w = _Window()
+    monkeypatch.setattr(commands, "_get_win", lambda: w)
+    return w
+
+
+def test_set_time_range_from_the_palette_takes_a_week(window):
+    from SciQLop.components.command_palette.commands import _do_set_time_range
+    _do_set_time_range("1w")
+    tr = window._default_time_range
+    assert tr.stop() - tr.start() == pytest.approx(604800)
+
+
+def test_set_time_range_refuses_unreadable_text_and_keeps_the_range(window):
+    from SciQLop.components.command_palette.commands import _do_set_time_range
+    _do_set_time_range("sometime")
+    assert window._default_time_range is None
+    assert "sometime" in window.statusBar().currentMessage()
