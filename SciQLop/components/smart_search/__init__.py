@@ -1,9 +1,11 @@
 """Public facade for the smart-search component. Wraps a lazily-constructed
 SmartSearchRegistry singleton -- see docs/superpowers/specs/
 2026-07-17-smart-search-component-design.md."""
-from SciQLop.components.smart_search.domain import SearchDomain
+from SciQLop.components.smart_search.domain import SEARCH_DOMAINS, SearchDomain
 from SciQLop.components.smart_search.registry import SmartSearchRegistry
 from SciQLop.components.smart_search.settings import AVAILABLE_MODELS, SmartSearchSettings
+from SciQLop.core.extensions import current_owner
+from SciQLop.user_api.threading import on_main_thread
 
 _registry = None
 _initialized = False
@@ -32,15 +34,38 @@ def _get_registry() -> SmartSearchRegistry:
         _registry = SmartSearchRegistry(
             _jobs_backend_instance(), model_name=model_name, cache_dir=_cache_dir(),
             index_cache_dir=_index_cache_dir())
+        for domain in SEARCH_DOMAINS.list():
+            _registry.register_domain(domain)
     return _registry
 
 
 def register_domain(domain: SearchDomain) -> None:
+    """From any thread; the owner is the caller's, captured before the call moves to the main thread."""
+    _contribute_domain(domain, current_owner())
+
+
+@on_main_thread
+def _contribute_domain(domain: SearchDomain, owner: str) -> None:
+    SEARCH_DOMAINS.contribute(domain, owner=owner)
+
+
+@on_main_thread
+def unregister_domain(name: str) -> None:
+    if name in SEARCH_DOMAINS:
+        SEARCH_DOMAINS.remove(name)
+
+
+def _on_domain_added(domain: SearchDomain) -> None:
     _get_registry().register_domain(domain)
 
 
-def unregister_domain(name: str) -> None:
-    _get_registry().unregister_domain(name)
+def _on_domain_removed(domain: SearchDomain) -> None:
+    _get_registry().unregister_domain(domain.name)
+
+
+# Plain functions, not a registry's bound methods: tests replace the lazily built registry.
+SEARCH_DOMAINS.signals.added.connect(_on_domain_added)
+SEARCH_DOMAINS.signals.removed.connect(_on_domain_removed)
 
 
 def notify_changed(domain_name: str) -> None:

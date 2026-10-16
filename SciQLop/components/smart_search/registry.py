@@ -83,6 +83,9 @@ class SmartSearchRegistry(QObject):
 
     # --- domain registration -------------------------------------------------
     def register_domain(self, domain: SearchDomain) -> None:
+        previous = self._domains.get(domain.name)
+        if previous is not None:
+            previous.reindex_timer.stop()
         timer = QTimer(self)
         timer.setSingleShot(True)
         timer.timeout.connect(lambda name=domain.name: self._reindex_if_dirty(name))

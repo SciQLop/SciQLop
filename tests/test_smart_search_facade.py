@@ -2,6 +2,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
+class _ProductsDomain:
+    name = "products"
+
+    def snapshot(self):
+        return []
+
+
 @pytest.fixture(autouse=True)
 def reset_facade_singleton():
     import SciQLop.components.smart_search as facade
@@ -45,7 +52,7 @@ def test_register_domain_and_query_delegate_to_registry(qtbot, monkeypatch, tmp_
     fake_registry.query.return_value = {"a": 42.0}
     monkeypatch.setattr(facade, "_get_registry", lambda: fake_registry)
 
-    domain = MagicMock(name="products")
+    domain = _ProductsDomain()
     facade.register_domain(domain)
     facade.unregister_domain("products")
     facade.notify_changed("products")
