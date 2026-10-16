@@ -305,6 +305,34 @@ def test_a_plugin_kind_round_trips_through_a_template(main_window, tmp_path, not
         _close_all(main_window, opened)
 
 
+def test_a_config_with_name_and_area_keys_reaches_create(main_window, tmp_path):
+    from PySide6.QtWidgets import QLabel
+    from SciQLop.core.panel_kinds import PANEL_KINDS, PanelKind
+    received = []
+
+    def create(name, config):
+        received.append(dict(config))
+        label = QLabel(config.get("name", ""))
+        label.station_config = dict(config)
+        return label
+
+    with owned_by("pt_demo"):
+        PANEL_KINDS.contribute(PanelKind("pt_demo.station", "Station", create=create,
+                                         to_config=lambda w: w.station_config))
+    path = tmp_path / "s.json"
+    path.write_text(json.dumps({"version": 3, "name": "pt_station", "panel": {
+        "kind": "pt_demo.station", "config": {"name": "station A", "area": "north"}, "slots": {}}}))
+    restored = None
+    try:
+        restored = PanelTemplate.from_file(str(path)).create_panel(main_window)
+        assert received == [{"name": "station A", "area": "north"}]
+        assert restored in main_window.panels() and restored.windowTitle() == "pt_station"
+    finally:
+        if restored is not None:
+            main_window.remove_panel(restored)
+        PANEL_KINDS.remove_owner("pt_demo")
+
+
 def test_a_kind_without_to_config_cannot_be_saved(main_window, note_kind):
     from SciQLop.components.plotting.panel_template import panel_tree
     w = main_window.open_panel("pt_demo.mute", name="pt_mute")
@@ -336,6 +364,8 @@ def test_the_placeholder_saves_its_tree_back(main_window, tmp_path, monkeypatch)
     path = _absent_template_file(tmp_path, monkeypatch)
     placeholder = PanelTemplate.from_file(str(path)).create_panel(main_window)
     try:
+        assert panel_tree(placeholder) == _ABSENT_ROOT
+        panel_tree(placeholder)["config"]["source"]["probes"].append(3)
         assert panel_tree(placeholder) == _ABSENT_ROOT
         other = tmp_path / "out" / "other.json"
         other.parent.mkdir()

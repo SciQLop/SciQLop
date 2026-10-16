@@ -105,8 +105,10 @@ Saving a panel of your kind:
 - `PanelTemplate.from_panel(widget).to_file(path)` saves a template of your
   kind; its name is the widget's title. Files in the templates folder show up in
   the template list like time templates. `create_panel(main_window)` reopens it
-  with `open_panel(kind, name=template.name, **config)`, so `config` must be the
-  keyword arguments `create` reads back. `template.panel_kind` is the root kind.
+  under the template's name and passes the saved config to `create` as a dict,
+  so any key works, `name` and `area` included (only the public keyword form
+  `open_panel(kind, **config)` reserves those two). `template.panel_kind` is the
+  root kind.
 - `apply(panel)` stays time-panel only: on another kind's template it raises
   `TypeError`.
 - The "Save as template" button is on time panels only. Add your own through a

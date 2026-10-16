@@ -11,6 +11,7 @@ def _create_time_panel(name: str, config: dict):
 
 
 def _time_panel_config(panel) -> dict:
+    # Only {"time_range": ...}: the plots live in the tree's slots, so save a time panel through panel_tree.
     from SciQLop.components.plotting.panel_template import panel_tree
     return panel_tree(panel)["config"]
 

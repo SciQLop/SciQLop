@@ -5,6 +5,7 @@ everything else maps to and from this model.
 """
 from __future__ import annotations
 
+import copy
 import math
 from datetime import datetime, timezone
 from pathlib import Path
@@ -286,7 +287,8 @@ class PanelTemplate(BaseModel):
         from SciQLop.components.plotting.ui.placeholder_panel import open_placeholder
         from SciQLop.core.panel_kinds import PANEL_KINDS
         if self.panel_kind in PANEL_KINDS:
-            return main_window.open_panel(self.panel_kind, name=self.name, **self._foreign_root.get("config", {}))
+            return main_window._open_panel(self.panel_kind, self.name, None,
+                                           dict(self._foreign_root.get("config", {})))
         return open_placeholder(main_window, self._foreign_root, name=self.name)
 
     def apply(self, panel) -> None:
@@ -345,7 +347,7 @@ def panel_tree(widget) -> dict:
     if isinstance(widget, TimeSyncPanel):
         return PanelTemplate.from_panel(widget).to_tree()["panel"]
     if isinstance(widget, PlaceholderPanel):
-        return widget.root
+        return copy.deepcopy(widget.root)
     return {"kind": (kind := _savable_kind(widget)).id, "config": kind.to_config(widget), "slots": {}}
 
 

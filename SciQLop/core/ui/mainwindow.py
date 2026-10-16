@@ -907,6 +907,11 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                    area: Optional[QtAds.CDockAreaWidget] = None, **config) -> QWidget:
         """Dock a new panel of a contributed kind. Raises NotRegistered for an unknown kind.
         simplify: open panels of a withdrawn kind stay open; close them on withdrawal when hot unload needs it."""
+        return self._open_panel(kind_id, name, area, config)
+
+    def _open_panel(self, kind_id: str, name: Optional[str], area: Optional[QtAds.CDockAreaWidget],
+                    config: dict) -> QWidget:
+        """Takes config as a dict, so a saved config may hold any key, `name` and `area` included."""
         kind = PANEL_KINDS.get(kind_id)
         if kind_id == TIME_PANEL:
             config.setdefault("time_range", self._default_time_range)
