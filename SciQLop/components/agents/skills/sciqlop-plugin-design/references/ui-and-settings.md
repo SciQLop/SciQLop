@@ -508,7 +508,7 @@ withdrawn:
   building it registers it.
 - `ctx.contribute("sciqlop.template_formats", TemplateFormat(id, label, suffixes, loads, dumps))` lets panel templates
   be saved and read in your format: `loads(text) -> dict`, `dumps(dict) -> text`. "Save as template" still writes
-  `.json`; files in your format are listed while your plugin is active.
+  `.json`; files in your format are listed while your plugin is active. Each suffix starts with a dot, e.g. `.tpl`.
 - `ctx.contribute("sciqlop.time_presets", TimePreset(id, label, seconds, description))` adds a duration to every
   panel's time-range bar and to the palette's "Set time range". `description` is the palette wording ("Last 3 days").
 - `ctx.contribute("sciqlop.themes", Theme(id, label, palette))` adds a theme to Settings → Appearance and to

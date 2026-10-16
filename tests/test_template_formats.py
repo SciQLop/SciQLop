@@ -7,6 +7,7 @@ import pytest
 from SciQLop.components.plotting import panel_template
 from SciQLop.components.plotting.panel_template import PanelTemplate, PlotModel, ProductModel
 from SciQLop.components.plotting.template_formats import (TEMPLATE_FORMATS, TemplateFormat, file_dialog_filter,
+                                                          formats_dialog_filter,
                                                           format_for, template_suffixes)
 from SciQLop.core.extensions import owned_by
 
@@ -65,3 +66,15 @@ def test_user_api_load_reads_a_plugin_format_file(plugin_format, tmp_path):
     path = tmp_path / "demo.tpl"
     _template().to_file(str(path))
     assert templates.load(str(path)).name == "tf_demo"
+
+
+def test_the_export_dialog_filter_has_one_entry_per_format(plugin_format):
+    entries = formats_dialog_filter().split(";;")
+    assert entries[:2] == ["JSON (*.json)", "YAML (*.yaml *.yml)"]
+    assert any(e.endswith("(*.tpl)") for e in entries[2:])
+
+
+@pytest.mark.parametrize("suffixes", [("tpl",), (".tar.gz",)])
+def test_a_suffix_must_be_a_single_dotted_extension(suffixes):
+    with pytest.raises(ValueError, match="bad_fmt"):
+        TemplateFormat("bad_fmt", "Bad", suffixes, loads=json.loads, dumps=json.dumps)

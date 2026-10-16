@@ -18,6 +18,12 @@ class TemplateFormat:
     loads: Callable[[str], dict]
     dumps: Callable[[dict], str]
 
+    def __post_init__(self):
+        for suffix in self.suffixes:
+            if not suffix.startswith(".") or suffix.count(".") != 1:
+                raise ValueError(f"template format {self.id!r}: suffix {suffix!r} must be a single dotted "
+                                 f"extension such as '.tpl'")
+
 
 TEMPLATE_FORMATS = declare(ExtensionPoint("sciqlop.template_formats", TemplateFormat, what="template format",
                                           doc="Panel template file formats by id; each lists its suffixes."))
@@ -36,6 +42,10 @@ def format_for(path: Path) -> TemplateFormat:
 
 def file_dialog_filter() -> str:
     return f"Templates ({' '.join(f'*{s}' for s in template_suffixes())})"
+
+
+def formats_dialog_filter() -> str:
+    return ";;".join(f"{fmt.label} ({' '.join(f'*{s}' for s in fmt.suffixes)})" for fmt in TEMPLATE_FORMATS.list())
 
 
 def _load_yaml(text: str):

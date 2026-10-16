@@ -99,6 +99,40 @@ def test_the_settings_combo_lists_themes_contributed_after_it_was_built(qapp, re
         combo.deleteLater()
 
 
+def _settings_combo():
+    from SciQLop.components.settings.ui.settings_delegates import get_delegate_for_field
+    from SciQLop.components.theming.settings import SciQLopStyle
+    return get_delegate_for_field("color_palette", SciQLopStyle.model_fields["color_palette"])
+
+
+def test_a_combo_seeded_with_a_not_yet_contributed_theme_shows_it_once_contributed(qapp, restore_theme):
+    combo = _settings_combo()
+    try:
+        combo.set_value("th_demo.midnight")
+        assert combo._combo.currentIndex() == -1
+        _contribute()
+        assert combo.get_value() == "th_demo.midnight"
+    finally:
+        THEMES.remove_owner("th_demo")
+        combo.deleteLater()
+
+
+def test_the_combo_shows_no_selection_after_the_active_theme_is_withdrawn(qapp, restore_theme):
+    from SciQLop.components.theming.settings import SciQLopStyle
+    saved = SciQLopStyle().color_palette
+    combo = _settings_combo()
+    try:
+        _contribute()
+        combo.set_value("th_demo.midnight")
+        qapp.apply_theme("th_demo.midnight")
+        THEMES.remove_owner("th_demo")
+        assert combo._combo.currentIndex() == -1
+        assert qapp.current_theme() == DEFAULT_THEME
+        assert SciQLopStyle().color_palette == saved
+    finally:
+        combo.deleteLater()
+
+
 def test_user_api_lists_and_applies_plugin_themes(qapp, restore_theme):
     from SciQLop.user_api import themes
     _contribute()

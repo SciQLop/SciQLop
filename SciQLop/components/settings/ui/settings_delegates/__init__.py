@@ -289,6 +289,8 @@ class PointChoicesDelegate(ComboDelegate):
         from SciQLop.core import extensions
         super().__init__(parent=parent)
         self._point = extensions.get(point_id)
+        self._wanted = None
+        self.value_changed.connect(self._remember)
         self._repopulate()
         self._point.signals.added.connect(self._on_point_changed)
         self._point.signals.removed.connect(self._on_point_changed)
@@ -298,12 +300,24 @@ class PointChoicesDelegate(ComboDelegate):
                       for key, item in ((k, self._point.find(k)) for k in self._point.keys()))
         fit_combo_to_content(self._combo)
 
+    def _remember(self, value) -> None:
+        self._wanted = value
+
+    def set_value(self, value: Any) -> None:
+        self._wanted = value
+        self._show_wanted()
+
+    def _show_wanted(self) -> None:
+        index = self._combo.findData(self._wanted)
+        self._combo.blockSignals(True)
+        self._combo.setCurrentIndex(index)
+        self._combo.blockSignals(False)
+
     def _on_point_changed(self, _item) -> None:
         if not shiboken6.isValid(self):
             return
-        current = self.get_value()
         self._repopulate()
-        self.set_value(current)
+        self._show_wanted()
 
 
 @register_widget("path_dir")

@@ -37,9 +37,12 @@ def test_a_plugin_preset_shows_in_an_open_bar_sorted_by_length(bar, three_days):
 
 def test_an_open_bar_keeps_its_selection_when_presets_change(bar, qtbot):
     bar.duration_text = "1d"
-    with qtbot.assertNotEmitted(bar.range_changed):
-        with owned_by("tp_demo"):
-            TIME_PRESETS.contribute(TimePreset("3d", "3d", 3 * 86400))
+    try:
+        with qtbot.assertNotEmitted(bar.range_changed):
+            with owned_by("tp_demo"):
+                TIME_PRESETS.contribute(TimePreset("3d", "3d", 3 * 86400))
+            TIME_PRESETS.remove_owner("tp_demo")
+    finally:
         TIME_PRESETS.remove_owner("tp_demo")
     assert bar.duration_text == "1d"
     assert "3d" not in _items(bar)

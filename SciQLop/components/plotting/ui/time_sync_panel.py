@@ -1600,10 +1600,11 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
     def _export_template(self):
         from PySide6.QtWidgets import QFileDialog
+        from SciQLop.components.plotting.template_formats import formats_dialog_filter
         path, _ = QFileDialog.getSaveFileName(
             self, "Export panel template",
             f"{self.windowTitle()}.json",
-            "JSON (*.json);;YAML (*.yaml *.yml)",
+            formats_dialog_filter(),
         )
         if path:
             self._save_template_with_preview(path)

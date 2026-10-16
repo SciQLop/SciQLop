@@ -17,11 +17,11 @@ def _make_palette_case_insensitive(palette: dict[str, str]) -> dict[str, str]:
     return palette
 
 
-_active_theme = DEFAULT_THEME
-
-
 def _resolve(name: str) -> str:
     return name if name in THEMES else DEFAULT_THEME
+
+
+_active_theme = _resolve(SciQLopStyle().color_palette)
 
 
 def _load_palette(name: str) -> dict[str, str]:
@@ -37,7 +37,7 @@ def active_theme_name() -> str:
     return _active_theme
 
 
-SCIQLOP_PALETTE = _load_palette(SciQLopStyle().color_palette)
+SCIQLOP_PALETTE = _load_palette(_active_theme)
 
 
 def current_palette() -> dict[str, str]:
