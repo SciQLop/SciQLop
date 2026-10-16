@@ -86,3 +86,12 @@ def test_user_api_open_panel(main_window, ui_kinds):
     widget = open_panel("pk_ui.label", text="x")
     assert isinstance(widget, QLabel) and widget.text() == "x"
     assert {"sciqlop.time_panel", "pk_ui.label"} <= set(list_panel_kinds())
+
+
+def test_user_api_open_panel_passes_an_area_key_to_the_kind(main_window, ui_kinds):
+    from SciQLop.user_api.panels import open_panel
+    seen = []
+    with owned_by("pk_ui"):
+        PANEL_KINDS.contribute(PanelKind("pk_ui.area", "Area", create=lambda n, c: seen.append(c) or QLabel()))
+    open_panel("pk_ui.area", area="north")
+    assert seen == [{"area": "north"}]
