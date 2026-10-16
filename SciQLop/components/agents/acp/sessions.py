@@ -46,12 +46,21 @@ log = getLogger(__name__)
 
 
 def _run_async(coro_factory, timeout: float = 20.0):
-    """Run a coroutine from sync code while qasync's loop is already running."""
+    """Run a coroutine from sync code while qasync's loop is already running.
+
+    The coroutine runs on a worker thread, so it must not call anything marshalled to the main thread
+    (`@on_main_thread`): the main thread is the one waiting here. Resolve such values before calling.
+    """
     def _blocking():
         return asyncio.run(asyncio.wait_for(coro_factory(), timeout=timeout))
 
-    with ThreadPoolExecutor(max_workers=1) as pool:
+    pool = ThreadPoolExecutor(max_workers=1)
+    try:
         return pool.submit(_blocking).result(timeout=timeout + 2.0)
+    finally:
+        # Not `with`: its exit joins the worker with no limit, so a worker stuck in a blocking call outlived
+        # the timeout. simplify: such a worker thread leaks until its call returns.
+        pool.shutdown(wait=False)
 
 
 # Whether each agent command advertised session/delete, learned from its initialize reply: the dock asks
@@ -245,10 +254,12 @@ def acp_config_options(
     afterwards; any other agent (opencode 1.x) probes in a fixed scratch dir —
     one empty "New session" per SciQLop start otherwise.
     """
+    workspace = cwd or current_workspace_dir()  # here, not in the worker: it is an @on_main_thread call
+
     async def _read():
         proc, conn = await _spawn_agent(command)
         deletes = acp_can_delete(command)
-        work_dir = str(cwd or (current_workspace_dir() if deletes else cache_dir("acp-probe")))
+        work_dir = str(cwd or (workspace if deletes else cache_dir("acp-probe")))
         _PROBED_COMMANDS.pop(tuple(command), None)
         try:
             resp = await conn.new_session(cwd=work_dir, mcp_servers=[])
@@ -336,10 +347,11 @@ def acp_load_session_messages(
     cwd: Optional[Path] = None,
 ) -> List[ChatMessage]:
     """Replay a session's history into ChatMessages via session/load."""
+    work_dir = cwd or current_workspace_dir()  # here, not in the worker: it is an @on_main_thread call
     try:
         return _run_async(
             lambda: async_acp_load_session_messages(
-                command, session_id, image_tempdir, cwd
+                command, session_id, image_tempdir, work_dir
             )
         )
     except Exception:
