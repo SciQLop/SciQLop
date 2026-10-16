@@ -141,6 +141,22 @@ class AgentChatDock(QWidget):
         session = self._sessions.pop(name)
         if session is self._turn_session and self._turn_task is not None:
             self._turn_task.cancel()
+        self._close_backend(session.backend)
+
+    def _close_backend(self, backend) -> None:
+        """Best effort, on the event loop: a connected backend's loop tasks keep it, and its agent process,
+        alive after the dock lets go of it. `_disconnect` is the teardown of backends written before the
+        optional `aclose` (sciqlop_claude)."""
+        closer = getattr(backend, "aclose", None) or getattr(backend, "_disconnect", None)
+        if closer is not None:
+            self._spawn(self._run_closer(backend, closer))
+
+    @staticmethod
+    async def _run_closer(backend, closer) -> None:
+        try:
+            await closer()
+        except Exception as error:
+            log.warning("closing agent backend %s failed: %r", getattr(backend, "display_name", backend), error)
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -294,8 +310,6 @@ class AgentChatDock(QWidget):
         """Forget sessions whose backend was withdrawn, or replaced while not in use, so the next
         selection builds one from the current factory. The live session survives a replacement."""
         for name in [n for n, s in self._sessions.items() if self._is_stale(n, s)]:
-            # simplify: drops the reference only; AgentBackend has no shutdown hook, so a withdrawn
-            # backend's subprocess ends when its object is collected. Add a close() call when the protocol has one.
             self._forget_session(name)
 
     def _is_stale(self, name: str, session: _AgentSession) -> bool:

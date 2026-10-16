@@ -205,6 +205,16 @@ class SessionArchivingBackend(Protocol):
 
 
 @runtime_checkable
+class ClosableBackend(Protocol):
+    """OPTIONAL companion to `AgentBackend`; the dock probes with `getattr`."""
+
+    async def aclose(self) -> None:
+        """Release processes and servers. Called once, on the event loop, when the dock drops the backend
+        (New session after a tool or skill change, a replaced or withdrawn backend). Errors are logged."""
+        ...
+
+
+@runtime_checkable
 class AgentBackend(Protocol):
     display_name: str
     model_choices: List[Tuple[str, Optional[str]]]

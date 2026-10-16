@@ -157,3 +157,91 @@ def test_withdrawing_the_backend_in_use_cancels_its_turn(dock, late, qtbot, monk
     assert dock._sessions[_FAKE].messages == []
     dock._on_stop()
     assert cancels == []
+
+
+@pytest.fixture
+def closed(monkeypatch):
+    """Backends the dock closed, through the optional `aclose`."""
+    seen = []
+
+    async def _aclose(self):
+        seen.append(self)
+
+    monkeypatch.setattr(_FakeBackend, "aclose", _aclose, raising=False)
+    return seen
+
+
+def test_new_session_on_a_stale_session_closes_the_old_backend(closed, dock, qtbot):
+    session = dock._sessions[_FAKE]
+    session.messages.append(ChatMessage(role="user", blocks=[TextBlock(text="hi")], done=True))
+    session.stale = True
+    old = session.backend
+
+    dock._on_reset()
+    _settle(qtbot)
+    assert dock._current_backend() is not old
+    assert closed == [old]
+
+
+def test_withdrawing_the_current_backend_closes_it(closed, dock, late, qtbot):
+    with owned_by(_LATE):
+        register_agent_backend(_Hanging)
+    dock._select_backend(_Hanging.display_name)
+    _settle(qtbot)
+    withdrawn = dock._current_backend()
+
+    AGENT_BACKENDS.remove_owner(_LATE)
+    _settle(qtbot)
+    assert closed == [withdrawn]
+
+
+def test_a_backend_without_aclose_is_dropped_quietly(dock, late, qtbot, monkeypatch):
+    warnings = []
+    monkeypatch.setattr(chat_dock.log, "warning", lambda *a: warnings.append(a))
+    with owned_by(_LATE):
+        register_agent_backend(_Hanging)
+    dock._select_backend(_Hanging.display_name)
+    _settle(qtbot)
+
+    AGENT_BACKENDS.remove_owner(_LATE)
+    _settle(qtbot)
+    assert dock._current == _FAKE
+    assert warnings == []
+
+
+def test_a_failing_aclose_is_logged(dock, qtbot, monkeypatch):
+    warnings = []
+    monkeypatch.setattr(chat_dock.log, "warning", lambda *a: warnings.append(a))
+
+    class _Broken(_FakeBackend):
+        async def aclose(self):
+            raise RuntimeError("process already gone")
+
+    dock._close_backend(_Broken())
+    _settle(qtbot)
+    assert warnings and "process already gone" in repr(warnings[0])
+
+
+def test_an_acp_backend_disconnects_when_dropped(dock, qtbot, tmp_path, monkeypatch):
+    from SciQLop.components.agents.acp.backend import AcpAgentBackend
+    from SciQLop.components.agents.backend import BackendContext
+
+    class _Acp(AcpAgentBackend):
+        display_name = "AcpDemo"
+
+        def acp_command(self):
+            return ["true"]
+
+    async def _confirm(name, payload):
+        return False
+
+    backend = _Acp(BackendContext(main_window=None, tools=[], tempdir=tmp_path, confirm_cb=_confirm))
+    disconnects = []
+
+    async def _disconnect():
+        disconnects.append(True)
+
+    monkeypatch.setattr(backend, "_disconnect", _disconnect)
+    dock._close_backend(backend)
+    _settle(qtbot)
+    assert disconnects == [True]

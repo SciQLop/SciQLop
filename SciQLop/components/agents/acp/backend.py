@@ -355,6 +355,9 @@ class AcpAgentBackend:
             self._proc = None
         await self._mcp.stop()
 
+    async def aclose(self) -> None:
+        await self._disconnect()
+
     async def __aenter__(self):
         return self
 

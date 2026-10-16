@@ -398,6 +398,9 @@ def activate(ctx):
   chat. A backend raising during construction fails the dock and every agent
   plugin loaded after it.
 - Read API keys at request time, not in `__init__`.
+- Implement `async aclose()` if your backend holds a process, a server or a connection: SciQLop calls it when it
+  drops the backend (New session after a tool or skill change, a replaced or withdrawn backend). `AcpAgentBackend`
+  already does. Errors are logged, never raised.
 - `register_agent_backend` contributes an `AgentBackendEntry(name, factory)` to `sciqlop.agent_backends`, owned
   by your plugin; withdrawing the plugin removes it. Any thread may call it. The legacy
   `register_agent_backend("Name", factory)` form still works.
