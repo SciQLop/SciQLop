@@ -29,6 +29,7 @@ from SciQLop.components.command_palette.menu_entries import add_menu_entries
 from SciQLop.core.menus import MAIN_TOOLS
 from SciQLop.core.docks import DOCKS, Dock, _ExistingWidget
 from SciQLop.core.extensions import current_owner, owned_by
+from SciQLop.core.name_follower import CORE_OWNER
 from SciQLop.core.panel_kinds import KIND_PROPERTY, PANEL_KINDS, PanelKind
 from SciQLop.core.plot_kinds import TIME_PANEL
 from SciQLop.core.ui.panel_host import _follow_panel_renames, dock_panel, panel_docks, panel_of
@@ -495,9 +496,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         wm.workspace_loaded.connect(self._maybe_run_onboarding_tour)
         if wm.has_workspace:
             self._on_workspace_already_loaded(wm.workspace)
-        sciqlop_app().add_quickstart_shortcut("JupyterLab", "Open JupyterLab",
-                                              Icons.get_icon("Jupyter"),
-                                              self.open_jupyterlab_widget)
+        with owned_by(CORE_OWNER):
+            sciqlop_app().add_quickstart_shortcut("JupyterLab", "Open JupyterLab",
+                                                  Icons.get_icon("Jupyter"),
+                                                  self.open_jupyterlab_widget)
         open_browser = QtGui.QAction("Open JupyterLab in browser", self.toolsMenu)
         open_browser.triggered.connect(wm.open_in_browser)
         self.toolsMenu.insertAction(self._profiling_menu.menu.menuAction(), open_browser)
@@ -542,11 +544,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             "Create an empty panel to drop products onto."))
         self.addTSPanel.triggered.connect(lambda: self.new_plot_panel())
         self.toolBar.addAction(self.addTSPanel)
-        sciqlop_app().add_quickstart_shortcut(name="New plot panel", description="Add a new plot panel",
-                                              icon=theme_icon("add_graph"), callback=self.new_plot_panel)
-        sciqlop_app().add_quickstart_shortcut(
-            name="Take a tour", description="Pick a guided walkthrough of a SciQLop feature",
-            icon=theme_icon("assistant"), callback=self._open_tour_picker)
+        with owned_by(CORE_OWNER):
+            sciqlop_app().add_quickstart_shortcut(name="New plot panel", description="Add a new plot panel",
+                                                  icon=theme_icon("add_graph"), callback=self.new_plot_panel)
+            sciqlop_app().add_quickstart_shortcut(
+                name="Take a tour", description="Pick a guided walkthrough of a SciQLop feature",
+                icon=theme_icon("assistant"), callback=self._open_tour_picker)
 
     def _setup_status_bar(self):
         self._statusbar = QtWidgets.QStatusBar(self)

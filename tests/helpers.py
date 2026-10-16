@@ -55,3 +55,26 @@ def restore_extension_points(saved: dict) -> None:
     core = {ep_id: ep for ep_id, ep in extensions._EXTENSION_POINTS.items() if ep_id.startswith("sciqlop.")}
     extensions._EXTENSION_POINTS.clear()
     extensions._EXTENSION_POINTS.update({**core, **saved})
+
+
+def call_from_worker_thread(qtbot, monkeypatch, fn):
+    """Run fn on a plain Python thread, as a notebook cell or an agent tool would, with the cross-thread
+    invoker the kernel normally installs; the main thread keeps processing events meanwhile."""
+    import threading
+    from jupyqt.qt.proxy import MainThreadInvoker
+    from SciQLop.user_api import threading as sciqlop_threading
+    monkeypatch.setattr(sciqlop_threading, "_invoker", MainThreadInvoker())
+    outcome = {}
+
+    def run():
+        try:
+            outcome["result"] = fn()
+        except BaseException as error:
+            outcome["error"] = error
+
+    worker = threading.Thread(target=run)
+    worker.start()
+    qtbot.waitUntil(lambda: not worker.is_alive(), timeout=10_000)
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome.get("result")

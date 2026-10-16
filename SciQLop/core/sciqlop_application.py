@@ -32,6 +32,7 @@ _patch_qasync_infinite_timer()
 
 class SciQLopApp(QApplication):
     quickstart_shortcuts_added = QtCore.Signal(str)
+    quickstart_shortcuts_removed = QtCore.Signal(str)
     panels_list_changed = QtCore.Signal(list)
     theme_changed = QtCore.Signal(str)
 
@@ -59,22 +60,33 @@ class SciQLopApp(QApplication):
         self.setPalette(self._current_palette)
         self.load_stylesheet()
         SciQLopStyle._notifier.changed.connect(self._on_style_changed)
-        self._quickstart_shortcuts: Dict[str, Dict[str, Any]] = {}
+        from SciQLop.core.quickstart import QUICKSTART
+        QUICKSTART.signals.added.connect(self._on_quickstart_added)
+        QUICKSTART.signals.removed.connect(self._on_quickstart_removed)
         from SciQLop.components.command_palette.backend.registry import CommandRegistry
         self._command_registry = CommandRegistry()
 
     def add_quickstart_shortcut(self, name: str, description: str, icon: QtGui.QPixmap or QtGui.QIcon,
                                 callback: callable):
-        self._quickstart_shortcuts[name] = (
-            {"name": name, "description": description, "icon": icon, "callback": callback})
-        self.quickstart_shortcuts_added.emit(name)
+        from SciQLop.core.extensions import current_owner
+        from SciQLop.core.quickstart import QuickstartShortcut, contribute_shortcut
+        contribute_shortcut(QuickstartShortcut(name, description, icon, callback), current_owner())
+
+    def _on_quickstart_added(self, shortcut) -> None:
+        self.quickstart_shortcuts_added.emit(shortcut.name)
+
+    def _on_quickstart_removed(self, shortcut) -> None:
+        self.quickstart_shortcuts_removed.emit(shortcut.name)
 
     @QtCore.Property(list)
     def quickstart_shortcuts(self) -> List[str]:
-        return list(self._quickstart_shortcuts.keys())
+        from SciQLop.core.quickstart import QUICKSTART
+        return QUICKSTART.keys()
 
     def quickstart_shortcut(self, name: str) -> Optional[Dict[str, Any]]:
-        return self._quickstart_shortcuts.get(name, None)
+        from SciQLop.core.quickstart import QUICKSTART
+        shortcut = QUICKSTART.find(name)
+        return shortcut.as_dict() if shortcut is not None else None
 
     @property
     def command_registry(self) -> "CommandRegistry":

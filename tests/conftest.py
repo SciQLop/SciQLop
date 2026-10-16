@@ -375,6 +375,19 @@ def _restore_kernel_window(namespace, saved) -> None:
         namespace.contribute(entry, owner=owner, replace=True)
 
 
+def _point_state(point):
+    return dict(point._items), dict(point._owners)
+
+
+def _restore_point_state(point, state) -> None:
+    """Silently, like the dict it replaces: a test's shortcuts vanish without signals."""
+    items, owners = state
+    point._items.clear()
+    point._items.update(items)
+    point._owners.clear()
+    point._owners.update(owners)
+
+
 @pytest.fixture(autouse=True)
 def _release_gui_leftovers():
     """Every SciQLopMainWindow is a ~1GB widget tree, and close() only hides it.
@@ -386,17 +399,17 @@ def _release_gui_leftovers():
     import shiboken6
     from PySide6.QtWidgets import QApplication
     from SciQLop.core.kernel_namespace import KERNEL_NAMESPACE
+    from SciQLop.core.quickstart import QUICKSTART
     from tests.fixtures import destroy_main_window
     before_windows = {id(w) for w in _main_windows()}
     before_panels = {id(w) for w in _standalone_panels()}
     app = QApplication.instance()
     main = getattr(app, "main_window", None)
     panels_before = set(main.plot_panels()) if main is not None and shiboken6.isValid(main) else None
-    shortcuts_before = dict(app._quickstart_shortcuts)
+    shortcuts_before = _point_state(QUICKSTART)
     kernel_window_before = _kernel_window(KERNEL_NAMESPACE)
     yield
-    app._quickstart_shortcuts.clear()
-    app._quickstart_shortcuts.update(shortcuts_before)
+    _restore_point_state(QUICKSTART, shortcuts_before)
     _restore_kernel_window(KERNEL_NAMESPACE, kernel_window_before)
     destroyed = False
     for w in _main_windows():

@@ -186,7 +186,8 @@ class WelcomeBackend(QObject):
         self._watch_workspace_subdirs(workspaces_dir)
         self._watcher.directoryChanged.connect(self._on_directory_changed)
         from SciQLop.core.sciqlop_application import sciqlop_app
-        sciqlop_app().quickstart_shortcuts_added.connect(self._on_quickstart_shortcuts_added)
+        sciqlop_app().quickstart_shortcuts_added.connect(self._on_quickstart_shortcuts_changed)
+        sciqlop_app().quickstart_shortcuts_removed.connect(self._on_quickstart_shortcuts_changed)
         from SciQLop.components.plotting.panel_template import templates_dir
         tpl_dir = str(templates_dir())
         self._watcher.addPath(tpl_dir)
@@ -201,7 +202,7 @@ class WelcomeBackend(QObject):
         except RuntimeError:  # "Signal source has been deleted" / wrapper gone
             log.debug("welcome page closed before %s was delivered", signal_name)
 
-    def _on_quickstart_shortcuts_added(self, _):
+    def _on_quickstart_shortcuts_changed(self, _):
         self.quickstart_changed.emit()
 
     def _on_templates_dir_changed(self, path: str):
