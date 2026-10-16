@@ -88,6 +88,13 @@ def activate(ctx):
   `LookupError`) listing the available kinds.
 - Withdrawing a kind (plugin disabled or failed) keeps its open panels open;
   only new ones can no longer be opened.
+- The "+" button in a dock area's title bar opens a time panel as before. With a
+  second kind that has `in_new_menu=True`, it becomes a split button: the arrow
+  lists every such kind by `label` (time panel first) and opens the choice in
+  that area. Set `in_new_menu=False` to keep a kind out of the menu.
+- From notebooks and scripts: `from SciQLop.user_api.panels import open_panel, list_panel_kinds`.
+  `open_panel(kind, name=None, **config)` returns a `PlotPanel` for the time
+  panel and the widget for any other kind.
 
 ## Threading
 

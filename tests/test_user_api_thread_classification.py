@@ -78,6 +78,8 @@ NOT_MARSHALED_ON_PURPOSE = {
     # Out-of-process work: jobs and package installs never touch Qt.
     "jobs.py": {"cancel_job", "job_status", "list_jobs", "submit_job"},
     "packages.py": {"install_packages"},
+    # One snapshot of a dict's keys: safe from any thread.
+    "panels.py": {"list_panel_kinds"},
 }
 
 

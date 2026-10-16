@@ -1,6 +1,7 @@
 import os
 import sys
 from datetime import datetime, timedelta
+from functools import partial
 from typing import Optional, Union, List, Tuple
 
 import humanize
@@ -175,6 +176,11 @@ def _build_dock_content(dock: Dock) -> Optional[QWidget]:
     return widget
 
 
+def _new_menu_kinds() -> List[PanelKind]:
+    """The kinds the "+" menu offers: the time panel first, then in contribution order."""
+    return sorted(PANEL_KINDS.list(in_new_menu=True), key=lambda k: k.id != TIME_PANEL)
+
+
 def _create_panel(kind: PanelKind, name: str, config: dict) -> QWidget:
     try:
         widget = kind.create(name, config)
@@ -335,6 +341,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FloatingContainerForceQWidgetTitleBar, True)
         self.dock_manager = QtAds.CDockManager(self)
         self.dock_manager.dockAreaCreated.connect(self._on_dock_area_created)
+        self._add_buttons: List[QtWidgets.QToolButton] = []
+        PANEL_KINDS.signals.added.connect(self._refresh_add_buttons)
+        PANEL_KINDS.signals.removed.connect(self._refresh_add_buttons)
         self.dock_manager.focusedDockWidgetChanged.connect(self._on_focused_dock_widget_changed)
         self._focused_autohide_widget: Optional[QtAds.CDockWidget] = None
         self._autohide_focus_order: List[QtAds.CDockWidget] = []
@@ -975,11 +984,38 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         title_bar = area.titleBar()
         title_bar.insertWidget(title_bar.indexOf(title_bar.tabBar()) + 1, button)
         area.setProperty("sciqlop_add_panel_button", button)
+        self._add_buttons.append(button)
+        self._refresh_add_button(button)
 
-    def _add_panel_in_button_area(self, button: QtWidgets.QToolButton) -> None:
+    def _add_panel_in_button_area(self, button: QtWidgets.QToolButton, kind_id: str = TIME_PANEL) -> None:
         area = button.parentWidget().parentWidget()
         if shiboken6.isValid(area):
-            self.new_native_plot_panel(area=area)
+            self.open_panel(kind_id, area=area)
+
+    def _refresh_add_buttons(self, _kind=None) -> None:
+        if not shiboken6.isValid(self):
+            return
+        self._add_buttons = [b for b in self._add_buttons if shiboken6.isValid(b)]
+        for button in self._add_buttons:
+            self._refresh_add_button(button)
+
+    def _refresh_add_button(self, button: QtWidgets.QToolButton) -> None:
+        """Only a menu-worthy second kind turns the plain "+" into a split button."""
+        wants_menu = len(_new_menu_kinds()) > 1
+        if wants_menu and button.menu() is None:
+            menu = QMenu(button)
+            menu.aboutToShow.connect(lambda: self._fill_new_panel_menu(menu, button))
+            button.setMenu(menu)
+            button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        elif not wants_menu and button.menu() is not None:
+            button.menu().deleteLater()
+            button.setMenu(None)
+            button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.DelayedPopup)
+
+    def _fill_new_panel_menu(self, menu: QMenu, button: QtWidgets.QToolButton) -> None:
+        menu.clear()
+        for kind in _new_menu_kinds():
+            menu.addAction(kind.label, partial(self._add_panel_in_button_area, button, kind.id))
 
     def _panel_docks(self) -> List[Tuple[QtAds.CDockWidget, QWidget]]:
         return panel_docks(self)
