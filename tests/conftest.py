@@ -429,6 +429,14 @@ def _no_blocking_modal_dialogs(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _offline_store_lookup(monkeypatch):
+    """A placeholder panel looks its plugin up in the App Store index: keep tests off the network.
+    A test that wants an index patches install_offer.fetch_index itself, which wins over this."""
+    from SciQLop.components.plugins import install_offer
+    monkeypatch.setattr(install_offer, "fetch_index", lambda *a, **k: [])
+
+
+@pytest.fixture(autouse=True)
 def _isolate_catalog_registry():
     """Snapshot/restore the global CatalogRegistry around each test.
 

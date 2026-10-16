@@ -118,6 +118,17 @@ Saving a panel of your kind:
   'radio.waterfall')."), kind id `sciqlop.placeholder_panel`. It keeps the tree
   as read: `panel_tree(placeholder)` and saving it again write the same tree
   back. Panel extensions with `kinds=()` attach to it too.
+- The placeholder looks your plugin up in the App Store index (off the GUI
+  thread; offline, it shows the message alone). When it finds you it shows an
+  "Install <plugin>" button, which installs and hot-loads through the App
+  Store. An install error is shown in the placeholder.
+- As soon as the kind is contributed (after that install, or because the plugin
+  was enabled some other way), the placeholder opens the real panel with the
+  saved config, in the same dock area and under the same name, and closes
+  itself. If `create` raises, the placeholder stays and shows the error.
+- So the offer finds you, list your panel kinds in `plugin.json`:
+  `"provides": {"sciqlop.panel_kinds": ["radio.waterfall"]}`. Without it the
+  store entry whose name matches the kind's id prefix (`radio`) is offered.
 
 A panel extension is code run on every open and future panel of some kinds.
 Contribute a `PanelExtension` to `sciqlop.panel_extensions`. `attach(panel)` gets

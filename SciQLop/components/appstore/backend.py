@@ -187,9 +187,11 @@ class AppStoreBackend(QObject):
     uninstall_finished = Signal(str)
     _hot_load_requested = Signal(str, str, str, bool)  # dist_name, name, version, was_installed
 
-    def __init__(self, parent: QObject | None = None):
+    def __init__(self, parent: QObject | None = None, packages: list[dict] | None = None):
+        """*packages*: an already fetched, compat-filtered index, so `install_package` works without
+        `fetch_packages` (the placeholder panel's install offer)."""
         super().__init__(parent)
-        self._packages: list[dict] = []
+        self._packages: list[dict] = list(packages or [])
         self._hot_load_requested.connect(self._do_hot_load)
 
     @Slot(str, str, str, bool)
