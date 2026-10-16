@@ -35,10 +35,9 @@ def _toggle_fullscreen():
 def _do_set_time_range(time_range: str = ""):
     from datetime import datetime, timedelta
     from SciQLop.core import TimeRange
-    durations = {"1h": 1, "1d": 24, "1w": 168, "1M": 720}
-    hours = durations.get(time_range, 24)
+    from SciQLop.core.time_presets import preset_seconds
     now = datetime.utcnow()
-    tr = TimeRange((now - timedelta(hours=hours)).timestamp(), now.timestamp())
+    tr = TimeRange((now - timedelta(seconds=preset_seconds(time_range))).timestamp(), now.timestamp())
     _get_win()._default_time_range = tr
 
 

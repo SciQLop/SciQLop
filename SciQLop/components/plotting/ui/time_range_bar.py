@@ -1,3 +1,4 @@
+import shiboken6
 from PySide6.QtCore import Qt, Signal, QDateTime, QTimeZone, QPropertyAnimation
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QDateTimeEdit, QComboBox, QPushButton, QLabel, QFrame,
@@ -7,8 +8,8 @@ from PySide6.QtWidgets import (
 from SciQLop.core import TimeRange
 from SciQLop.core.ui import Metrics, fit_combo_to_content
 from SciQLop.core.ui.tooltips import rich_tooltip
+from SciQLop.core.time_presets import TIME_PRESETS, duration_presets, preset_seconds
 
-DURATION_PRESETS = [("1m", 60), ("1h", 3600), ("12h", 43200), ("1d", 86400), ("7d", 604800)]
 ZOOM_LIMIT_PRESETS = [("1h", 3600.0), ("1d", 86400.0), ("1w", 604800.0), ("1y", 365.25 * 86400), ("Unlimited", 0.0)]
 
 
@@ -22,8 +23,8 @@ def _make_start_picker(parent):
 
 def _make_duration_combo(parent):
     w = QComboBox(parent)
-    for label, _ in DURATION_PRESETS:
-        w.addItem(label)
+    for preset in duration_presets():
+        w.addItem(preset.label)
     w.setCurrentText("1d")
     fit_combo_to_content(w)
     return w
@@ -85,7 +86,8 @@ class _PulseOverlay(QFrame):
 
 
 def _closest_duration_index(seconds):
-    return min(range(len(DURATION_PRESETS)), key=lambda i: abs(DURATION_PRESETS[i][1] - seconds))
+    presets = duration_presets()
+    return min(range(len(presets)), key=lambda i: abs(presets[i].seconds - seconds))
 
 
 class TimeRangeBar(QWidget):
@@ -152,9 +154,27 @@ class TimeRangeBar(QWidget):
             self._zoom_limit_combo, "rgb(230, 160, 50)",
             [(0.0, 1.0), (0.3, 0.2), (0.6, 1.0), (1.0, 0.0)], 1500)
 
+        TIME_PRESETS.signals.added.connect(self._on_presets_changed)
+        TIME_PRESETS.signals.removed.connect(self._on_presets_changed)
+
+    def _on_presets_changed(self, _preset) -> None:
+        """Keep the shown duration across a plugin adding or withdrawing presets; nothing is emitted."""
+        if not shiboken6.isValid(self):
+            return
+        seconds = self._duration_seconds
+        self._suppressing = True
+        try:
+            self._duration_combo.clear()
+            for preset in duration_presets():
+                self._duration_combo.addItem(preset.label)
+            self._duration_combo.setCurrentIndex(_closest_duration_index(seconds))
+            fit_combo_to_content(self._duration_combo)
+        finally:
+            self._suppressing = False
+
     @property
     def _duration_seconds(self):
-        return dict(DURATION_PRESETS).get(self._duration_combo.currentText(), 86400)
+        return preset_seconds(self._duration_combo.currentText())
 
     @property
     def duration_text(self) -> str:

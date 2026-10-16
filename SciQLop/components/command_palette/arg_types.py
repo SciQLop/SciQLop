@@ -178,9 +178,5 @@ class TimeRangeArg(CommandArg):
     name: str = "time_range"
 
     def completions(self, context: dict) -> list[Completion]:
-        return [
-            Completion(value="1h", display="Last hour"),
-            Completion(value="1d", display="Last day"),
-            Completion(value="1w", display="Last week"),
-            Completion(value="1M", display="Last month"),
-        ]
+        from SciQLop.core.time_presets import duration_presets
+        return [Completion(value=p.id, display=p.description or f"Last {p.label}") for p in duration_presets()]

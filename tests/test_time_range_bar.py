@@ -23,7 +23,7 @@ def test_initial_state(bar):
 def test_duration_presets_available(bar):
     """All expected durations should be in the combo box."""
     items = [bar._duration_combo.itemText(i) for i in range(bar._duration_combo.count())]
-    assert items == ["1m", "1h", "12h", "1d", "7d"]
+    assert items == ["1m", "1h", "12h", "1d", "7d", "1M"]
 
 
 def test_set_range_updates_widgets(bar):
