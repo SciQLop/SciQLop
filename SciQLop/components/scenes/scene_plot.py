@@ -57,17 +57,6 @@ class _PaneCurve:
         return s.curve(self.which)
 
 
-def _seeded_projection(panel_impl):
-    """simplify: SciQLopMultiPlotPanel.create_plot(Projections) segfaults in SciQLopPlots 0.51.3
-    (fixed upstream, unreleased); plot a one-sample curve to get the panes, then drop it.
-    Use create_plot once a SciQLopPlots release carries the fix."""
-    z = np.zeros(1)
-    proj, seed = panel_impl.plot([z, z, z, z], plot_type=PlotType.Projections,
-                                 graph_type=GraphType.ParametricCurve, labels=["", "", ""])
-    proj.remove_plottable(seed)
-    return proj
-
-
 def _axis_labels(resolved: ResolvedScene) -> list[str]:
     return [f"{axis} {resolved.scene.frame} [{resolved.body.symbol}]" for axis in _AXES]
 
@@ -226,20 +215,16 @@ def add_trajectory(proj, resolved: ResolvedScene, source: str):
 
 
 def _hold_extent(proj, extent: float) -> None:
-    """simplify: SciQLopPlots 0.51.3 rescales a pane on each graph's first data whatever
-    auto_scale says, and binds no setter for the axes it rescales, so the protected list is
-    emptied directly (this also disables the rescale shortcut on scene panes). Upgrade path:
-    a public set_axes_to_rescale or a 'no first-data rescale' option in SciQLopPlots."""
     for pane in range(proj.subplot_count()):
         sub = proj.subplot(pane)
         sub.set_auto_scale(False)
-        sub.m_axes_to_rescale = []
+        sub.set_fit_first_data(False)
         sub.x_axis().set_range(-extent, extent)
         sub.y_axis().set_range(-extent, extent)
 
 
 def create_scene_plot(panel_impl, resolved: ResolvedScene):
-    proj = _seeded_projection(panel_impl)
+    proj = panel_impl.create_plot(len(panel_impl.plots()), PlotType.Projections)
     proj.set_axis_labels(_axis_labels(resolved))
     _draw_body(proj, resolved)
     if resolved.scene.extent is not None:

@@ -18,7 +18,6 @@ from SciQLopPlots import SciQLopNDProjectionPlot as _SciQLopNDProjectionPlot
 from SciQLopPlots import GraphType as _GraphType, GraphMarkerShape as _GraphMarkerShape
 from SciQLopPlots import ColorGradient as _ColorGradient
 from SciQLop.components.plotting.ui.time_sync_panel import plot_product as _plot_product
-from SciQLop.components.plotting.ui.time_sync_panel import unnamed_columns as _unnamed_columns
 from ._thread_safety import on_main_thread, GuardedImpl, _qt_property
 from ._axis import Axis
 from ._overlay import Overlay
@@ -676,7 +675,6 @@ class XYPlot(_BasePlot):
             else:
                 raise ValueError("Invalid arguments")
         elif len(args) == 2:
-            kwargs.setdefault("labels", _unnamed_columns(args[1]))
             raw = _apply_name(
                 self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs), name)
             _apply_graph_options(raw, line_style, line_shape, gap_threshold)

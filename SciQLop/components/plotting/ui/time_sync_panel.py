@@ -962,19 +962,6 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
     return None
 
 
-def unnamed_columns(y) -> list[str]:
-    """One empty label per column of *y*.
-
-    simplify: an unlabelled XY curve gets its lines only when the resampled
-    data comes back, so styling right after plot() (line_style=, graph.color)
-    found no line. Empty labels create them up front, with the names they
-    would have had, but fix the curve's column count. Drop this once
-    SciQLopPlots' SciQLopCurve::set_data sizes an unlabelled curve itself.
-    """
-    shape = np.shape(y)
-    return [""] * (shape[1] if len(shape) == 2 else 1)
-
-
 def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], x, y, z=None, **kwargs):
     target, existing_plot = _resolve_plot_target(p, kwargs)
     from SciQLopPlots import PlotType as _SQPPlotType
@@ -986,7 +973,6 @@ def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProje
         r = target.plot(_projection_buffers(x, y), **kwargs)
         _label_projection_axes(r, components)
     else:
-        kwargs.setdefault("labels", unnamed_columns(y))
         r = target.plot(x, y, **kwargs)
     if not hasattr(r, '__iter__') and existing_plot is not None:
         r = (existing_plot, r)
