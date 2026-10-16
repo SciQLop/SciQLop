@@ -96,6 +96,38 @@ def activate(ctx):
   `open_panel(kind, name=None, **config)` returns a `PlotPanel` for the time
   panel and the widget for any other kind.
 
+A panel extension is code run on every open and future panel of some kinds.
+Contribute a `PanelExtension` to `sciqlop.panel_extensions`. `attach(panel)` gets
+the panel widget and returns its clean-up (or None).
+
+```python
+from PySide6.QtWidgets import QToolButton
+from SciQLop.core.panel_extensions import PanelExtension
+from SciQLop.core.plot_kinds import TIME_PANEL
+
+def add_button(panel):
+    button = QToolButton(panel, text="Zoom to event")
+    button.clicked.connect(lambda: zoom_to_event(panel))
+    button.show()
+    return button.deleteLater                    # the clean-up: no arguments
+
+def activate(ctx):
+    ctx.contribute("sciqlop.panel_extensions",
+                   PanelExtension(id="events.zoom_button", attach=add_button, kinds=(TIME_PANEL,)))
+```
+
+- `kinds=()` (the default) means every panel kind. Attach order is contribution order.
+- `attach` runs on every open panel of a matching kind when the extension is
+  contributed, and on every new one when it opens.
+- The clean-up runs once: when the panel closes (`remove_panel`, the tab's X,
+  docked or floating), when the extension is withdrawn (plugin disabled or
+  failed: the panels stay open), and before the new `attach` when the same id
+  is contributed again. It never runs for a panel already destroyed: your
+  child widgets died with it.
+- An `attach` or clean-up that raises is logged with the extension id and the
+  panel name; the panel and the other extensions carry on.
+- Every main window runs its own extensions on its own panels.
+
 ## Threading
 
 SciQLop runs a Qt event loop on the main thread (with asyncio on top, through

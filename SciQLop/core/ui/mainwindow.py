@@ -33,6 +33,7 @@ from SciQLop.core.extensions import current_owner, owned_by
 from SciQLop.core.panel_kinds import KIND_PROPERTY, PANEL_KINDS, PanelKind
 from SciQLop.core.plot_kinds import TIME_PANEL
 from SciQLop.core.ui.panel_host import dock_panel, panel_docks, panel_of
+from SciQLop.core.ui.panel_extensions_follower import PanelExtensionsFollower
 import SciQLop.components.plotting.time_panel_kind  # noqa: F401  a main window always has the core panel kind
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.kernel_namespace import contribute_name
@@ -300,6 +301,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         self.setWindowTitle("SciQLop")
         self.follow_docks()
+        self._panel_extensions = PanelExtensionsFollower(self)
         with owned_by("sciqlop"):
             self._setup_side_panels()
         self._setup_toolbar()
@@ -853,6 +855,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         log.debug(f"Removing panel {panel}")
         if isinstance(panel, str):
             panel = self._panel_named(panel)
+        if panel is not None:
+            self._panel_extensions.panel_closing(panel)
         dw = self._dock_of(panel) if panel is not None else None
         if dw:
             release_name(panel.objectName())
@@ -928,6 +932,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         # QtAds also emits `closed` when a dock is only hidden (toggleView(False));
         # a dock being deleted is unregistered from the manager before it emits.
         if self.dock_manager.findDockWidget(dock_widget.objectName()) is None:
+            panel = panel_of(dock_widget)
+            if panel is not None:
+                self._panel_extensions.panel_closing(panel)
             _destroy_content_before_its_window(dock_widget)
 
     def _schedule_dead_panel_drop(self, name: str) -> None:

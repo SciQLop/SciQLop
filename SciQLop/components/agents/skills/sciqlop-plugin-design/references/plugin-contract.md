@@ -116,6 +116,7 @@ def activate(ctx):
 | `sciqlop.settings` | a `ConfigEntry` subclass (contributed by defining it) | class name |
 | `sciqlop.docks` | `Dock(id, title, build, placement, icon, visible, toolbar)` | `id` |
 | `sciqlop.panel_kinds` | `PanelKind(id, label, create, to_config, icon, in_new_menu)` | `id` |
+| `sciqlop.panel_extensions` | `PanelExtension(id, attach, kinds)` | `id` |
 | `sciqlop.workspace_sections` | `WorkspaceSection(table, model)` | `table` |
 | `sciqlop.agent_backends` | `AgentBackendEntry(name, factory)`, through `register_agent_backend(cls)` | `name` |
 | `sciqlop.agent_tools` | `AgentTool(name, description, input_schema, call, gated=False, thread=False)` | `name` |
