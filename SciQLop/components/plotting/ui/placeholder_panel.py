@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 from SciQLop.components.plugins.install_offer import find_store_entry
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.core.panel_kinds import KIND_PROPERTY, PANEL_KINDS
+from SciQLop.core.panel_kinds import DESCRIPTION_PROPERTY, KIND_PROPERTY, PANEL_KINDS
 from SciQLop.core.plot_kinds import plugin_of
 from SciQLop.core.unique_names import auto_name, release_name
 
@@ -132,16 +132,18 @@ def open_placeholder(main_window, root: dict, name: str) -> PlaceholderPanel:
 
 
 def _swap(main_window, placeholder: PlaceholderPanel) -> QWidget:
-    """Open the real panel next to the placeholder, close the placeholder, then give the real one its name.
+    """Open the real panel at the placeholder's tab position, close the placeholder, then give the real one its name.
     Why not release the name and open under it: QtAds keys docks by name, and closing the placeholder's dock
     would then also drop the real panel's dock from the dock manager's map."""
     name = placeholder.objectName()
     dock = main_window._dock_of(placeholder)
     area = dock.dockAreaWidget() if dock is not None else None
+    index = area.index(dock) if area is not None else -1
     config = copy.deepcopy(placeholder.root.get("config", {}))
-    real = main_window._open_panel(placeholder.missing_kind, None, area, config)
+    real = main_window._open_panel(placeholder.missing_kind, None, area, config, index)
     PANEL_KINDS.signals.added.disconnect(placeholder._on_kind_added)
     main_window.remove_panel(placeholder)
     real.setObjectName(name)
     real.setWindowTitle(real.objectName())
+    real.setProperty(DESCRIPTION_PROPERTY, placeholder.property(DESCRIPTION_PROPERTY))
     return real

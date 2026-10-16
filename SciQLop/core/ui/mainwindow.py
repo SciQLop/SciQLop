@@ -17,11 +17,10 @@ from SciQLop.components.workspaces import workspaces_manager_instance
 from SciQLop.components.sciqlop_logging.logs_widget import LogsWidget
 from SciQLopPlots import PropertiesPanel, ProductsView, Icons
 from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
-from SciQLop.components.plotting.ui.panel_container import PanelContainer
 from SciQLop.components.welcome import WelcomePage
 from SciQLop.core import TimeRange
 from SciQLop.core.sciqlop_application import sciqlop_app
-from SciQLop.core.unique_names import auto_name, claim_name, release_name
+from SciQLop.core.unique_names import auto_name, release_name
 from SciQLop.components.workspaces import Workspace
 from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle, qtads_stylesheet
 from SciQLop.core.ui import Metrics
@@ -32,12 +31,11 @@ from SciQLop.core.docks import DOCKS, Dock, _ExistingWidget
 from SciQLop.core.extensions import current_owner, owned_by
 from SciQLop.core.panel_kinds import KIND_PROPERTY, PANEL_KINDS, PanelKind
 from SciQLop.core.plot_kinds import TIME_PANEL
-from SciQLop.core.ui.panel_host import dock_panel, panel_docks, panel_of
+from SciQLop.core.ui.panel_host import _follow_panel_renames, dock_panel, panel_docks, panel_of
 from SciQLop.core.ui.panel_extensions_follower import PanelExtensionsFollower
 import SciQLop.components.plotting.time_panel_kind  # noqa: F401  a main window always has the core panel kind
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.kernel_namespace import contribute_name
-from SciQLopPlots import SciQLopMultiPlotPanel
 from SciQLop.components.settings.ui import SettingsPanel
 from SciQLop.components.shortcuts import bind_shortcut, bind_tooltip
 from SciQLop.components.shortcuts.ui import ShortcutsHelp
@@ -94,40 +92,6 @@ def _show_side_tab_tooltip_when_hover_opens(doc: QtAds.CDockWidget) -> None:
         if visible and tab is not None and _cursor_over(tab):
             QtWidgets.QToolTip.showText(QtGui.QCursor.pos(), tab.toolTip(), tab)
     doc.visibilityChanged.connect(_on_visibility)
-
-
-def _extract_panel(dock_widget):
-    # dock_widget itself can be a dead Shiboken wrapper (e.g. queried from
-    # the dock manager during teardown) -- same class of hazard as the
-    # w.panel check below, just one level up.
-    if dock_widget is None or not shiboken6.isValid(dock_widget):
-        return None
-    w = dock_widget.widget()
-    if isinstance(w, PanelContainer):
-        # the panel can die without going through remove_panel (e.g. user code
-        # deleteLater'd it) — a dead Shiboken wrapper must not break the whole
-        # panel enumeration
-        return w.panel if shiboken6.isValid(w.panel) else None
-    if isinstance(w, SciQLopMultiPlotPanel):
-        return w if shiboken6.isValid(w) else None
-    return None
-
-
-def _follow_panel_renames(panel, dock_widget: QtAds.CDockWidget) -> None:
-    """The Properties inspector renames a panel with setObjectName (#152). QtAds keys
-    docks by the name they were added with and never re-keys them, so the dock keeps
-    that name as an internal id; only its title follows the panel's name. A taken or
-    empty name is replaced, and setObjectName shows the replacement in the inspector."""
-    def _on_renamed(new_name: str) -> None:
-        old_name = dock_widget.windowTitle() if shiboken6.isValid(dock_widget) else new_name
-        if new_name == old_name:
-            return
-        release_name(old_name)
-        unique = claim_name(new_name or old_name)
-        dock_widget.setWindowTitle(unique)
-        if unique != new_name:
-            panel.setObjectName(unique)
-    panel.objectNameChanged.connect(_on_renamed)
 
 
 def _destroy_content_before_its_window(dock_widget: QtAds.CDockWidget) -> None:
@@ -865,7 +829,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             self._notify_panels_list_changed()
 
     def addWidgetIntoDock(self, allowed_area, widget, area=None, delete_on_close: bool = False,
-                          size_hint_from_content: bool = True, custom_close_callback=None) -> Optional[
+                          size_hint_from_content: bool = True, custom_close_callback=None, index: int = -1) -> Optional[
         QtAds.CDockAreaWidget]:
         if widget is not None:
             doc = QtAds.CDockWidget(widget.windowTitle())
@@ -877,7 +841,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             dock_area = None
             area = area or self._find_biggest_area()
             if area:
-                self.dock_manager.addDockWidgetTabToArea(doc, area)
+                self.dock_manager.addDockWidgetTabToArea(doc, area, index)
             else:
                 dock_area = self.dock_manager.addDockWidget(allowed_area, doc)
             if delete_on_close:
@@ -910,7 +874,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         return self._open_panel(kind_id, name, area, config)
 
     def _open_panel(self, kind_id: str, name: Optional[str], area: Optional[QtAds.CDockAreaWidget],
-                    config: dict) -> QWidget:
+                    config: dict, index: int = -1) -> QWidget:
         """Takes config as a dict, so a saved config may hold any key, `name` and `area` included."""
         kind = PANEL_KINDS.get(kind_id)
         if kind_id == TIME_PANEL:
@@ -919,7 +883,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         try:
             widget = _create_panel(kind, name, config)
             _name_panel(widget, name, kind.icon)
-            dock_panel(self, widget, kind_id, area)
+            dock_panel(self, widget, kind_id, area, index)
         except Exception:
             release_name(name)
             raise

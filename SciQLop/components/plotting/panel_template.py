@@ -263,24 +263,30 @@ class PanelTemplate(BaseModel):
     @staticmethod
     def from_panel(panel) -> PanelTemplate:
         if _is_foreign_panel(panel):
-            return PanelTemplate._foreign(panel.windowTitle() or panel.objectName(), "", panel_tree(panel))
+            return PanelTemplate._foreign(panel.windowTitle() or panel.objectName(), _description_of(panel),
+                                          panel_tree(panel))
         from SciQLop.components.plotting.panel_introspection import ordered_panel_plots
         models = (_saved_plot(plot) for plot in ordered_panel_plots(panel))
         plots = [m for m in models if m is not None]
         return PanelTemplate(
             name=panel.windowTitle() or panel.objectName(),
+            description=_description_of(panel),
             time_range=_time_range_model(panel),
             plots=plots,
             max_zoom_seconds=_read_max_zoom(panel),
         )
 
     def create_panel(self, main_window, source_path: str | None = None):
+        from SciQLop.core.panel_kinds import DESCRIPTION_PROPERTY
         if self._foreign_root is not None:
-            return self._open_foreign(main_window)
+            panel = self._open_foreign(main_window)
+            panel.setProperty(DESCRIPTION_PROPERTY, self.description)
+            return panel
         panel = main_window.new_plot_panel()
         impl = panel._impl if hasattr(panel, '_impl') else panel
         self.apply(impl)
         impl._template_source_path = source_path or self._source_path
+        impl.setProperty(DESCRIPTION_PROPERTY, self.description)
         return panel
 
     def _open_foreign(self, main_window):
@@ -338,6 +344,11 @@ def _is_foreign_panel(panel) -> bool:
     from PySide6.QtWidgets import QWidget
     from SciQLop.core.panel_kinds import panel_kind_of
     return isinstance(panel, QWidget) and panel_kind_of(panel) not in (None, TIME_PANEL)
+
+
+def _description_of(panel) -> str:
+    from SciQLop.core.panel_kinds import DESCRIPTION_PROPERTY
+    return panel.property(DESCRIPTION_PROPERTY) or ""
 
 
 def panel_tree(widget) -> dict:

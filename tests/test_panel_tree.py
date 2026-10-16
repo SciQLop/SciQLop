@@ -396,8 +396,20 @@ def test_the_placeholder_saves_its_tree_back(main_window, tmp_path, monkeypatch)
         other.parent.mkdir()
         PanelTemplate.from_panel(placeholder).to_file(str(other))
         assert json.loads(other.read_text())["panel"] == _ABSENT_ROOT
+        assert json.loads(other.read_text())["description"] == "kept"
     finally:
         main_window.remove_panel(placeholder)
+
+
+def test_a_time_panel_saved_again_keeps_its_template_description(main_window, tmp_path):
+    template = _template()
+    template.description = "kept"
+    panel = template.create_panel(main_window)
+    try:
+        impl = panel._impl if hasattr(panel, "_impl") else panel
+        assert PanelTemplate.from_panel(impl).description == "kept"
+    finally:
+        main_window.remove_panel(panel)
 
 
 def test_apply_refuses_a_foreign_template(qtbot, tmp_path, monkeypatch):

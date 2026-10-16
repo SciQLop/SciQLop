@@ -163,10 +163,29 @@ def test_an_install_needing_a_restart_keeps_the_button_disabled(qtbot, main_wind
 
 
 def test_contribution_without_install_also_swaps(qtbot, main_window, placeholder):
+    from SciQLop.components.plotting.panel_template import PanelTemplate
+    from SciQLop.core.panel_kinds import DESCRIPTION_PROPERTY
+    placeholder.setProperty(DESCRIPTION_PROPERTY, "kept")
     _contribute_kind()
     qtbot.waitUntil(lambda: placeholder not in main_window.panels())
     [real] = [p for p in main_window.panels() if p.objectName() == "io_viewer"]
     assert real.config == _ROOT["config"]
+    assert PanelTemplate.from_panel(real).description == "kept"
+
+
+def test_the_swap_keeps_the_placeholder_tab_position(qtbot, main_window, placeholder):
+    from SciQLop.core.plot_kinds import TIME_PANEL
+    area = _area_of(main_window, placeholder)
+    position = area.index(main_window._dock_of(placeholder))
+    after = main_window.open_panel(TIME_PANEL, name="io_after", area=area)
+    try:
+        _contribute_kind()
+        qtbot.waitUntil(lambda: placeholder not in main_window.panels())
+        [real] = [p for p in main_window.panels() if p.objectName() == "io_viewer"]
+        assert area.index(main_window._dock_of(real)) == position
+        assert area.index(main_window._dock_of(after)) == position + 1
+    finally:
+        main_window.remove_panel(after)
 
 
 def test_the_swap_hands_its_name_over_and_frees_the_temporary_one(qtbot, main_window, placeholder):

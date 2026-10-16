@@ -870,7 +870,7 @@ class CatalogBrowser(QWidget):
         focused_dock = dock_manager.focusedDockWidget()
         if focused_dock is None:
             return None
-        from SciQLop.core.ui.mainwindow import _extract_panel
+        from SciQLop.core.ui.panel_host import _extract_panel
         focused_panel = _extract_panel(focused_dock)
         return focused_panel if focused_panel in self._panels else None
 

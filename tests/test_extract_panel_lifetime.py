@@ -11,7 +11,7 @@ from .fixtures import *
 
 
 def test_extract_panel_tolerates_destroyed_dock_widget(qapp):
-    from SciQLop.core.ui.mainwindow import _extract_panel
+    from SciQLop.core.ui.panel_host import _extract_panel
 
     dock = QtAds.CDockWidget("standalone-test-dock")
     shiboken6.delete(dock)
@@ -21,5 +21,5 @@ def test_extract_panel_tolerates_destroyed_dock_widget(qapp):
 
 
 def test_extract_panel_none_dock_widget_is_a_noop(qapp):
-    from SciQLop.core.ui.mainwindow import _extract_panel
+    from SciQLop.core.ui.panel_host import _extract_panel
     assert _extract_panel(None) is None

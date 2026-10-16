@@ -9,6 +9,8 @@ from PySide6.QtWidgets import QWidget
 from SciQLop.core.extensions import ExtensionPoint, declare
 
 KIND_PROPERTY = "sciqlop_panel_kind"
+# The description of the template a panel was opened from, so saving the panel again keeps it.
+DESCRIPTION_PROPERTY = "sciqlop_panel_description"
 
 
 @dataclass(frozen=True)
