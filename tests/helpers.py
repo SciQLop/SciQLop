@@ -46,3 +46,12 @@ def drag_and_drop(qapp, qtbot, source_widget, item, target_widget):
     mouseMove(qapp, source_widget, item_center, Qt.MouseButton.LeftButton)
     for i in range(10):
         qtbot.wait(1)
+
+
+def restore_extension_points(saved: dict) -> None:
+    """Puts back the registry saved before a test, but keeps the core points declared meanwhile: a core module
+    declares its point once, at its first import, so dropping that point breaks every later test."""
+    from SciQLop.core import extensions
+    core = {ep_id: ep for ep_id, ep in extensions._EXTENSION_POINTS.items() if ep_id.startswith("sciqlop.")}
+    extensions._EXTENSION_POINTS.clear()
+    extensions._EXTENSION_POINTS.update({**core, **saved})

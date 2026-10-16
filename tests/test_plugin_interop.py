@@ -8,6 +8,7 @@ import textwrap
 import pytest
 
 from .fixtures import *  # noqa: F401,F403
+from .helpers import restore_extension_points
 from SciQLop.components.plugins.backend.loader import context, loader
 from SciQLop.core import extensions
 
@@ -17,16 +18,16 @@ _OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell", "vp_maker",
 
 @pytest.fixture
 def fresh(qapp):
-    saved = (dict(context.STATES), set(loader._attempted), dict(vars(loader.loaded_plugins)),
-             dict(extensions._EXTENSION_POINTS))
+    saved = (dict(context.STATES), set(loader._attempted), dict(vars(loader.loaded_plugins)))
+    saved_points = dict(extensions._EXTENSION_POINTS)
     yield
     for ep in extensions.all_extension_points():
         for owner in _OWNERS:
             ep.remove_owner(owner)
-    for live, old in zip((context.STATES, loader._attempted, vars(loader.loaded_plugins),
-                          extensions._EXTENSION_POINTS), saved):
+    for live, old in zip((context.STATES, loader._attempted, vars(loader.loaded_plugins)), saved):
         live.clear()
         live.update(old)
+    restore_extension_points(saved_points)
 
 
 def _plugin(folder, name, code, **desc):

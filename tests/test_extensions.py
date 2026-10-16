@@ -8,6 +8,8 @@ from SciQLop.core import extensions
 from SciQLop.core.extensions import (DuplicateContribution, ExtensionPoint, NotRegistered, WrongThread,
                                      current_owner, owned_by)
 
+from .helpers import restore_extension_points
+
 
 @dataclass(frozen=True)
 class Kind:
@@ -24,8 +26,7 @@ def ep():
 def clean_registry():
     saved = dict(extensions._EXTENSION_POINTS)
     yield
-    extensions._EXTENSION_POINTS.clear()
-    extensions._EXTENSION_POINTS.update(saved)
+    restore_extension_points(saved)
 
 
 def test_contribute_then_get_and_list(ep):
