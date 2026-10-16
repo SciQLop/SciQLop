@@ -10,5 +10,10 @@ def _create_time_panel(name: str, config: dict):
     return panel
 
 
-PANEL_KINDS.contribute(PanelKind(TIME_PANEL, "Panel", create=_create_time_panel, to_config=None),
+def _time_panel_config(panel) -> dict:
+    from SciQLop.components.plotting.panel_template import panel_tree
+    return panel_tree(panel)["config"]
+
+
+PANEL_KINDS.contribute(PanelKind(TIME_PANEL, "Panel", create=_create_time_panel, to_config=_time_panel_config),
                        owner="sciqlop")

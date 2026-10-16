@@ -62,7 +62,7 @@ def activate(ctx):
     ctx.contribute("sciqlop.panel_kinds", PanelKind(
         id="radio.waterfall", label="Waterfall",
         create=lambda name, config: Waterfall(config.get("band", "HF")),  # (name, config) -> QWidget
-        to_config=None,            # None: this kind is not saved with the workspace
+        to_config=lambda w: {"band": w.band},  # widget -> config dict; None: this kind cannot be saved
         icon=None,                 # registered icon name or image path
         in_new_menu=True))
 
@@ -95,6 +95,27 @@ def activate(ctx):
 - From notebooks and scripts: `from SciQLop.user_api.panels import open_panel, list_panel_kinds`.
   `open_panel(kind, name=None, **config)` returns a `PlotPanel` for the time
   panel and the widget for any other kind.
+
+Saving a panel of your kind:
+
+- `panel_tree(widget)` (`SciQLop.components.plotting.panel_template`) gives
+  `{"kind": id, "config": to_config(widget), "slots": {}}`. A time panel gives
+  its usual template tree. A kind without `to_config` raises `ValueError`
+  naming the kind.
+- `PanelTemplate.from_panel(widget).to_file(path)` saves a template of your
+  kind; its name is the widget's title. Files in the templates folder show up in
+  the template list like time templates. `create_panel(main_window)` reopens it
+  with `open_panel(kind, name=template.name, **config)`, so `config` must be the
+  keyword arguments `create` reads back. `template.panel_kind` is the root kind.
+- `apply(panel)` stays time-panel only: on another kind's template it raises
+  `TypeError`.
+- The "Save as template" button is on time panels only. Add your own through a
+  panel extension that calls `PanelTemplate.from_panel(panel).to_file(...)`.
+- Missing kind (plugin not installed or disabled): the template opens a
+  placeholder panel ("This panel needs plugin 'radio' (panel kind
+  'radio.waterfall')."), kind id `sciqlop.placeholder_panel`. It keeps the tree
+  as read: `panel_tree(placeholder)` and saving it again write the same tree
+  back. Panel extensions with `kinds=()` attach to it too.
 
 A panel extension is code run on every open and future panel of some kinds.
 Contribute a `PanelExtension` to `sciqlop.panel_extensions`. `attach(panel)` gets

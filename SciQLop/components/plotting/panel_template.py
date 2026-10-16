@@ -14,7 +14,7 @@ from pydantic import BaseModel, PrivateAttr, field_validator
 
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.graph_context import GraphContext, context_of, graph_name
-from SciQLop.core.plot_kinds import PLOT_KINDS, TIME_PANEL, TIMESERIES, plot_kind_of, plugin_of
+from SciQLop.core.plot_kinds import PLOT_KINDS, TIME_PANEL, TIMESERIES, plot_kind_of
 from SciQLop.core.source_kinds import canonical_id, source_kind
 
 log = getLogger(__name__)
@@ -199,8 +199,16 @@ class PanelTemplate(BaseModel):
     plots: list[PlotModel]
     intervals: list[IntervalModel] = []
     max_zoom_seconds: float | None = None
+    panel_kind: str = TIME_PANEL
     _source_path: str | None = PrivateAttr(default=None)
     _saved_version: int = PrivateAttr(default=TEMPLATE_VERSION)
+    _foreign_root: Optional[dict] = PrivateAttr(default=None)  # kept raw: only its kind can read it
+
+    @staticmethod
+    def _foreign(name: str, description: str, root: dict) -> PanelTemplate:
+        t = PanelTemplate(name=name, description=description, plots=[], panel_kind=root["kind"])
+        t._foreign_root = root
+        return t
 
     @staticmethod
     def from_file(path: str) -> PanelTemplate:
@@ -224,6 +232,9 @@ class PanelTemplate(BaseModel):
             raise ValueError(f"Unsupported file extension: {p.suffix}")
 
     def to_tree(self) -> dict:
+        if self._foreign_root is not None:
+            return {"version": TEMPLATE_VERSION, "name": self.name, "description": self.description,
+                    "panel": self._foreign_root}
         root = PanelNode(kind=TIME_PANEL,
                          config={"time_range": self.time_range.model_dump() if self.time_range else None},
                          slots={"plots": [_plot_node(p) for p in self.plots]})
@@ -235,8 +246,7 @@ class PanelTemplate(BaseModel):
     def from_tree(data: dict) -> PanelTemplate:
         root = PanelNode.model_validate(data["panel"])
         if root.kind != TIME_PANEL:
-            raise ValueError(f"panel kind {root.kind!r} needs plugin {plugin_of(root.kind)!r} (panel kinds other "
-                             f"than {TIME_PANEL} are not supported yet)")
+            return PanelTemplate._foreign(data["name"], data.get("description", ""), data["panel"])
         time_range = root.config.get("time_range")
         return PanelTemplate(name=data["name"], description=data.get("description", ""),
                              max_zoom_seconds=data.get("max_zoom_seconds"),
@@ -251,6 +261,8 @@ class PanelTemplate(BaseModel):
 
     @staticmethod
     def from_panel(panel) -> PanelTemplate:
+        if _is_foreign_panel(panel):
+            return PanelTemplate._foreign(panel.windowTitle() or panel.objectName(), "", panel_tree(panel))
         from SciQLop.components.plotting.panel_introspection import ordered_panel_plots
         models = (_saved_plot(plot) for plot in ordered_panel_plots(panel))
         plots = [m for m in models if m is not None]
@@ -262,13 +274,24 @@ class PanelTemplate(BaseModel):
         )
 
     def create_panel(self, main_window, source_path: str | None = None):
+        if self._foreign_root is not None:
+            return self._open_foreign(main_window)
         panel = main_window.new_plot_panel()
         impl = panel._impl if hasattr(panel, '_impl') else panel
         self.apply(impl)
         impl._template_source_path = source_path or self._source_path
         return panel
 
+    def _open_foreign(self, main_window):
+        from SciQLop.components.plotting.ui.placeholder_panel import open_placeholder
+        from SciQLop.core.panel_kinds import PANEL_KINDS
+        if self.panel_kind in PANEL_KINDS:
+            return main_window.open_panel(self.panel_kind, name=self.name, **self._foreign_root.get("config", {}))
+        return open_placeholder(main_window, self._foreign_root, name=self.name)
+
     def apply(self, panel) -> None:
+        if self._foreign_root is not None:
+            raise TypeError(f"template {self.name!r} is a {self.panel_kind} template, not a time panel one")
         # Limit and range go first: a graph fetches on its first range change,
         # so plotting at the panel's previous range fetched a wrong window (GH #143).
         panel.clear()
@@ -306,6 +329,33 @@ class PanelTemplate(BaseModel):
         tr = self._time_range()
         span = tr.stop() - tr.start()
         return span if current is not None and span > current else None
+
+
+def _is_foreign_panel(panel) -> bool:
+    """Untagged time panels (made directly, as tests and older callers do) still save as time templates."""
+    from PySide6.QtWidgets import QWidget
+    from SciQLop.core.panel_kinds import panel_kind_of
+    return isinstance(panel, QWidget) and panel_kind_of(panel) not in (None, TIME_PANEL)
+
+
+def panel_tree(widget) -> dict:
+    """The {kind, config, slots} tree of any panel (spec §5); ValueError when its kind cannot be saved."""
+    from SciQLop.components.plotting.ui.placeholder_panel import PlaceholderPanel
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    if isinstance(widget, TimeSyncPanel):
+        return PanelTemplate.from_panel(widget).to_tree()["panel"]
+    if isinstance(widget, PlaceholderPanel):
+        return widget.root
+    return {"kind": (kind := _savable_kind(widget)).id, "config": kind.to_config(widget), "slots": {}}
+
+
+def _savable_kind(widget):
+    from SciQLop.core.panel_kinds import PANEL_KINDS, panel_kind_of
+    kind_id = panel_kind_of(widget)
+    kind = PANEL_KINDS.get(kind_id) if kind_id in PANEL_KINDS else None
+    if kind is None or kind.to_config is None:
+        raise ValueError(f"panel kind {kind_id!r} cannot be saved")
+    return kind
 
 
 def _timeseries_model(plot) -> Optional[PlotModel]:

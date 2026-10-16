@@ -57,11 +57,11 @@ def test_a_v1_file_still_gets_its_axes(tmp_path):
     assert PanelTemplate.from_file(str(path)).plots[0].products[0].y_axis == "y2"
 
 
-def test_an_unknown_panel_kind_is_refused_with_its_plugin(tmp_path):
+def test_an_unknown_panel_kind_loads_as_a_template_of_that_kind(tmp_path):
     path = tmp_path / "x.json"
     path.write_text(json.dumps({"version": 3, "name": "x", "panel": {"kind": "vdf.study_panel"}}))
-    with pytest.raises(ValueError, match="vdf"):
-        PanelTemplate.from_file(str(path))
+    t = PanelTemplate.from_file(str(path))
+    assert t.panel_kind == "vdf.study_panel" and t.plots == []
 
 
 def test_unknown_plot_kind_restores_as_a_placeholder_that_keeps_its_node(qtbot):
@@ -215,11 +215,137 @@ def test_every_template_field_round_trips(tmp_path, suffix):
     assert PanelTemplate.from_file(str(path)).model_dump() == template.model_dump()
 
 
-def test_listing_warns_about_a_file_whose_root_panel_kind_is_unknown(tmp_path, monkeypatch):
+_ABSENT_ROOT = {"kind": "absent.viewer", "id": "v1",
+                "config": {"source": {"mission": "mms", "probes": [1, 2]}, "zoom": 2.5},
+                "slots": {"views": [{"kind": "absent.view", "config": {"axis": "x"}}]}}
+
+
+def _absent_template_file(tmp_path, monkeypatch):
     from SciQLop.components.plotting import panel_template
-    (tmp_path / "x.json").write_text(json.dumps({"version": 3, "name": "x", "panel": {"kind": "vdf.study_panel"}}))
-    warnings = []
     monkeypatch.setattr(panel_template, "templates_dir", lambda: tmp_path)
-    monkeypatch.setattr(panel_template.log, "warning", lambda msg, *a, **k: warnings.append(msg))
-    assert panel_template.list_templates() == []
-    assert "x.json" in warnings[0] and "vdf" in warnings[0]
+    path = tmp_path / "viewer.json"
+    path.write_text(json.dumps({"version": 3, "name": "viewer", "description": "kept", "panel": _ABSENT_ROOT}))
+    return path
+
+
+def test_listing_a_template_of_another_kind_keeps_its_file_as_is(tmp_path, monkeypatch):
+    from SciQLop.components.plotting import panel_template
+    path = _absent_template_file(tmp_path, monkeypatch)
+    before = path.read_text()
+    assert [t.panel_kind for t in panel_template.list_templates()] == ["absent.viewer"]
+    assert path.read_text() == before
+
+
+def test_renaming_a_template_of_another_kind_keeps_its_tree(tmp_path, monkeypatch):
+    from SciQLop.components.plotting import panel_template
+    _absent_template_file(tmp_path, monkeypatch)
+    assert panel_template.rename_template("viewer", "renamed")
+    data = json.loads((tmp_path / "renamed.json").read_text())
+    assert data["name"] == "renamed" and data["panel"] == _ABSENT_ROOT
+
+
+_PARENT_COMMIT_TIME_TREE = {
+    'version': 3, 'name': 'tree', 'description': 'd', 'max_zoom_seconds': 3600.0,
+    'intervals': [{'start': '2020-01-01T01:00:00+00:00', 'stop': '2020-01-01T02:00:00+00:00', 'color': '#ff0000',
+                   'label': 'burst'}],
+    'panel': {'kind': 'sciqlop.time_panel', 'id': '',
+              'config': {'time_range': {'start': '2020-01-01T00:00:00+00:00', 'stop': '2020-01-02T00:00:00+00:00'}},
+              'slots': {'plots': [
+                  {'kind': 'sciqlop.timeseries', 'id': '',
+                   'config': {'products': [{'path': 'speasy//amda//imf', 'label': '', 'kind': 'sciqlop.speasy',
+                                            'speasy_id': None, 'graph_type': 'Line', 'knobs': {}, 'y_axis': 'y'}],
+                              'y_axis': {'log': True, 'range': [1.0, 10.0]}, 'y2_axis': None,
+                              'z_axis': {'log': False, 'range': None}},
+                   'slots': {}},
+                  {'kind': 'pt_demo.slice_plot', 'id': '', 'config': {'plane': 'XY'}, 'slots': {}}]}}}
+
+
+@pytest.mark.parametrize("suffix", [".json", ".yaml"])
+def test_time_templates_are_unchanged(tmp_path, suffix):
+    import yaml
+    path = tmp_path / f"time{suffix}"
+    path.write_text(json.dumps(_PARENT_COMMIT_TIME_TREE) if suffix == ".json" else yaml.dump(_PARENT_COMMIT_TIME_TREE))
+    t = PanelTemplate.from_file(str(path))
+    assert t.panel_kind == TIME_PANEL and t.to_tree() == _PARENT_COMMIT_TIME_TREE
+    t.to_file(str(path))
+    assert PanelTemplate.from_file(str(path)).to_tree() == _PARENT_COMMIT_TIME_TREE
+
+
+@pytest.fixture
+def note_kind():
+    from PySide6.QtWidgets import QLabel
+    from SciQLop.core.panel_kinds import PANEL_KINDS, PanelKind
+    with owned_by("pt_demo"):
+        PANEL_KINDS.contribute(PanelKind("pt_demo.note", "Note", create=lambda n, c: QLabel(c.get("text", "")),
+                                         to_config=lambda w: {"text": w.text()}))
+        PANEL_KINDS.contribute(PanelKind("pt_demo.mute", "Mute", create=lambda n, c: QLabel("")))
+    yield
+    PANEL_KINDS.remove_owner("pt_demo")
+
+
+def _close_all(main_window, widgets):
+    for w in widgets:
+        main_window.remove_panel(w)
+
+
+def test_a_plugin_kind_round_trips_through_a_template(main_window, tmp_path, note_kind):
+    from PySide6.QtWidgets import QLabel
+    w = main_window.open_panel("pt_demo.note", name="pt_note", text="hello")
+    opened = [w]
+    try:
+        t = PanelTemplate.from_panel(w)
+        t.to_file(str(tmp_path / "n.yaml"))
+        loaded = PanelTemplate.from_file(str(tmp_path / "n.yaml"))
+        assert loaded.panel_kind == "pt_demo.note" and loaded.name == "pt_note"
+        restored = loaded.create_panel(main_window)
+        opened.append(restored)
+        assert isinstance(restored, QLabel) and restored.text() == "hello"
+        assert restored in main_window.panels()
+    finally:
+        _close_all(main_window, opened)
+
+
+def test_a_kind_without_to_config_cannot_be_saved(main_window, note_kind):
+    from SciQLop.components.plotting.panel_template import panel_tree
+    w = main_window.open_panel("pt_demo.mute", name="pt_mute")
+    try:
+        with pytest.raises(ValueError, match="pt_demo.mute"):
+            panel_tree(w)
+    finally:
+        main_window.remove_panel(w)
+
+
+def test_missing_kind_opens_a_placeholder(main_window, tmp_path, monkeypatch):
+    from SciQLop.components.plotting import panel_template
+    from SciQLop.components.plotting.ui.placeholder_panel import PlaceholderPanel
+    _absent_template_file(tmp_path, monkeypatch)
+    [t] = panel_template.list_templates()
+    placeholder = t.create_panel(main_window)
+    try:
+        assert isinstance(placeholder, PlaceholderPanel)
+        assert placeholder.missing_kind == "absent.viewer"
+        assert "'absent'" in placeholder.message() and "absent.viewer" in placeholder.message()
+        assert placeholder.windowTitle() == "viewer"
+        assert placeholder in main_window.panels()
+    finally:
+        main_window.remove_panel(placeholder)
+
+
+def test_the_placeholder_saves_its_tree_back(main_window, tmp_path, monkeypatch):
+    from SciQLop.components.plotting.panel_template import panel_tree
+    path = _absent_template_file(tmp_path, monkeypatch)
+    placeholder = PanelTemplate.from_file(str(path)).create_panel(main_window)
+    try:
+        assert panel_tree(placeholder) == _ABSENT_ROOT
+        other = tmp_path / "out" / "other.json"
+        other.parent.mkdir()
+        PanelTemplate.from_panel(placeholder).to_file(str(other))
+        assert json.loads(other.read_text())["panel"] == _ABSENT_ROOT
+    finally:
+        main_window.remove_panel(placeholder)
+
+
+def test_apply_refuses_a_foreign_template(qtbot, tmp_path, monkeypatch):
+    path = _absent_template_file(tmp_path, monkeypatch)
+    with pytest.raises(TypeError, match="absent.viewer"):
+        PanelTemplate.from_file(str(path)).apply(_panel(qtbot, "pt_apply_panel"))
