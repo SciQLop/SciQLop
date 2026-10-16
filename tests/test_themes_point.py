@@ -78,3 +78,32 @@ def test_withdrawing_the_active_theme_falls_back_and_keeps_the_setting(qapp, res
     THEMES.remove_owner("th_demo")
     assert qapp.current_theme() == DEFAULT_THEME
     assert SciQLopStyle().color_palette == saved
+
+
+def test_the_settings_combo_lists_themes_contributed_after_it_was_built(qapp, restore_theme):
+    from SciQLop.components.settings.ui.settings_delegates import get_delegate_for_field
+    from SciQLop.components.theming.settings import SciQLopStyle
+    combo = get_delegate_for_field("color_palette", SciQLopStyle.model_fields["color_palette"])
+    try:
+        values = lambda: [combo._combo.itemData(i) for i in range(combo._combo.count())]
+        labels = lambda: [combo._combo.itemText(i) for i in range(combo._combo.count())]
+        assert "space" in values()
+        _contribute()
+        assert "th_demo.midnight" in values() and "Midnight" in labels()
+        combo.set_value("th_demo.midnight")
+        qapp.apply_theme("th_demo.midnight")
+        THEMES.remove_owner("th_demo")
+        assert "th_demo.midnight" not in values()
+        assert qapp.current_theme() == DEFAULT_THEME
+    finally:
+        combo.deleteLater()
+
+
+def test_user_api_lists_and_applies_plugin_themes(qapp, restore_theme):
+    from SciQLop.user_api import themes
+    _contribute()
+    assert "th_demo.midnight" in themes.list_themes()
+    themes.apply_theme("th_demo.midnight")
+    assert themes.current_theme() == "th_demo.midnight"
+    with pytest.raises(ValueError, match="unknown theme"):
+        themes.apply_theme("th_demo.never_installed")

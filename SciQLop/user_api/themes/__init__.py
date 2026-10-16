@@ -1,4 +1,4 @@
-PaletteName = str
+PaletteName = str  # a theme id: the core ones (see list_themes()) or one a plugin contributed
 
 
 def apply_theme(name: PaletteName) -> None:

@@ -1,6 +1,7 @@
 from typing import Any, List, Type, Mapping, Callable, get_origin, get_args
 import typing
 from enum import Enum
+import shiboken6
 from pydantic import ByteSize
 from pydantic.fields import FieldInfo
 from PySide6.QtCore import Signal
@@ -278,6 +279,31 @@ class ComboDelegate(SettingDelegate):
                 self._combo.addItem(str(label), value)
         finally:
             self._combo.blockSignals(False)
+
+
+class PointChoicesDelegate(ComboDelegate):
+    """A combo listing an extension point's keys, kept current as plugins contribute and withdraw: settings
+    pages are built at startup, before plugins activate."""
+
+    def __init__(self, point_id: str, parent=None):
+        from SciQLop.core import extensions
+        super().__init__(parent=parent)
+        self._point = extensions.get(point_id)
+        self._repopulate()
+        self._point.signals.added.connect(self._on_point_changed)
+        self._point.signals.removed.connect(self._on_point_changed)
+
+    def _repopulate(self) -> None:
+        self.populate((getattr(item, "label", key), key)
+                      for key, item in ((k, self._point.find(k)) for k in self._point.keys()))
+        fit_combo_to_content(self._combo)
+
+    def _on_point_changed(self, _item) -> None:
+        if not shiboken6.isValid(self):
+            return
+        current = self.get_value()
+        self._repopulate()
+        self.set_value(current)
 
 
 @register_widget("path_dir")
@@ -671,6 +697,9 @@ def get_delegate_for_field(field_name: str, field_info: FieldInfo) -> SettingDel
     # 1. Explicit widget hint — highest priority
     widget = extra.get("widget", "")
     if widget:
+        choices_from = extra.get("choices_from")
+        if choices_from:
+            return PointChoicesDelegate(choices_from)
         choices = extra.get("choices")
         factory = _widget_factories.get(widget)
         if factory is not None:

@@ -8,17 +8,5 @@ class SciQLopStyle(ConfigEntry):
     color_palette: str = Field(
         default="space",
         description="Color theme of the interface; applies instantly.",
-        json_schema_extra={
-            "widget": "combo",
-            "choices": [
-                "light",
-                "dark",
-                "neutral",
-                "space",
-                "github_light",
-                "nord_light",
-                "catppuccin_latte",
-                "high_contrast_light",
-            ],
-        },
+        json_schema_extra={"widget": "combo", "choices_from": "sciqlop.themes"},
     )
