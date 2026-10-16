@@ -3375,7 +3375,7 @@ requires-dist = [
     { name = "qtconsole", marker = "extra == 'all'" },
     { name = "scipy", marker = "extra == 'all'" },
     { name = "sciqlop", extras = ["all"], marker = "extra == 'dev'" },
-    { name = "sciqlopplots", marker = "extra == 'all'", specifier = "==0.51.3" },
+    { name = "sciqlopplots", marker = "extra == 'all'", specifier = "==0.52.0" },
     { name = "seaborn", marker = "extra == 'all'" },
     { name = "shiboken6", marker = "extra == 'all'", specifier = "==6.11.2" },
     { name = "speasy", extras = ["blosc"], marker = "extra == 'all'", specifier = ">=1.8.5" },
@@ -3392,21 +3392,21 @@ dev = [{ name = "sciqlop", extras = ["dev"] }]
 
 [[package]]
 name = "sciqlopplots"
-version = "0.51.3"
+version = "0.52.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "pyside6" },
     { name = "shiboken6" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/2d/7a9a368842cd7e07227defec8d5e3ccebae23d47a21266869cf188618486/sciqlopplots-0.51.3.tar.gz", hash = "sha256:f3ac532e7e2c73f7926302a68637afd4ea6e26948fcdec1046d954259ef2f065", size = 3024149, upload-time = "2026-10-12T20:33:34.889Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/c1/6d0287cdf471bfeae249421646c0255df2617653f03df9c1d3e96c76c19e/sciqlopplots-0.52.0.tar.gz", hash = "sha256:7eca9248cdcff2ead67042013241b29daf466cc7e034824b1bdedb7218f5ff14", size = 4814870, upload-time = "2026-10-16T18:16:37.02Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/59/f9/20bfef3837a4e3c46d558485cfc816054236b0039f7a7ea6b8f56e2b31c0/sciqlopplots-0.51.3-cp311-abi3-macosx_13_0_arm64.whl", hash = "sha256:75e1991312918d360f3d70b564faba65fe5ee37213aad9f9001c8ede27cf11ee", size = 5910174, upload-time = "2026-10-12T20:33:24.452Z" },
-    { url = "https://files.pythonhosted.org/packages/57/b3/a40ee9889d034ff165cc1ae04fc9c7f4499d07e6edc86a0182608fa8e5b0/sciqlopplots-0.51.3-cp311-abi3-macosx_13_0_x86_64.whl", hash = "sha256:259fe1dc7a93eb4184f5170268691379d597542483280a4438c93228a723c793", size = 6457085, upload-time = "2026-10-12T20:33:26.438Z" },
-    { url = "https://files.pythonhosted.org/packages/31/5f/d76087ca6406f88aa15fb77297657831c88c994c63e0d4c4968d9f5809f7/sciqlopplots-0.51.3-cp311-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:250b26966eb35424a79abfd9a329a7efd6c1e14589c2b3dc87ccf8b68449bd6c", size = 7610888, upload-time = "2026-10-12T20:33:28.613Z" },
-    { url = "https://files.pythonhosted.org/packages/7b/a5/25f20899bd4d54dc847a24bba97a5c17b0b37291783405696e2707c1fc42/sciqlopplots-0.51.3-cp311-abi3-manylinux_2_39_aarch64.whl", hash = "sha256:c5b2b8533057efd3c8fd019df956f5293b5744312ca3cf5fa88083c4e89bdf57", size = 7040232, upload-time = "2026-10-12T20:33:30.189Z" },
-    { url = "https://files.pythonhosted.org/packages/53/f1/fefe23e54aed71391ee3114be738a588215d89f2de7786822e1034425140/sciqlopplots-0.51.3-cp311-abi3-win_amd64.whl", hash = "sha256:58bbc5434d60c92478e92a4658bcc2ab530e4fc4a659023b4a8354dbd48debe0", size = 4643218, upload-time = "2026-10-12T20:33:31.788Z" },
-    { url = "https://files.pythonhosted.org/packages/66/dc/fd27767b8a31c09b71eda9c3249af157faec5014efee96aa2f0dddb28f88/sciqlopplots-0.51.3-cp311-abi3-win_arm64.whl", hash = "sha256:6cbddef13aa9a9979bc8c73ca38a0234dfe1f23d1d97829f2be8033664bc2798", size = 4843889, upload-time = "2026-10-12T20:33:33.508Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/52/a23bfb7ff2bf3ec3ef41d9371d9c84b98f9ad17223d898bf79dddb41957c/sciqlopplots-0.52.0-cp311-abi3-macosx_13_0_arm64.whl", hash = "sha256:096f76ec8b661d2447e74fbbd76dc5b3d5961f5e963fea0fd455dc6f4f585ffe", size = 5419339, upload-time = "2026-10-16T18:16:26.294Z" },
+    { url = "https://files.pythonhosted.org/packages/be/7f/be8caf01a2f55aa1a897f065c5c4220f6b9a42d936bb5c1ad251b88acd0c/sciqlopplots-0.52.0-cp311-abi3-macosx_13_0_x86_64.whl", hash = "sha256:132fe634696b01c8c623e42ce10799243dc21ec4a6f8125d28acbeb11aafed7d", size = 5816841, upload-time = "2026-10-16T18:16:28.557Z" },
+    { url = "https://files.pythonhosted.org/packages/49/34/141d10478b42dcea2b689e22f8280003af9bee22f8937c3acb61ff1dce0b/sciqlopplots-0.52.0-cp311-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:ac015cf8c195a5caa3f9a347da8703e0cddf53cabaa095e9af90e8ee5f1dbee2", size = 7216380, upload-time = "2026-10-16T18:16:30.493Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/67/8d91e70f795d56299ae3e859ffb790a2ad9e80768eedf1abc4c60edf0164/sciqlopplots-0.52.0-cp311-abi3-manylinux_2_39_aarch64.whl", hash = "sha256:6af9990a708bfc63bdf4c270d2dd358097f010607c1799d0b6b18d9f5a017667", size = 6747163, upload-time = "2026-10-16T18:16:32.048Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/44/aed4321445cffcd0192e61b7c5c103006a1791ca05320755f540fdd73dcc/sciqlopplots-0.52.0-cp311-abi3-win_amd64.whl", hash = "sha256:a2ef40ef4aab3c46d681897429cfef871b837cb0a9e49e8fb538fc3bf5ba2138", size = 4499686, upload-time = "2026-10-16T18:16:33.681Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/19/afe1b54d175e71d3692aefa49f4017e70a10675330bc428d303a30ee97b6/sciqlopplots-0.52.0-cp311-abi3-win_arm64.whl", hash = "sha256:8ec8f7c776f9af6074a1aabc30de571f8da10f1e14f52e83f7961dd870f1b588", size = 4759110, upload-time = "2026-10-16T18:16:35.121Z" },
 ]
 
 [[package]]

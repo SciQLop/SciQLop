@@ -44,6 +44,12 @@
 
 ### Dependencies
 
+- SciQLopPlots 0.52.0:
+  - A curve plotted without labels can be styled right after `plot()` (line style, colour, width, markers). Before, the style was silently lost until the data came back.
+  - A projection plot in a panel that syncs its time axis no longer crashes SciQLop.
+  - Scene plots keep their fixed ±extent when the first data arrives, and the rescale shortcut works on them again.
+  - A PDF export fills the panel background, like PNG. Time labels no longer run together on narrow plots.
+  - While dragging a product over a panel, the handle between two plots no longer accepts a drop that would be lost.
 - SciQLopPlots 0.51.3:
   - Showing a new message on a plot overlay that is already on screen now redraws it with the new text and level. It used to keep the old one until cleared.
   - Lines of large, gap-free data (for example MMS FGM survey) no longer break into dashes at some zoom levels.
