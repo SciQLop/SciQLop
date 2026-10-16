@@ -963,7 +963,8 @@ class AgentChatDock(QWidget):
                 AgentSessionMeta().set_sciqlop_version(
                     session.backend.display_name, session_id, _SCIQLop_VERSION)
             self._set_status("Ready.")
-            self._spawn(self._usage_refresher.refresh())
+            # An ACP agent announces its slash commands once the turn has opened its session.
+            self._spawn(self._refresh_completions_then_usage())
         except asyncio.CancelledError:
             session.messages.append(
                 ChatMessage(

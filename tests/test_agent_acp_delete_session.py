@@ -100,3 +100,28 @@ def test_an_sdk_with_delete_session_is_used_directly():
 
     asyncio.run(sessions.delete_session_on(_Conn(), "s7"))
     assert deleted == ["s7"]
+
+
+
+def test_the_probe_keeps_the_commands_the_agent_announces(tmp_path):
+    command, _ = _agent(tmp_path, deletes=False)
+    command.append("--commands")
+    sessions.acp_config_options(command, cwd=tmp_path)
+    assert sessions.acp_probed_commands(command) == ["/review", "/sciqlop-catalogs"]
+
+
+def test_an_agent_that_announces_nothing_has_no_probed_commands(tmp_path):
+    command, _ = _agent(tmp_path, deletes=False)
+    sessions.acp_config_options(command, cwd=tmp_path)
+    assert sessions.acp_probed_commands(command) == []
+
+
+def test_before_its_session_announces_commands_the_backend_offers_the_probed_ones(tmp_path):
+    import asyncio
+    command, _ = _agent(tmp_path, deletes=False)
+    command.append("--commands")
+    sessions.acp_config_options(command, cwd=tmp_path)
+    backend = SimpleNamespace(acp_command=lambda: command, _slash_commands=[])
+    assert asyncio.run(AcpAgentBackend.list_slash_commands(backend)) == ["/review", "/sciqlop-catalogs"]
+    backend._slash_commands = ["/init"]
+    assert asyncio.run(AcpAgentBackend.list_slash_commands(backend)) == ["/init"]

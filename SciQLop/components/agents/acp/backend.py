@@ -172,9 +172,7 @@ class AcpAgentBackend:
 
     def _on_update(self, update) -> None:
         if isinstance(update, AvailableCommandsUpdate):
-            self._slash_commands = [
-                "/" + c.name.lstrip("/") for c in update.available_commands
-            ]
+            self._slash_commands = _acp_sessions.slash_names(update)
             return
         if isinstance(update, UsageUpdate):
             self._usage = update
@@ -308,7 +306,9 @@ class AcpAgentBackend:
         self._write_mode = mode
 
     async def list_slash_commands(self) -> List[str]:
-        return list(self._slash_commands)
+        """The live session's commands, else those the model probe's session announced: an ACP agent announces
+        them only once a session exists, which is the user's first message."""
+        return list(self._slash_commands or _acp_sessions.acp_probed_commands(self.acp_command()))
 
     def list_sessions(self) -> List[SessionEntry]:
         return _acp_sessions.acp_list_sessions(self.acp_command())

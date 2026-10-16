@@ -35,6 +35,7 @@ __all__ = [
     "acp_config_options",
     "acp_delete_session",
     "acp_list_sessions",
+    "acp_probed_commands",
     "acp_load_session_messages",
     "async_acp_load_session_messages",
     "current_workspace_dir",
@@ -85,6 +86,32 @@ async def delete_session_on(conn, session_id: str) -> None:
                                   DeleteSessionRequest(session_id=session_id), DeleteSessionResponse)
 
 
+# The slash commands each agent command announced on the model probe's session: an ACP agent announces them only
+# once a session exists, and the dock wants them before the user's first message opens one.
+_PROBED_COMMANDS: dict[tuple, List[str]] = {}
+_COMMANDS_SEEN: dict[tuple, asyncio.Event] = {}
+
+
+def slash_names(update) -> List[str]:
+    return ["/" + c.name.lstrip("/") for c in update.available_commands]
+
+
+def acp_probed_commands(command: List[str]) -> List[str]:
+    return list(_PROBED_COMMANDS.get(tuple(command), []))
+
+
+async def _wait_for_commands(command: List[str], timeout: float = 1.0) -> None:
+    """opencode announces its commands just after session/new returns; an agent that announces none costs the
+    timeout once, at plugin load."""
+    seen = _COMMANDS_SEEN.get(tuple(command))
+    if seen is None:
+        return
+    try:
+        await asyncio.wait_for(seen.wait(), timeout)
+    except asyncio.TimeoutError:
+        pass
+
+
 async def _spawn_agent(command: List[str]):
     """A fresh agent process with an initialized ACP connection."""
     import acp
@@ -101,9 +128,13 @@ async def _spawn_agent(command: List[str]):
         stderr=asyncio.subprocess.DEVNULL,
     )
 
+    seen = _COMMANDS_SEEN[tuple(command)] = asyncio.Event()
+
     class _Client:
         async def session_update(self, session_id, update, **kwargs):
-            pass
+            if getattr(update, "available_commands", None) is not None:
+                _PROBED_COMMANDS[tuple(command)] = slash_names(update)
+                seen.set()
 
         def on_connect(self, conn):
             pass
@@ -201,7 +232,9 @@ def acp_config_options(
     """`{config_id: [(label, value), …]}` for the agent's session config options.
 
     ACP only reports these on a live session, but the model dropdown is built at
-    plugin load — so this opens a throwaway session purely to read them. Costs
+    plugin load — so this opens a throwaway session purely to read them. The
+    session also announces the agent's slash commands, kept for
+    `acp_probed_commands`. Costs
     one short-lived agent process; the payoff is a model list that inherits the
     agent's own provider filtering instead of a plugin re-deriving it from
     config files that drift.
@@ -216,8 +249,10 @@ def acp_config_options(
         proc, conn = await _spawn_agent(command)
         deletes = acp_can_delete(command)
         work_dir = str(cwd or (current_workspace_dir() if deletes else cache_dir("acp-probe")))
+        _PROBED_COMMANDS.pop(tuple(command), None)
         try:
             resp = await conn.new_session(cwd=work_dir, mcp_servers=[])
+            await _wait_for_commands(command)
             if deletes:
                 await _delete_probe(conn, resp.session_id)
             options: dict[str, list[tuple[str, str]]] = {}

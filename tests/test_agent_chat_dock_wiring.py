@@ -922,3 +922,24 @@ def test_a_backend_failing_to_start_stays_contained(dock, qtbot):
         assert dock._send_btn.isEnabled()
     finally:
         unregister_agent_backend(_BrokenBackend.display_name)
+
+
+
+def test_completions_refresh_after_a_turn(dock, qtbot):
+    """An ACP agent announces its commands once its session exists, i.e. during the first turn: the dock
+    must ask again afterwards, not only when it binds."""
+    from SciQLop.components.agents.chat import TextBlock
+    backend = dock._sessions[dock._current].backend
+    commands = []
+
+    async def list_slash_commands():
+        return list(commands)
+
+    async def ask(prompt, image_paths=None):
+        commands.append("/review")
+        yield TextBlock(text="done")
+
+    backend.list_slash_commands = list_slash_commands
+    backend.ask = ask
+    dock._spawn(dock._run_turn(dock._sessions[dock._current], "hello", []))
+    qtbot.waitUntil(lambda: "/review" in dock._input._completer_model.stringList(), timeout=5000)

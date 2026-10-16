@@ -105,6 +105,7 @@
 - While an answer streamed in, the chat rebuilt its thinking parts on every update, even when they hadn't changed. It now rebuilds only the parts that changed.
 - Every SciQLop start added an empty "New session" to the session list of ACP agents such as opencode. SciQLop opens a throwaway session to read the model list, and it opened it in the workspace. Agents that can delete sessions (opencode 2) now get that session deleted right away; it opens in the workspace, so the model list includes providers from the workspace's agent config. Agents that can't (opencode 1) get it opened in a separate folder, which keeps it out of the list.
 - "Delete session…" now works for ACP agents that can delete sessions, such as opencode 2.
+- Typing `/` in the chat now completes opencode's commands and skills, as it does for Claude. They used to never appear: opencode only announces them once a session exists, and the chat asked only when it opened. The list comes from the session SciQLop opens at startup to read the models, and it is refreshed after every answer.
 
 ### Dependencies
 

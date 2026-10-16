@@ -1,9 +1,10 @@
 """A minimal ACP agent over stdio (newline-delimited JSON-RPC), for tests that need the real client SDK on the wire.
 
-Usage: python acp_fake_agent.py STATE_FILE [--deletes]
+Usage: python acp_fake_agent.py STATE_FILE [--deletes] [--commands]
 STATE_FILE holds {"sessions": [{"sessionId", "cwd"}...], "created": [cwd...]} so that separate spawns see the same
 sessions, and a test can see where deleted sessions were opened.
 --deletes advertises sessionCapabilities.delete and serves session/delete.
+--commands sends an available_commands_update right after answering session/new, as opencode does.
 """
 import json
 import sys
@@ -11,6 +12,7 @@ from pathlib import Path
 
 state_file = Path(sys.argv[1])
 deletes = "--deletes" in sys.argv[2:]
+commands = "--commands" in sys.argv[2:]
 
 
 def _load() -> dict:
@@ -58,8 +60,22 @@ def _reply(message: dict) -> dict:
     return {"jsonrpc": "2.0", "id": message["id"], "result": handler(message.get("params") or {})}
 
 
+def _commands_update(session_id: str) -> dict:
+    update = {"sessionUpdate": "available_commands_update",
+              "availableCommands": [{"name": "review", "description": "Review"},
+                                    {"name": "sciqlop-catalogs", "description": "A skill"}]}
+    return {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": session_id, "update": update}}
+
+
+def _send(message: dict) -> None:
+    sys.stdout.write(json.dumps(message) + "\n")
+    sys.stdout.flush()
+
+
 for line in sys.stdin:
     message = json.loads(line)
     if "id" in message and "method" in message:
-        sys.stdout.write(json.dumps(_reply(message)) + "\n")
-        sys.stdout.flush()
+        reply = _reply(message)
+        _send(reply)
+        if commands and message["method"] == "session/new":
+            _send(_commands_update(reply["result"]["sessionId"]))
