@@ -135,6 +135,43 @@ def test_create_raising_is_logged_and_raised(main_window, demo_kinds, monkeypatc
     assert main_window.open_panel("pk_demo.label", name="pk_demo_broken").objectName() == "pk_demo_broken"
 
 
+def test_create_returning_a_non_widget_is_logged_and_refused(main_window, demo_kinds, monkeypatch):
+    import SciQLop.core.ui.mainwindow as mainwindow
+    errors = []
+    monkeypatch.setattr(mainwindow.log, "error", lambda msg, *a, **k: errors.append(msg))
+    _contribute("pk_demo.not_a_widget", create=lambda name, config: "not a widget")
+    with pytest.raises(TypeError):
+        main_window.open_panel("pk_demo.not_a_widget", name="pk_demo_nw")
+    assert len(errors) == 1 and "pk_demo.not_a_widget" in errors[0]
+    _contribute()
+    assert main_window.open_panel("pk_demo.label", name="pk_demo_nw").objectName() == "pk_demo_nw"
+
+
+def test_a_failed_docking_frees_the_name(main_window, demo_kinds, monkeypatch):
+    import SciQLop.core.ui.mainwindow as mainwindow
+
+    def _refuse(*args):
+        raise RuntimeError("no dock")
+
+    _contribute()
+    monkeypatch.setattr(mainwindow, "dock_panel", _refuse)
+    with pytest.raises(RuntimeError, match="no dock"):
+        main_window.open_panel("pk_demo.label", name="pk_demo_undocked")
+    monkeypatch.undo()
+    assert main_window.open_panel("pk_demo.label", name="pk_demo_undocked").objectName() == "pk_demo_undocked"
+
+
+def test_a_plugin_kind_icon_shows_on_its_dock_tab(main_window, demo_kinds):
+    from PySide6.QtWidgets import QApplication
+    assert PANEL_KINDS.get(TIME_PANEL).icon is None
+    _contribute(icon="add_graph")
+    w = main_window.open_panel("pk_demo.label")
+    icon = main_window._dock_of(w).icon()
+    assert not icon.isNull()
+    assert icon.cacheKey() == w.windowIcon().cacheKey()
+    assert icon.cacheKey() != QApplication.windowIcon().cacheKey()
+
+
 def test_unknown_kind(main_window):
     with pytest.raises(LookupError, match=TIME_PANEL):
         main_window.open_panel("nope.kind")

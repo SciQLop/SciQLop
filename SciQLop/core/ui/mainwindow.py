@@ -177,11 +177,14 @@ def _build_dock_content(dock: Dock) -> Optional[QWidget]:
 
 def _create_panel(kind: PanelKind, name: str, config: dict) -> QWidget:
     try:
-        return kind.create(name, config)
+        widget = kind.create(name, config)
     except Exception:
-        release_name(name)
         log.error(f"panel kind {kind.id} failed to create {name!r}", exc_info=True)
         raise
+    if not isinstance(widget, QWidget):
+        log.error(f"panel kind {kind.id}: create() returned {type(widget).__name__}, not a QWidget")
+        raise TypeError(f"panel kind {kind.id}: create() must return a QWidget, got {type(widget).__name__}")
+    return widget
 
 
 def _name_panel(widget: QWidget, name: str, icon: Optional[str]) -> None:
@@ -895,9 +898,13 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if kind_id == TIME_PANEL:
             config.setdefault("time_range", self._default_time_range)
         name = auto_name(base=kind.label, name=name)
-        widget = _create_panel(kind, name, config)
-        _name_panel(widget, name, kind.icon)
-        dock_panel(self, widget, kind_id, area)
+        try:
+            widget = _create_panel(kind, name, config)
+            _name_panel(widget, name, kind.icon)
+            dock_panel(self, widget, kind_id, area)
+        except Exception:
+            release_name(name)
+            raise
         return widget
 
     def _track_panel_dock(self, panel: TimeSyncPanel, dock_widget: QtAds.CDockWidget) -> None:

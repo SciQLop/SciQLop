@@ -10,5 +10,5 @@ def _create_time_panel(name: str, config: dict):
     return panel
 
 
-PANEL_KINDS.contribute(PanelKind(TIME_PANEL, "Panel", create=_create_time_panel, to_config=None, icon="add_graph"),
+PANEL_KINDS.contribute(PanelKind(TIME_PANEL, "Panel", create=_create_time_panel, to_config=None),
                        owner="sciqlop")

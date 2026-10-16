@@ -1,9 +1,46 @@
 from .fixtures import *
 
 
-def test_panel_created_returns_panel_added_signal(main_window):
+def test_panel_created_waits_for_a_time_panel_on_panel_added(main_window):
+    from PySide6.QtWidgets import QLabel
     from SciQLop.components.onboarding.backend.completions import panel_created
-    assert panel_created(main_window, {}) is main_window.panel_added
+    signal, predicate = panel_created(main_window, {})
+    assert signal is main_window.panel_added
+    assert predicate(QLabel()) is False
+
+
+def test_a_plugin_panel_does_not_complete_the_create_panel_step(main_window, qtbot):
+    """The later tour steps call plots() and plot_list_changed on the stored panel: a plugin panel has neither."""
+    from PySide6.QtWidgets import QLabel
+    from SciQLop.components.onboarding.backend.completions import panel_created
+    from SciQLop.components.onboarding.backend.tour import Tour, TourStep
+    from SciQLop.components.onboarding.ui.tour_controller import TourController
+    from SciQLop.core.extensions import owned_by
+    from SciQLop.core.panel_kinds import PANEL_KINDS, PanelKind
+
+    def _side_tab(mw, ctx):
+        return mw.dock_manager.findDockWidget("Products").sideTabWidget()
+
+    tour = Tour(id="t_pk", title="t_pk", description="test tour", steps=[
+        TourStep(step_id="create_panel", title="t", body="b", resolver=_side_tab, completion=panel_created),
+        TourStep(step_id="after", title="t", body="b", resolver=_side_tab)])
+    with owned_by("pk_tour"):
+        PANEL_KINDS.contribute(PanelKind("pk_tour.label", "Label", create=lambda name, config: QLabel()))
+    controller = TourController(main_window, tour)
+    controller.start()
+    opened = []
+    try:
+        qtbot.waitUntil(lambda: controller._coach_mark.isVisible(), timeout=1000)
+        opened.append(main_window.open_panel("pk_tour.label"))
+        opened.append(main_window.new_plot_panel())
+        qtbot.waitUntil(lambda: controller._current_step().step_id == "after", timeout=1000)
+        assert controller._context["create_panel"] is opened[1]
+    finally:
+        controller.abort()
+        PANEL_KINDS.remove_owner("pk_tour")
+        for panel in opened:
+            main_window.remove_panel(panel)
+        qtbot.waitUntil(lambda: not set(opened) & set(main_window.panels()))
 
 
 def test_dock_visible_returns_none_when_dock_missing(main_window):

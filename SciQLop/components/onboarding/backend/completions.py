@@ -1,8 +1,15 @@
 from PySide6.QtCore import QObject, QTimer, Signal
 
 
+def _is_time_panel(panel) -> bool:
+    from SciQLop.core.panel_kinds import panel_kind_of
+    from SciQLop.core.plot_kinds import TIME_PANEL
+    return panel_kind_of(panel) == TIME_PANEL
+
+
 def panel_created(main_window, context):
-    return main_window.panel_added
+    # The later steps plot into the stored panel: panels of other kinds do not complete this one.
+    return main_window.panel_added, _is_time_panel
 
 
 def dock_visible(dock_name):
