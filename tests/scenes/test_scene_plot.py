@@ -58,9 +58,12 @@ def test_a_scene_extent_holds_after_the_data_arrives(plot_panel, earth, fake_spe
 def test_a_scene_without_extent_fits_its_data(plot_panel, earth, qtbot):
     from SciQLop.components.scenes.model import Scene
     sp = plot_panel.plot_scene(Scene("bare", "earth", "GSM", {}))
-    qtbot.wait(200)
-    for x, y in pane_ranges(proj_of(sp)):
-        assert -2 < x[0] <= -1 and 1 <= x[1] < 2   # the unit body circle, padded
+
+    def fitted():
+        return all(-2 < x[0] <= -1 and 1 <= x[1] < 2 for x, _ in pane_ranges(proj_of(sp)))   # unit body circle, padded
+
+    # The first-data rescale runs after the plot gets its data, off a fixed schedule: a busy machine needs more than 200 ms.
+    qtbot.waitUntil(fitted, timeout=5000)
 
 
 def test_scene_panes_have_equal_aspect(plot_panel, earth):
