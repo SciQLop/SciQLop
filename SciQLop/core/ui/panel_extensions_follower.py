@@ -47,8 +47,8 @@ class PanelExtensionsFollower(QObject):
             return
         self._forget_dead_panels()
         for ext in PANEL_EXTENSIONS.list():
-            if matches(ext, panel):
-                self._attach(ext, panel)
+            if matches(ext, panel) and not self._attach(ext, panel):
+                return
 
     def panel_closing(self, panel: QWidget) -> None:
         if not self._alive():
@@ -79,13 +79,22 @@ class PanelExtensionsFollower(QObject):
             if entry is not None:
                 self._cleanup(*entry)
 
-    def _attach(self, ext: PanelExtension, panel: QWidget) -> None:
+    def _is_open(self, panel: QWidget) -> bool:
+        return shiboken6.isValid(panel) and panel in self._main_window.panels()
+
+    def _attach(self, ext: PanelExtension, panel: QWidget) -> bool:
+        """False when the attach closed its own panel: panel_closing ran before this entry existed,
+        so its clean-up runs here at once."""
         try:
             cleanup = ext.attach(panel)
         except Exception:
             log.error(f"panel extension {ext.id} failed on {panel.objectName()!r}", exc_info=True)
             cleanup = None
+        if not self._is_open(panel):
+            self._cleanup(panel, ext, cleanup)
+            return False
         self._cleanups[(ext.id, id(panel))] = (panel, ext, cleanup)
+        return True
 
     @staticmethod
     def _cleanup(panel: QWidget, ext: PanelExtension, cleanup: Optional[Callable[[], None]]) -> None:

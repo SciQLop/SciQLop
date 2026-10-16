@@ -189,6 +189,21 @@ def test_a_cleanup_closing_another_panel(main_window, px_demo, events, qtbot):
     assert main_window._panel_extensions._cleanups == {}
 
 
+def test_an_attach_closing_its_own_panel_is_cleaned_at_once(main_window, px_demo, events, qtbot):
+    def closes_its_panel(panel):
+        name = panel.objectName()
+        events.append(("attach", "closer", name))
+        main_window.remove_panel(panel)
+        return lambda: events.append(("clean", "closer", name))
+
+    _extend("px_demo.closer", closes_its_panel, kinds=(LABEL,))
+    _extend("px_demo.ext", _recorder("px_demo.ext", events), kinds=(LABEL,))
+    panel = main_window.open_panel(LABEL, name="px_self_closing")
+    qtbot.waitUntil(lambda: panel not in main_window.panels())
+    assert _mine(events) == [("attach", "closer", "px_self_closing"), ("clean", "closer", "px_self_closing")]
+    assert main_window._panel_extensions._cleanups == {}
+
+
 def test_a_cleanup_withdrawing_another_extension(main_window, px_demo, events, qtbot):
     def attach_a(panel):
         return lambda: (events.append(("clean", "a", panel.objectName())), PANEL_EXTENSIONS.remove("px_demo.b"))
