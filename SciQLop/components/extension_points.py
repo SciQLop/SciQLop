@@ -19,6 +19,10 @@ def prepare_extension_points() -> None:
     import SciQLop.core.kernel_namespace  # noqa: F401  declares sciqlop.kernel_namespace
     import SciQLop.components.settings.backend.entry  # noqa: F401  declares sciqlop.settings
     import SciQLop.components.workspaces.backend.workspace_sections  # noqa: F401  declares sciqlop.workspace_sections
+    import SciQLop.core.quickstart  # noqa: F401  declares sciqlop.quickstart
+    from SciQLop.components.onboarding.backend import registry as _tours  # noqa: F401  declares sciqlop.tours
+    import SciQLop.components.smart_search  # noqa: F401  declares sciqlop.search_domains and routes it to the index
+    from SciQLop.components.catalogs.backend import registry as _catalogs  # noqa: F401  declares sciqlop.catalog_providers
     from SciQLop.user_api.magics import contribute_core_magics
     contribute_core_magics()  # declares sciqlop.magics, contributes the core magics
     import SciQLop.components.plotting.export  # noqa: F401  declares sciqlop.export_targets, contributes the core formats

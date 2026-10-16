@@ -490,6 +490,20 @@ ctx.contribute("sciqlop.workspace_sections", WorkspaceSection("my_plugin", MyPlu
 - Withdrawing the plugin leaves the table in the file, untouched.
 - No change notification: call `section()` when you need the value.
 
+## Quickstart shortcuts, tours, search domains, catalog providers
+
+Each of these is owned by your plugin when you add it from `activate(ctx)`, and leaves when your plugin is
+withdrawn:
+
+- `sciqlop_app().add_quickstart_shortcut(name, description, icon, callback)` adds a welcome-page shortcut. A name
+  already used by another plugin or by SciQLop is refused (`DuplicateContribution`).
+- `register_tour(Tour(...))` (`SciQLop.components.onboarding`) adds a guided tour. A tour needs at least one step,
+  and step ids must be unique; the `Tour` constructor checks both.
+- `register_domain(domain)` (`SciQLop.components.smart_search`) adds a smart-search domain: an object with a `name`
+  and a `snapshot()` returning `NodeSnapshot(path_key, raw_text)` items. Call `notify_changed(name)` when its content
+  changes.
+- Subclass `CatalogProvider` and build it: it registers itself. Build it on the main thread.
+
 ## Agents: backends, tools, skills
 
 ### Backends (`sciqlop.agent_backends`)

@@ -13,7 +13,7 @@ from SciQLop.components.plugins.backend.loader import context, loader
 from SciQLop.core import extensions
 
 _OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell", "vp_maker", "vp_user", "ui_maker",
-           "agent_maker", "viewer_maker", "viewer_user", "broken_viewer")
+           "agent_maker", "viewer_maker", "viewer_user", "broken_viewer", "tier3_maker")
 
 
 @pytest.fixture
@@ -405,3 +405,48 @@ def test_a_plugin_failing_after_contributing_a_kind_leaves_the_placeholder(tmp_p
     finally:
         for panel in [p for p in main_window.panels() if p.objectName() == "io_broken"]:
             main_window.remove_panel(panel)
+
+
+_TIER3_MAKER = """
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.onboarding import Tour, TourStep, register_tour
+    from SciQLop.components.smart_search import register_domain
+    from SciQLop.core.sciqlop_application import sciqlop_app
+
+    PROVIDERS = []
+
+    class Domain:
+        name = "tier3_maker.events"
+
+        def snapshot(self):
+            return []
+
+    def activate(ctx):
+        sciqlop_app().add_quickstart_shortcut("Tier3 maker", "Demo", None, lambda: None)
+        register_tour(Tour("tier3_maker.tour", "Tour", "A tour", [TourStep("s1", "Title", "Body")]))
+        register_domain(Domain())
+        PROVIDERS.append(DummyProvider(num_catalogs=1, events_per_catalog=0, name="Tier3 maker"))
+"""
+
+
+def test_plugin_contributes_quickstart_a_tour_a_search_domain_and_a_catalog_provider(tmp_path, main_window, fresh):
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    from SciQLop.components.onboarding.backend.registry import get_tour
+    from SciQLop.components.smart_search.domain import SEARCH_DOMAINS
+    from SciQLop.core.quickstart import QUICKSTART
+
+    def provider_names():
+        return [p.name for p in CatalogRegistry.instance().providers()]
+
+    loader.activate_all([_plugin(tmp_path, "tier3_maker", _TIER3_MAKER)], main_window=main_window, ep_plugins={})
+    assert context.STATES["tier3_maker"].status == "active", context.STATES["tier3_maker"].reason
+    assert QUICKSTART.owner_of("Tier3 maker") == "tier3_maker"
+    assert get_tour("tier3_maker.tour") is not None
+    assert SEARCH_DOMAINS.owner_of("tier3_maker.events") == "tier3_maker"
+    assert "Tier3 maker" in provider_names()
+
+    loader._withdraw("tier3_maker")
+    assert "Tier3 maker" not in QUICKSTART.keys()
+    assert get_tour("tier3_maker.tour") is None
+    assert "tier3_maker.events" not in SEARCH_DOMAINS.keys()
+    assert "Tier3 maker" not in provider_names()

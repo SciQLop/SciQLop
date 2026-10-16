@@ -121,6 +121,10 @@ def activate(ctx):
 | `sciqlop.agent_backends` | `AgentBackendEntry(name, factory)`, through `register_agent_backend(cls)` | `name` |
 | `sciqlop.agent_tools` | `AgentTool(name, description, input_schema, call, gated=False, thread=False)` | `name` |
 | `sciqlop.agent_skills` | `AgentSkill(name, directory)` | `name` |
+| `sciqlop.quickstart` | `QuickstartShortcut(name, description, icon, callback)`, through `sciqlop_app().add_quickstart_shortcut(...)` | `name` |
+| `sciqlop.tours` | `Tour(id, title, description, steps)`, through `register_tour(tour)` | `id` |
+| `sciqlop.search_domains` | a `SearchDomain` (`name`, `snapshot()`), through `register_domain(domain)` | `name` |
+| `sciqlop.catalog_providers` | a `CatalogProvider` subclass instance; it registers itself when built | `name#address` |
 
 Locations, argument values and examples: the "Commands and menu entries", "Export targets", "Inspector sections",
 "Docks", "Panels: kinds and extensions", "Keyboard shortcuts" and "Agents: backends, tools, skills" sections of [ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws them all.
