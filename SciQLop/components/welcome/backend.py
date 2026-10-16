@@ -338,12 +338,13 @@ class WelcomeBackend(QObject):
     def import_template(self) -> None:
         from PySide6.QtWidgets import QFileDialog
         from SciQLop.components.plotting.panel_template import PanelTemplate, templates_dir
+        from SciQLop.components.plotting.template_formats import file_dialog_filter
         from pathlib import Path
         import shutil
         path, _ = QFileDialog.getOpenFileName(
             None, "Import template",
             str(Path.home()),
-            "Templates (*.json *.yaml *.yml)",
+            file_dialog_filter(),
         )
         if path:
             dest = templates_dir() / Path(path).name

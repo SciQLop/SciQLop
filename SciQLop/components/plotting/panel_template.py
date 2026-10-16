@@ -17,6 +17,7 @@ from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.graph_context import GraphContext, context_of, graph_name
 from SciQLop.core.plot_kinds import PLOT_KINDS, TIME_PANEL, TIMESERIES, plot_kind_of
 from SciQLop.core.source_kinds import canonical_id, source_kind
+from SciQLop.components.plotting.template_formats import format_for, template_suffixes
 
 log = getLogger(__name__)
 
@@ -172,24 +173,7 @@ def _upgrade(data: dict) -> dict:
 
 
 def _read_template_data(p: Path) -> dict:
-    import json
-    if p.suffix == '.json':
-        return json.loads(p.read_text())
-    if p.suffix in ('.yaml', '.yml'):
-        return _load_yaml(p.read_text())
-    raise ValueError(f"Unsupported file extension: {p.suffix}")
-
-
-def _load_yaml(text: str):
-    """Templates saved before 0.14.2 wrote ranges as !!python/tuple, which
-    safe_load rejects; read those as plain lists."""
-    import yaml
-
-    class Loader(yaml.SafeLoader):
-        pass
-
-    Loader.add_constructor("tag:yaml.org,2002:python/tuple", Loader.construct_sequence)
-    return yaml.load(text, Loader=Loader)
+    return format_for(p).loads(p.read_text())
 
 
 class PanelTemplate(BaseModel):
@@ -223,14 +207,7 @@ class PanelTemplate(BaseModel):
 
     def to_file(self, path: str) -> None:
         p = Path(path)
-        if p.suffix == '.json':
-            import json
-            p.write_text(json.dumps(self.to_tree(), indent=2))
-        elif p.suffix in ('.yaml', '.yml'):
-            import yaml
-            p.write_text(yaml.dump(self.to_tree(), default_flow_style=False, sort_keys=False))
-        else:
-            raise ValueError(f"Unsupported file extension: {p.suffix}")
+        p.write_text(format_for(p).dumps(self.to_tree()))
 
     def to_tree(self) -> dict:
         if self._foreign_root is not None:
@@ -453,9 +430,6 @@ def context_product_path(ctx: GraphContext) -> str:
     return source_kind(ctx.kind).product_path(ctx)
 
 
-_TEMPLATE_EXTENSIONS = ('.json', '.yaml', '.yml')
-
-
 def templates_dir() -> Path:
     d = Path.home() / ".local" / "share" / "sciqlop" / "templates"
     d.mkdir(parents=True, exist_ok=True)
@@ -466,7 +440,7 @@ def list_templates() -> list[PanelTemplate]:
     d = templates_dir()
     seen_stems: set[str] = set()
     results: list[PanelTemplate] = []
-    for ext in _TEMPLATE_EXTENSIONS:
+    for ext in template_suffixes():
         for f in sorted(d.glob(f"*{ext}")):
             if f.stem not in seen_stems:
                 seen_stems.add(f.stem)
@@ -489,7 +463,7 @@ def _load_upgrading_file(path: Path) -> PanelTemplate:
 
 def find_template_file(name: str) -> Path | None:
     d = templates_dir()
-    for ext in _TEMPLATE_EXTENSIONS:
+    for ext in template_suffixes():
         p = d / f"{name}{ext}"
         if p.exists():
             return p

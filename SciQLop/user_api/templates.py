@@ -11,8 +11,9 @@ from SciQLop.components.plotting.panel_template import (
 
 
 def load(name_or_path: str) -> PanelTemplate | None:
+    from SciQLop.components.plotting.template_formats import template_suffixes
     p = Path(name_or_path)
-    if p.suffix in ('.json', '.yaml', '.yml') and p.exists():
+    if p.suffix in template_suffixes() and p.exists():
         return PanelTemplate.from_file(str(p))
     return _find_template(name_or_path)
 

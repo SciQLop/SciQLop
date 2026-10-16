@@ -917,9 +917,11 @@ class PlotPanel(GuardedImpl):
         from SciQLop.components.plotting.panel_template import PanelTemplate, templates_dir, save_preview
         impl = self._get_impl_or_raise()
         t = PanelTemplate.from_panel(impl)
+        from SciQLop.components.plotting.template_formats import template_suffixes
         if '/' not in name_or_path and '\\' not in name_or_path:
-            t.name = name_or_path.removesuffix('.json').removesuffix('.yaml').removesuffix('.yml')
-            if not any(name_or_path.endswith(ext) for ext in ('.json', '.yaml', '.yml')):
+            suffix = next((s for s in template_suffixes() if name_or_path.endswith(s)), "")
+            t.name = name_or_path.removesuffix(suffix) if suffix else name_or_path
+            if not suffix:
                 name_or_path = name_or_path + '.json'
             name_or_path = str(templates_dir() / name_or_path)
         t.to_file(name_or_path)
