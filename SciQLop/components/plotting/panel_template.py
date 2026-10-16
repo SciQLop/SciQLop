@@ -288,7 +288,7 @@ class PanelTemplate(BaseModel):
         from SciQLop.core.panel_kinds import PANEL_KINDS
         if self.panel_kind in PANEL_KINDS:
             return main_window._open_panel(self.panel_kind, self.name, None,
-                                           dict(self._foreign_root.get("config", {})))
+                                           copy.deepcopy(self._foreign_root.get("config", {})))
         return open_placeholder(main_window, self._foreign_root, name=self.name)
 
     def apply(self, panel) -> None:

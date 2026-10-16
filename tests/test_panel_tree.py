@@ -333,6 +333,31 @@ def test_a_config_with_name_and_area_keys_reaches_create(main_window, tmp_path):
         PANEL_KINDS.remove_owner("pt_demo")
 
 
+def test_a_create_mutating_its_nested_config_leaves_the_template_as_loaded(main_window, tmp_path):
+    from PySide6.QtWidgets import QLabel
+    from SciQLop.core.panel_kinds import PANEL_KINDS, PanelKind
+    received = []
+
+    def create(name, config):
+        received.append(config["view"]["zoom"])
+        config["view"]["zoom"] = 99
+        return QLabel()
+
+    with owned_by("pt_demo"):
+        PANEL_KINDS.contribute(PanelKind("pt_demo.zoomer", "Zoomer", create=create))
+    path = tmp_path / "z.json"
+    path.write_text(json.dumps({"version": 3, "name": "pt_zoomer", "panel": {
+        "kind": "pt_demo.zoomer", "config": {"view": {"zoom": 2}}, "slots": {}}}))
+    template = PanelTemplate.from_file(str(path))
+    opened = []
+    try:
+        opened = [template.create_panel(main_window), template.create_panel(main_window)]
+        assert received == [2, 2]
+    finally:
+        _close_all(main_window, opened)
+        PANEL_KINDS.remove_owner("pt_demo")
+
+
 def test_a_kind_without_to_config_cannot_be_saved(main_window, note_kind):
     from SciQLop.components.plotting.panel_template import panel_tree
     w = main_window.open_panel("pt_demo.mute", name="pt_mute")
