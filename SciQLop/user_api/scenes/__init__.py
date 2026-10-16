@@ -3,6 +3,8 @@
 Register your own from a plugin's ``activate(ctx)`` (``load(main_window)`` is still supported);
 plot one with ``panel.plot_scene(name)``.
 """
+import dataclasses
+
 from SciQLop.components.scenes import scene_plot as _scene_plot
 from SciQLop.components.scenes.boundary import Boundary, Plane, RadialBoundary
 from SciQLop.components.scenes.frames import FrameError
@@ -47,6 +49,7 @@ class ScenePlot(GuardedImpl):
         self._resolved = resolved
         self._boundary_graphs = {}
         self._trajectories: list[str] = []
+        self._trajectory_curves: list[tuple] = []
         proj.destroyed.connect(self._on_destroyed)
         _scene_plot.remember_scene_plot(proj, self)
 
@@ -84,6 +87,26 @@ class ScenePlot(GuardedImpl):
 
         source: a 3DView body name ("MMS1"), a speasy id, or a SciQLop product path ("speasy//...").
         Products must declare COORDINATE_SYSTEM and a position unit; others are refused on the plot."""
-        graph = _scene_plot.add_trajectory(self._get_impl_or_raise(), self._resolved, source)
+        curve = _scene_plot.add_trajectory(self._get_impl_or_raise(), self._resolved, source)
         self._trajectories.append(source)
-        return to_plottable(graph)
+        self._trajectory_curves.append(curve)
+        return to_plottable(curve[0])
+
+    @on_main_thread
+    def set_frame(self, frame: str) -> None:
+        """Redraw the scene, its boundaries and trajectories in another frame centred on its body
+        (e.g. "GSE" or "SM" for an Earth scene); a frame centred elsewhere raises FrameError."""
+        proj = self._get_impl_or_raise()
+        self._resolved = resolve(dataclasses.replace(self._resolved.scene, frame=frame))
+        self._redraw(proj)
+
+    def _redraw(self, proj) -> None:
+        for curves in self._boundary_graphs.values():
+            _scene_plot.remove_boundary(proj, curves)
+        for graph, reporter in self._trajectory_curves:
+            _scene_plot.remove_trajectory(proj, graph, reporter)
+        _scene_plot.relabel(proj, self._resolved)
+        self._boundary_graphs = {kind: _scene_plot.add_boundary(proj, self._resolved, kind, model)
+                                 for kind, model in self._resolved.boundaries.items()}
+        self._trajectory_curves = [_scene_plot.add_trajectory(proj, self._resolved, source)
+                                   for source in self._trajectories]

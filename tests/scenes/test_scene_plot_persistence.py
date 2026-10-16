@@ -3,7 +3,7 @@ from SciQLop.components.plotting.panel_template import PanelTemplate, PlotModel
 from SciQLop.core.plot_kinds import PROJECTION
 from ..fixtures import *  # noqa: F401, F403
 
-_EARTH = {"scene": "Earth environment", "boundaries": {"magnetopause": "shue1998", "bow_shock": "jelinek2012"}}
+_EARTH = {"scene": "Earth environment", "frame": "GSM", "boundaries": {"magnetopause": "shue1998", "bow_shock": "jelinek2012"}}
 
 
 def test_a_scene_plot_round_trips_through_a_template(plot_panel, registered, monkeypatch, tmp_path):

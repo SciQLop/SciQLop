@@ -13,7 +13,8 @@ from PySide6.QtGui import QColor, QPen
 from SciQLopPlots import GraphType, PlotType
 
 from SciQLop.components.plotting.ui.time_sync_panel import _CallbackErrorOverlay
-from .frames import FrameError, normalise_frame, rotation
+from SciQLop.core.inspector_sections import PLOT_TARGET
+from .frames import FrameError, frame_centres, normalise_frame, rotation
 from .model import ResolvedScene
 from .summary import PANES, pane_summary
 
@@ -212,7 +213,22 @@ def add_trajectory(proj, resolved: ResolvedScene, source: str):
     graph = graph[1] if isinstance(graph, tuple) else graph
     reporter.attach(proj)
     proj.set_time_color_enabled(True)
-    return graph
+    return graph, reporter
+
+
+def remove_trajectory(proj, graph, reporter) -> None:
+    proj.remove_plottable(graph)
+    reporter.clear()
+    reporter.deleteLater()
+
+
+def frames_of(resolved: ResolvedScene) -> list[str]:
+    """The frames a scene of this body can be drawn in: those centred on it."""
+    return sorted(name for name, centre in frame_centres().items() if centre == resolved.body.threedview)
+
+
+def relabel(proj, resolved: ResolvedScene) -> None:
+    proj.set_axis_labels(_axis_labels(resolved))
 
 
 def _hold_extent(proj, extent: float) -> None:
@@ -226,7 +242,7 @@ def _hold_extent(proj, extent: float) -> None:
 
 def create_scene_plot(panel_impl, resolved: ResolvedScene):
     proj = panel_impl.create_plot(len(panel_impl.plots()), PlotType.Projections)
-    proj.set_axis_labels(_axis_labels(resolved))
+    relabel(proj, resolved)
     _draw_body(proj, resolved)
     if resolved.scene.extent is not None:
         _hold_extent(proj, resolved.scene.extent)
@@ -243,6 +259,9 @@ def remember_scene_plot(proj, scene_plot) -> None:
     key = _key(proj)
     _SCENE_PLOTS[key] = scene_plot
     proj.destroyed.connect(lambda *_: _SCENE_PLOTS.pop(key, None))
+    # The panel attached plot sections on plot_added, before this plot was known as a scene plot.
+    from SciQLop.components.plotting.ui.contributed_sections import attach_sections
+    attach_sections(proj, PLOT_TARGET)
 
 
 def concrete_plot(plot):

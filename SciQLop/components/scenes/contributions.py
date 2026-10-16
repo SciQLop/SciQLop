@@ -1,6 +1,7 @@
 """Core contributions of the scenes component: the projection plot kind (with its template persistence) and the
 scenes drop rules."""
 from SciQLop.core.drop_rules import DROP_RULES, DropRule
+from SciQLop.core.inspector_sections import INSPECTOR_SECTIONS, PLOT_TARGET, InspectorSection
 from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE
 from SciQLop.core.plot_kinds import PLOT_KINDS, PROJECTION, PlotKind
 from SciQLop.core.product_kinds import BOUNDARY, SCENE
@@ -30,6 +31,7 @@ def _scene_config(plot) -> dict:
     from SciQLop.components.scenes.scene_plot import scene_plot_for
     sp = scene_plot_for(plot)
     return {"scene": sp.scene.name,
+            "frame": sp.scene.frame,
             "boundaries": {kind: model.name for kind, model in sp._resolved.boundaries.items()},
             "trajectories": list(sp._trajectories)}
 
@@ -39,7 +41,8 @@ def _scene_from_config(panel, config: dict):
     name and restores as a placeholder. Save full scene definitions if users plot unregistered scenes."""
     from SciQLop.user_api.plot import PlotPanel
     sp = PlotPanel(panel).plot_scene(config["scene"])
-    steps = [(f"boundary {name!r} for {kind}", sp.set_boundary, (kind, name))
+    steps = [(f"frame {config['frame']!r}", sp.set_frame, (config["frame"],))] if "frame" in config else []
+    steps += [(f"boundary {name!r} for {kind}", sp.set_boundary, (kind, name))
              for kind, name in config.get("boundaries", {}).items()]
     steps += [(f"trajectory {source!r}", sp.add_trajectory, (source,)) for source in config.get("trajectories", [])]
     for what, step, args in steps:
@@ -73,3 +76,17 @@ def _scene_rules():
 
 for _rule in _scene_rules():
     DROP_RULES.contribute(_rule, owner="sciqlop")
+
+
+def _scene_of(plot):
+    from SciQLop.components.scenes.scene_plot import scene_plot_for
+    return scene_plot_for(plot._get_impl_or_raise())
+
+
+def _frame_picker(plot, parent):
+    from SciQLop.components.scenes.inspector import frame_picker
+    return frame_picker(_scene_of(plot), parent)
+
+
+INSPECTOR_SECTIONS.contribute(InspectorSection("sciqlop.scenes.frame", "Scene", PLOT_TARGET, _frame_picker,
+                                               applies=lambda plot: _scene_of(plot) is not None), owner="sciqlop")

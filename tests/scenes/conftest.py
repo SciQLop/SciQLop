@@ -46,7 +46,7 @@ def fake_speasy(monkeypatch):
     def get_data(product, start, stop, **kwargs):
         requests.append((product, kwargs))
         if product.startswith("cdpp3dview/"):
-            return FakeVariable([[RE, 0, 0], [2 * RE, 0, 0]], threedview_meta("GSM"))
+            return FakeVariable([[RE, 0, 0], [2 * RE, 0, 0]], threedview_meta(kwargs["coordinate_frame"]))
         if product.endswith("r_gse"):
             return FakeVariable([[RE, 0, 0, RE], [0, RE, 0, RE]], {"UNITS": "km", "COORDINATE_SYSTEM": "GSE>x"})
         if product.endswith("rtn"):
