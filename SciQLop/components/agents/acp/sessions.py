@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Optional
 
+from ...storage import cache_dir
 from ..backend import SessionEntry
 from ..chat import (
     ChatMessage,
@@ -147,8 +148,16 @@ def acp_config_options(
     one short-lived agent process; the payoff is a model list that inherits the
     agent's own provider filtering instead of a plugin re-deriving it from
     config files that drift.
+
+    The session opens in a dedicated scratch dir, not the workspace: agents
+    persist every session (opencode 1.x has no session/delete), and the dock's
+    history lists the workspace's sessions — one empty "New session" per
+    SciQLop start otherwise.
     """
-    work_dir = str(cwd or current_workspace_dir())
+    # simplify: the probe ignores project-level agent config in the workspace
+    # (e.g. an opencode.json adding providers); delete the session in place
+    # instead once the ACP SDK and agents expose session/delete.
+    work_dir = str(cwd or cache_dir("acp-probe"))
 
     async def _read():
         proc, conn = await _spawn_agent(command)
