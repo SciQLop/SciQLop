@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Optional
 
+from ...sciqlop_logging import getLogger
 from ...storage import cache_dir
 from ..backend import SessionEntry
 from ..chat import (
@@ -30,13 +31,17 @@ from ..workspace import current_workspace_dir
 from .stream import raw_input_dict, tool_output
 
 __all__ = [
+    "acp_can_delete",
     "acp_config_options",
+    "acp_delete_session",
     "acp_list_sessions",
     "acp_load_session_messages",
     "async_acp_load_session_messages",
     "current_workspace_dir",
     "replay_to_messages",
 ]
+
+log = getLogger(__name__)
 
 
 def _run_async(coro_factory, timeout: float = 20.0):
@@ -46,6 +51,38 @@ def _run_async(coro_factory, timeout: float = 20.0):
 
     with ThreadPoolExecutor(max_workers=1) as pool:
         return pool.submit(_blocking).result(timeout=timeout + 2.0)
+
+
+# Whether each agent command advertised session/delete, learned from its initialize reply: the dock asks
+# synchronously, right after listing sessions has started that agent.
+_DELETES_SESSIONS: dict[tuple, bool] = {}
+
+
+def advertises_delete(initialize_response) -> bool:
+    capabilities = getattr(initialize_response, "agent_capabilities", None)
+    return getattr(getattr(capabilities, "session_capabilities", None), "delete", None) is not None
+
+
+def remember_capabilities(command: List[str], initialize_response) -> None:
+    _DELETES_SESSIONS[tuple(command)] = advertises_delete(initialize_response)
+
+
+def acp_can_delete(command: List[str]) -> bool:
+    """Whether this agent deletes sessions; False until one of its processes has been initialized."""
+    return _DELETES_SESSIONS.get(tuple(command), False)
+
+
+async def delete_session_on(conn, session_id: str) -> None:
+    if hasattr(conn, "delete_session"):
+        await conn.delete_session(session_id=session_id)
+        return
+    # simplify: agent-client-protocol 0.12.1 defines session/delete but has no method to send it, so this goes
+    # through its private Connection; drop it once SciQLop requires a release with delete_session.
+    from acp.meta import AGENT_METHODS
+    from acp.schema import DeleteSessionRequest, DeleteSessionResponse
+    from acp.utils import request_model_from_dict
+    await request_model_from_dict(conn._conn, AGENT_METHODS["session_delete"],
+                                  DeleteSessionRequest(session_id=session_id), DeleteSessionResponse)
 
 
 async def _spawn_agent(command: List[str]):
@@ -72,7 +109,7 @@ async def _spawn_agent(command: List[str]):
             pass
 
     conn = acp.connect_to_agent(_Client(), proc.stdin, proc.stdout)
-    await conn.initialize(
+    initialized = await conn.initialize(
         protocol_version=acp.PROTOCOL_VERSION,
         client_capabilities=ClientCapabilities(
             fs=FileSystemCapabilities(read_text_file=False, write_text_file=False),
@@ -80,6 +117,7 @@ async def _spawn_agent(command: List[str]):
         ),
         client_info=Implementation(name="sciqlop", title="SciQLop", version="1.0"),
     )
+    remember_capabilities(command, initialized)
     return proc, conn
 
 
@@ -138,6 +176,25 @@ def acp_list_sessions(command: List[str], cwd: Optional[Path] = None) -> List[Se
         return []
 
 
+async def _delete_probe(conn, session_id: str) -> None:
+    try:
+        await delete_session_on(conn, session_id)
+    except Exception as error:
+        log.warning("deleting the ACP probe session %s failed: %r", session_id, error)
+
+
+def acp_delete_session(command: List[str], session_id: str) -> None:
+    """Delete a session for good; raises when the agent refuses or fails."""
+    async def _delete():
+        proc, conn = await _spawn_agent(command)
+        try:
+            await delete_session_on(conn, session_id)
+        finally:
+            await _kill(proc, conn)
+
+    _run_async(_delete)
+
+
 def acp_config_options(
     command: List[str], cwd: Optional[Path] = None
 ) -> dict[str, list[tuple[str, str]]]:
@@ -149,20 +206,20 @@ def acp_config_options(
     agent's own provider filtering instead of a plugin re-deriving it from
     config files that drift.
 
-    The session opens in a dedicated scratch dir, not the workspace: agents
-    persist every session (opencode 1.x has no session/delete), and the dock's
-    history lists the workspace's sessions — one empty "New session" per
-    SciQLop start otherwise.
+    Agents persist every session, and the dock's history lists the workspace's
+    sessions. An agent that deletes sessions probes in the workspace (so it reads
+    project-level config such as an opencode.json) and the session is deleted
+    afterwards; any other agent (opencode 1.x) probes in a fixed scratch dir —
+    one empty "New session" per SciQLop start otherwise.
     """
-    # simplify: the probe ignores project-level agent config in the workspace
-    # (e.g. an opencode.json adding providers); delete the session in place
-    # instead once the ACP SDK and agents expose session/delete.
-    work_dir = str(cwd or cache_dir("acp-probe"))
-
     async def _read():
         proc, conn = await _spawn_agent(command)
+        deletes = acp_can_delete(command)
+        work_dir = str(cwd or (current_workspace_dir() if deletes else cache_dir("acp-probe")))
         try:
             resp = await conn.new_session(cwd=work_dir, mcp_servers=[])
+            if deletes:
+                await _delete_probe(conn, resp.session_id)
             options: dict[str, list[tuple[str, str]]] = {}
             for opt in getattr(resp, "config_options", None) or []:
                 choices = [

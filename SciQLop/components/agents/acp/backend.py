@@ -10,7 +10,7 @@ A plugin subclasses this and supplies the agent-specific bits:
 Everything else is shared: subprocess lifecycle, initialize handshake,
 in-process MCP tool server, prompt streaming (turn correlation is JSON-RPC
 request/response — no per-turn stream sniffing), permission gating, slash
-commands, session list/resume/replay.
+commands, session list/resume/replay/delete (delete when the agent advertises it).
 
 One known ACP limitation: the protocol has no system-prompt channel, so the
 agent runs with its own persona. SciQLop's tool descriptions carry the
@@ -132,7 +132,7 @@ class AcpAgentBackend:
             self._proc.stdin,
             self._proc.stdout,
         )
-        await self._conn.initialize(
+        initialized = await self._conn.initialize(
             protocol_version=acp.PROTOCOL_VERSION,
             client_capabilities=ClientCapabilities(
                 fs=FileSystemCapabilities(read_text_file=False, write_text_file=False),
@@ -140,6 +140,7 @@ class AcpAgentBackend:
             ),
             client_info=Implementation(name="sciqlop", title="SciQLop", version="1.0"),
         )
+        _acp_sessions.remember_capabilities(self.acp_command(), initialized)
 
     async def _apply_model(self) -> None:
         if self._model and self._conn is not None and self._session_id is not None:
@@ -311,6 +312,12 @@ class AcpAgentBackend:
 
     def list_sessions(self) -> List[SessionEntry]:
         return _acp_sessions.acp_list_sessions(self.acp_command())
+
+    def can_delete_sessions(self) -> bool:
+        return _acp_sessions.acp_can_delete(self.acp_command())
+
+    def delete_session(self, session_id: str) -> None:
+        _acp_sessions.acp_delete_session(self.acp_command(), session_id)
 
     async def async_load_session(
         self, session_id: str, image_tempdir: Path

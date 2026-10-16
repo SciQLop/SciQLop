@@ -57,6 +57,15 @@ from .workspace import current_workspace_dir
 log = getLogger(__name__)
 
 
+def deletes_sessions(backend) -> bool:
+    """A backend deletes sessions when it implements delete_session and, if it can tell, says it can: an ACP
+    backend has the method whether or not its agent supports session/delete (opencode 2 does, opencode 1 not)."""
+    if getattr(backend, "delete_session", None) is None:
+        return False
+    can_delete = getattr(backend, "can_delete_sessions", None)
+    return can_delete is None or bool(can_delete())
+
+
 def _without_legacy_alignment(messages: List[ChatMessage]) -> List[ChatMessage]:
     for message in messages:
         if message.role == "user" and message.blocks and isinstance(message.blocks[0], TextBlock):
@@ -531,8 +540,7 @@ class AgentChatDock(QWidget):
         groups = grouped_sessions(entries, AgentSessionMeta(),
                                   backend.display_name, self._session_filter,
                                   recent_limit=AgentChatSettings().recent_sessions)
-        can_delete = getattr(backend, "delete_session", None) is not None
-        self._session_panel.set_groups(groups, current_id, can_delete=can_delete)
+        self._session_panel.set_groups(groups, current_id, can_delete=deletes_sessions(backend))
 
     def _on_model_changed(self, index: int) -> None:
         if self._current is None:
@@ -825,8 +833,7 @@ class AgentChatDock(QWidget):
         be = self._current_backend()
         if be is None:
             return
-        delete = getattr(be, "delete_session", None)
-        if delete is None:
+        if not deletes_sessions(be):
             self._set_status(f"{be.display_name} cannot delete sessions")
             return
         if self._live_session_id(self._sessions.get(self._current)) == session_id:
@@ -840,7 +847,7 @@ class AgentChatDock(QWidget):
         ) != QMessageBox.StandardButton.Yes:
             return
         try:
-            delete(session_id)
+            be.delete_session(session_id)
         except Exception as error:
             log.warning("deleting session %s failed: %r", session_id, error)
         AgentSessionMeta().forget(be.display_name, session_id)
