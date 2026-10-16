@@ -2,6 +2,8 @@ import shiboken6
 from PySide6 import QtWidgets, QtCore, QtGui
 from typing import Dict, List, Optional, Any, Callable, TYPE_CHECKING
 from SciQLop.components.theming import load_stylesheets, setup_palette, SciQLopStyle
+from SciQLop.components.theming.palette import active_theme_name
+from SciQLop.components.theming.themes import DEFAULT_THEME
 from qasync import QEventLoop, QApplication
 import asyncio
 import math
@@ -31,6 +33,10 @@ def _patch_qasync_infinite_timer():
 _patch_qasync_infinite_timer()
 
 
+def _saved_theme() -> str:
+    return SciQLopStyle().color_palette
+
+
 class SciQLopApp(QApplication):
     quickstart_shortcuts_added = QtCore.Signal(str)
     quickstart_shortcuts_removed = QtCore.Signal(str)
@@ -56,10 +62,13 @@ class SciQLopApp(QApplication):
             self._watchdog.start()
             self._watchdog_timer = watchdog.start_qt_heartbeat(self._watchdog)
         # self.setAttribute(QtCore.Qt.AA_UseStyleSheetPropagationInWidgetStyles, True)
-        self._current_palette_name = SciQLopStyle().color_palette
-        self._current_palette = setup_palette(palette_name=self._current_palette_name)
+        self._current_palette = setup_palette(palette_name=_saved_theme())
+        self._current_palette_name = active_theme_name()
         self.setPalette(self._current_palette)
         self.load_stylesheet()
+        from SciQLop.components.theming.themes import THEMES
+        THEMES.signals.added.connect(self._on_theme_added)
+        THEMES.signals.removed.connect(self._on_theme_removed)
         SciQLopStyle._notifier.changed.connect(self._on_style_changed)
         from SciQLop.core.quickstart import QUICKSTART
         QUICKSTART.signals.added.connect(self._on_quickstart_added)
@@ -102,12 +111,26 @@ class SciQLopApp(QApplication):
             self.apply_theme(value)
 
     def apply_theme(self, palette_name: str):
-        self._current_palette_name = palette_name
         self._current_palette = setup_palette(palette_name=palette_name)
+        self._current_palette_name = active_theme_name()
         self.setPalette(self._current_palette)
         self.load_stylesheet()
         self._update_plot_themes()
-        self.theme_changed.emit(palette_name)
+        self.theme_changed.emit(self._current_palette_name)
+
+    def _on_theme_added(self, theme) -> None:
+        """A plugin theme saved as the user's choice applies once its plugin contributes it."""
+        if not shiboken6.isValid(self):
+            return
+        if theme.id == _saved_theme() and theme.id != self._current_palette_name:
+            self.apply_theme(theme.id)
+
+    def _on_theme_removed(self, theme) -> None:
+        """The setting is kept: the theme comes back with its plugin on the next start."""
+        if not shiboken6.isValid(self):
+            return
+        if theme.id == self._current_palette_name:
+            self.apply_theme(DEFAULT_THEME)
 
     def current_theme(self) -> str:
         """Return the name of the active color palette."""

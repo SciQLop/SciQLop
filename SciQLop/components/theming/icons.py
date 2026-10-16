@@ -225,5 +225,5 @@ def list_icons() -> list[str]:
 
 
 def get_current_style_icon(name: str) -> QIcon:
-    from .settings import SciQLopStyle
-    return QIcon(str(per_palette_icon_dir(palette_name=SciQLopStyle().color_palette) / f"{name}.png"))
+    from .palette import active_theme_name
+    return QIcon(str(per_palette_icon_dir(palette_name=active_theme_name()) / f"{name}.png"))

@@ -1,26 +1,4 @@
-from typing import Literal
-
-PaletteName = Literal[
-    "light",
-    "dark",
-    "neutral",
-    "space",
-    "github_light",
-    "nord_light",
-    "catppuccin_latte",
-    "high_contrast_light",
-]
-
-_VALID_THEMES: list[PaletteName] = [
-    "light",
-    "dark",
-    "neutral",
-    "space",
-    "github_light",
-    "nord_light",
-    "catppuccin_latte",
-    "high_contrast_light",
-]
+PaletteName = str
 
 
 def apply_theme(name: PaletteName) -> None:
@@ -30,8 +8,10 @@ def apply_theme(name: PaletteName) -> None:
     --------
     >>> apply_theme("dark")
     """
-    if name not in _VALID_THEMES:
-        raise ValueError(f"unknown theme {name!r}; expected one of: {_VALID_THEMES}")
+    from SciQLop.components.theming.themes import THEMES
+
+    if name not in THEMES:
+        raise ValueError(f"unknown theme {name!r}; expected one of: {THEMES.keys()}")
     from SciQLop.core.sciqlop_application import sciqlop_app
 
     sciqlop_app().apply_theme(name)
@@ -59,4 +39,6 @@ def list_themes() -> list[PaletteName]:
     ['light', 'dark', 'neutral', 'space', 'github_light', 'nord_light',
      'catppuccin_latte', 'high_contrast_light']
     """
-    return list(_VALID_THEMES)
+    from SciQLop.components.theming.themes import THEMES
+
+    return THEMES.keys()

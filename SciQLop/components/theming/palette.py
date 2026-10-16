@@ -1,34 +1,40 @@
-import os
 from PySide6 import QtGui
 from PySide6.QtCore import QDirIterator
 from PySide6.QtGui import QColor
 from seaborn import color_palette as color_palette
 
-import SciQLop
 from .settings import SciQLopStyle
 from .icons import build_icon_set_for_palette
 from SciQLop.components.sciqlop_logging import getLogger
-import yaml
+from .themes import DEFAULT_THEME, THEMES, palettes_path  # noqa: F401
 
 log = getLogger(__name__)
 
 __background_color__ = '#ffffff'
-
-palettes_path = os.path.join(SciQLop.sciqlop_root, "resources", "palettes")
-
 
 def _make_palette_case_insensitive(palette: dict[str, str]) -> dict[str, str]:
     palette.update({k.lower(): v for k, v in palette.items()})
     return palette
 
 
-def _load_palette(palette: str) -> dict[str, str]:
-    with open(f"{palettes_path}/{palette}.yaml", 'r') as stream:
-        try:
-            return _make_palette_case_insensitive(yaml.safe_load(stream))
-        except yaml.YAMLError as exc:
-            log.error(exc)
-            return {}
+_active_theme = DEFAULT_THEME
+
+
+def _resolve(name: str) -> str:
+    return name if name in THEMES else DEFAULT_THEME
+
+
+def _load_palette(name: str) -> dict[str, str]:
+    try:
+        return _make_palette_case_insensitive(THEMES.get(_resolve(name)).colors())
+    except ValueError as e:  # a core palette file broken on disk
+        log.error(e)
+        return _make_palette_case_insensitive(THEMES.get(DEFAULT_THEME).colors())
+
+
+def active_theme_name() -> str:
+    """The theme actually shown: the requested one, or the default while it is not contributed."""
+    return _active_theme
 
 
 SCIQLOP_PALETTE = _load_palette(SciQLopStyle().color_palette)
@@ -53,9 +59,10 @@ def build_palette(palette: dict[str, str]) -> QtGui.QPalette:
 
 
 def setup_palette(palette_name: str) -> QtGui.QPalette:
-    """Load the named palette, rebuild icons, and return a QPalette."""
-    global SCIQLOP_PALETTE
-    SCIQLOP_PALETTE = _load_palette(palette_name)
+    """Load the named palette (the default when it is not contributed), rebuild icons, and return a QPalette."""
+    global SCIQLOP_PALETTE, _active_theme
+    _active_theme = _resolve(palette_name)
+    SCIQLOP_PALETTE = _load_palette(_active_theme)
     qpalette = build_palette(SCIQLOP_PALETTE)
-    build_icon_set_for_palette(palette_name, qpalette.base().color())
+    build_icon_set_for_palette(_active_theme, qpalette.base().color())
     return qpalette
