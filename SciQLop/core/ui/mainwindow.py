@@ -926,6 +926,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         panel.setProperty(KIND_PROPERTY, TIME_PANEL)
         dock_widget.setFeature(QtAds.CDockWidget.CustomCloseHandling, True)
         dock_widget.closeRequested.connect(lambda: self.remove_panel(panel))
+        dock_widget.closed.connect(lambda: self._on_panel_dock_closed(dock_widget))
         _follow_panel_renames(panel, dock_widget)
 
     def _on_panel_dock_closed(self, dock_widget: QtAds.CDockWidget) -> None:

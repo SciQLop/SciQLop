@@ -122,8 +122,11 @@ def activate(ctx):
 - The clean-up runs once: when the panel closes (`remove_panel`, the tab's X,
   docked or floating), when the extension is withdrawn (plugin disabled or
   failed: the panels stay open), and before the new `attach` when the same id
-  is contributed again. It never runs for a panel already destroyed: your
-  child widgets died with it.
+  is contributed again.
+- The clean-up never runs for a panel already destroyed, or one whose window
+  was destroyed. So keep the extension's state as children of the panel (they
+  die with it). Any connection to an app-lifetime object (a registry signal,
+  the app, a timer) must check `shiboken6.isValid(panel)` in its slot.
 - An `attach` or clean-up that raises is logged with the extension id and the
   panel name; the panel and the other extensions carry on.
 - Every main window runs its own extensions on its own panels.

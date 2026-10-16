@@ -44,7 +44,7 @@ def _extend(ext_id, attach, kinds=(), replace=False):
 
 
 def _mine(events):
-    return [e for e in events if e[2].startswith("px_")]
+    return [e for e in events if "px_" in e[2]]
 
 
 def _boom(*_):
@@ -158,10 +158,55 @@ def test_cleanup_raising_is_contained(main_window, px_demo, events, logged_error
     assert main_window._panel_extensions._cleanups == {}
 
 
+def test_vp_debug_panel_attaches_on_open_and_cleans_on_force_close(main_window, px_demo, events, qtbot):
+    from SciQLop.user_api.virtual_products.debug import _create_debug_panel
+    _extend("px_demo.ext", _recorder("px_demo.ext", events), kinds=(TIME_PANEL,))
+    panel = _create_debug_panel("px_debug")
+    assert _mine(events) == [("attach", "px_demo.ext", panel.name)]
+    main_window.dock_manager.findDockWidget(panel.name).closeDockWidget()
+    qtbot.waitUntil(lambda: _mine(events)[-1:] == [("clean", "px_demo.ext", "VP Debug: px_debug")])
+    assert main_window._panel_extensions._cleanups == {}
+
+
+def test_a_cleanup_closing_another_panel(main_window, px_demo, events, qtbot):
+    first = main_window.open_panel(LABEL, name="px_r1")
+    other = main_window.open_panel(LABEL, name="px_r2")
+
+    def attach(panel):
+        name = panel.objectName()
+        events.append(("attach", "px_demo.ext", name))
+
+        def cleanup():
+            events.append(("clean", "px_demo.ext", name))
+            if panel is first:
+                main_window.remove_panel(other)
+        return cleanup
+
+    _extend("px_demo.ext", attach, kinds=(LABEL,))
+    PANEL_EXTENSIONS.remove("px_demo.ext")
+    assert _mine(events).count(("clean", "px_demo.ext", "px_r2")) == 1
+    qtbot.waitUntil(lambda: other not in main_window.panels())
+    assert main_window._panel_extensions._cleanups == {}
+
+
+def test_a_cleanup_withdrawing_another_extension(main_window, px_demo, events, qtbot):
+    def attach_a(panel):
+        return lambda: (events.append(("clean", "a", panel.objectName())), PANEL_EXTENSIONS.remove("px_demo.b"))
+
+    _extend("px_demo.a", attach_a, kinds=(LABEL,))
+    _extend("px_demo.b", _recorder("b", events), kinds=(LABEL,))
+    panel = main_window.open_panel(LABEL, name="px_withdraws")
+    main_window.remove_panel(panel)
+    qtbot.waitUntil(lambda: panel not in main_window.panels())
+    cleaned = [e for e in _mine(events) if e[0] == "clean"]
+    assert cleaned == [("clean", "a", "px_withdraws"), ("clean", "b", "px_withdraws")]
+
+
 def test_two_windows(qapp, main_window, px_demo, events):
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
     previous = qapp.main_window
     second = SciQLopMainWindow()
+    second_follower = second._panel_extensions
     try:
         main_window.open_panel(TIME_PANEL, name="px_in_first")
         second.open_panel(TIME_PANEL, name="px_in_second")
@@ -174,3 +219,4 @@ def test_two_windows(qapp, main_window, px_demo, events):
     _extend("px_demo.other", _recorder("px_demo.other", events), kinds=(TIME_PANEL,))
     assert _mine(events)[-1] == ("attach", "px_demo.other", "px_in_first")
     assert ("attach", "px_demo.other", "px_in_second") not in _mine(events)
+    assert len(second_follower._cleanups) == 0, "a destroyed window's follower lets go of its panels"

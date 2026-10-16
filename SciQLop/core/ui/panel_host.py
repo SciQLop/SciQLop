@@ -66,5 +66,4 @@ def dock_panel(main_window, panel: QWidget, kind_id: str, area=None) -> Optional
     if dock_widget is not None:
         _wire_dock(main_window, panel, dock_widget)
     _wire_panel(main_window, panel)
-    main_window._panel_extensions.panel_opened(panel)
     return dock_widget

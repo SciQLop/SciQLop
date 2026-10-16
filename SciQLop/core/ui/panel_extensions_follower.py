@@ -30,9 +30,20 @@ class PanelExtensionsFollower(QObject):
         self._cleanups: Dict[Tuple[str, int], _Entry] = {}
         PANEL_EXTENSIONS.signals.added.connect(self.added)
         PANEL_EXTENSIONS.signals.removed.connect(self.removed)
+        main_window.panel_added.connect(self.panel_opened)
+        # The dict's own method, not a slot of self: something can keep a destroyed window's wrapper,
+        # and with it this follower, alive; its dead panels need not stay with them.
+        self.destroyed.connect(self._cleanups.clear)
+
+    def _alive(self) -> bool:
+        """Let go of the panels the first time a slot fires on a destroyed follower."""
+        if shiboken6.isValid(self):
+            return True
+        self._cleanups.clear()
+        return False
 
     def panel_opened(self, panel: QWidget) -> None:
-        if not shiboken6.isValid(self):
+        if not self._alive():
             return
         self._forget_dead_panels()
         for ext in PANEL_EXTENSIONS.list():
@@ -40,12 +51,12 @@ class PanelExtensionsFollower(QObject):
                 self._attach(ext, panel)
 
     def panel_closing(self, panel: QWidget) -> None:
-        if not shiboken6.isValid(self):
+        if not self._alive():
             return
         self._run_cleanups(lambda ext_id, entry: entry[0] is panel)
 
     def added(self, ext: PanelExtension) -> None:
-        if not shiboken6.isValid(self):
+        if not self._alive():
             return
         self._run_cleanups(lambda ext_id, entry: ext_id == ext.id)
         for panel in self._main_window.panels():
@@ -53,7 +64,7 @@ class PanelExtensionsFollower(QObject):
                 self._attach(ext, panel)
 
     def removed(self, ext: PanelExtension) -> None:
-        if not shiboken6.isValid(self):
+        if not self._alive():
             return
         self._run_cleanups(lambda ext_id, entry: ext_id == ext.id)
 
@@ -64,7 +75,9 @@ class PanelExtensionsFollower(QObject):
     def _run_cleanups(self, selected: Callable[[str, _Entry], bool]) -> None:
         keys = [key for key, entry in self._cleanups.items() if selected(key[0], entry)]
         for key in keys:
-            self._cleanup(*self._cleanups.pop(key))
+            entry = self._cleanups.pop(key, None)  # an earlier clean-up may have run this one already
+            if entry is not None:
+                self._cleanup(*entry)
 
     def _attach(self, ext: PanelExtension, panel: QWidget) -> None:
         try:
