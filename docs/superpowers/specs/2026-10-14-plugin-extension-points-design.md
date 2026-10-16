@@ -197,7 +197,7 @@ candidates migrated only when a plugin needs one or when the cleanup is touched 
 | 2 | `sciqlop.layers`, `sciqlop.virtual_products` | VPRegistry and LayerRegistry (near copies) on one hot-reload EP; **implemented**: docs/superpowers/plans/2026-10-15-layers-virtual-products.md |
 | 3 | `sciqlop.value_editors` | settings delegates + knob widgets (4 type→widget tables) |
 | 3 | `sciqlop.themes`, `sciqlop.icons`, `sciqlop.colormaps`, `sciqlop.time_presets` | palette names ×3, icons, colormap lists, range presets |
-| 3 | `sciqlop.template_formats`, `sciqlop.welcome_sections`, `sciqlop.quickstart`, `sciqlop.tours`, `sciqlop.search_domains`, `sciqlop.catalog_providers` | template extensions ×3, fixed welcome page, tours, search domains, CatalogRegistry; quickstart, tours, search_domains and catalog_providers **implemented**: docs/superpowers/plans/2026-10-16-tier3a-quickstart-tours-search-catalogs.md |
+| 3 | `sciqlop.template_formats`, `sciqlop.welcome_sections`, `sciqlop.quickstart`, `sciqlop.tours`, `sciqlop.search_domains`, `sciqlop.catalog_providers` | template extensions ×3, fixed welcome page, tours, search domains, CatalogRegistry; quickstart, tours, search_domains and catalog_providers **implemented**: docs/superpowers/plans/2026-10-16-tier3a-quickstart-tours-search-catalogs.md; `template_formats`, `time_presets` and `themes` **implemented**: `docs/superpowers/plans/2026-10-16-tier3b-template-formats-time-presets-themes.md` |
 
 Menus follow VS Code: an action is a command registered once; a menu entry places a command at a
 location (`panel`, `panel.export`, `graph`, `product_tree`, `catalog_tree`, `main.tools`) with a

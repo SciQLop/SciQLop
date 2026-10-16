@@ -125,9 +125,12 @@ def activate(ctx):
 | `sciqlop.tours` | `Tour(id, title, description, steps)`, through `register_tour(tour)` | `id` |
 | `sciqlop.search_domains` | a `SearchDomain` (`name`, `snapshot()`), through `register_domain(domain)` | `name` |
 | `sciqlop.catalog_providers` | a `CatalogProvider` subclass instance; it registers itself when built | `name#address` |
+| `sciqlop.template_formats` | `TemplateFormat(id, label, suffixes, loads, dumps)` | `id` |
+| `sciqlop.time_presets` | `TimePreset(id, label, seconds, description="")` | `id` |
+| `sciqlop.themes` | `Theme(id, label, palette)`; `palette` is a role → colour dict or a `.yaml` path | `id` |
 
 Locations, argument values and examples: the "Commands and menu entries", "Export targets", "Inspector sections",
-"Docks", "Panels: kinds and extensions", "Keyboard shortcuts", "Quickstart shortcuts, tours, search domains, catalog providers" and "Agents: backends, tools, skills" sections of [ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws them all.
+"Docks", "Panels: kinds and extensions", "Keyboard shortcuts", "Quickstart, tours, search, catalogs, templates, presets, themes" and "Agents: backends, tools, skills" sections of [ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws them all.
 
 ## Plot kinds, drop rules and saved panels
 

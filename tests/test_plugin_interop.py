@@ -13,7 +13,7 @@ from SciQLop.components.plugins.backend.loader import context, loader
 from SciQLop.core import extensions
 
 _OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell", "vp_maker", "vp_user", "ui_maker",
-           "agent_maker", "viewer_maker", "viewer_user", "broken_viewer", "tier3_maker")
+           "agent_maker", "viewer_maker", "viewer_user", "broken_viewer", "tier3_maker", "tier3b_maker")
 
 
 @pytest.fixture
@@ -458,3 +458,41 @@ def test_prepare_extension_points_declares_the_tier3a_points(qapp, ep_id):
     from SciQLop.components.extension_points import prepare_extension_points
     prepare_extension_points()
     assert extensions.get(ep_id).id == ep_id
+
+
+@pytest.mark.parametrize("ep_id", ["sciqlop.template_formats", "sciqlop.time_presets", "sciqlop.themes"])
+def test_prepare_extension_points_declares_the_tier3b_points(qapp, ep_id):
+    from SciQLop.components.extension_points import prepare_extension_points
+    prepare_extension_points()
+    assert extensions.get(ep_id).id == ep_id
+
+
+_TIER3B_MAKER = """
+    import json
+    from SciQLop.components.plotting.template_formats import TemplateFormat
+    from SciQLop.components.theming.themes import Theme
+    from SciQLop.core.time_presets import TimePreset
+
+    def activate(ctx):
+        ctx.contribute("sciqlop.template_formats", TemplateFormat("tier3b_maker.tpl", "Demo", (".t3b",),
+                                                                  loads=json.loads, dumps=json.dumps))
+        ctx.contribute("sciqlop.time_presets", TimePreset("tier3b_maker.3d", "3d", 3 * 86400))
+        ctx.contribute("sciqlop.themes", Theme("tier3b_maker.dusk", "Dusk", {"Window": "#303040"}))
+"""
+
+
+def test_plugin_contributes_a_template_format_a_time_preset_and_a_theme(tmp_path, main_window, fresh):
+    from SciQLop.components.plotting.template_formats import template_suffixes
+    from SciQLop.components.theming.themes import THEMES
+    from SciQLop.core.time_presets import duration_presets
+
+    loader.activate_all([_plugin(tmp_path, "tier3b_maker", _TIER3B_MAKER)], main_window=main_window, ep_plugins={})
+    assert context.STATES["tier3b_maker"].status == "active", context.STATES["tier3b_maker"].reason
+    assert ".t3b" in template_suffixes()
+    assert "tier3b_maker.3d" in [p.id for p in duration_presets()]
+    assert THEMES.owner_of("tier3b_maker.dusk") == "tier3b_maker"
+
+    loader._withdraw("tier3b_maker")
+    assert ".t3b" not in template_suffixes()
+    assert "tier3b_maker.3d" not in [p.id for p in duration_presets()]
+    assert "tier3b_maker.dusk" not in THEMES.keys()

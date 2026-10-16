@@ -490,7 +490,7 @@ ctx.contribute("sciqlop.workspace_sections", WorkspaceSection("my_plugin", MyPlu
 - Withdrawing the plugin leaves the table in the file, untouched.
 - No change notification: call `section()` when you need the value.
 
-## Quickstart shortcuts, tours, search domains, catalog providers
+## Quickstart, tours, search, catalogs, templates, presets, themes
 
 Each of these is owned by your plugin when you add it from `activate(ctx)`, and leaves when your plugin is
 withdrawn:
@@ -506,6 +506,15 @@ withdrawn:
 - Subclass `CatalogProvider` and build it: it registers itself. `register` works from any thread, but build the
   provider on the main thread: a QObject keeps the thread it was built on. Do not `ctx.contribute` a provider:
   building it registers it.
+- `ctx.contribute("sciqlop.template_formats", TemplateFormat(id, label, suffixes, loads, dumps))` lets panel templates
+  be saved and read in your format: `loads(text) -> dict`, `dumps(dict) -> text`. "Save as template" still writes
+  `.json`; files in your format are listed while your plugin is active.
+- `ctx.contribute("sciqlop.time_presets", TimePreset(id, label, seconds, description))` adds a duration to every
+  panel's time-range bar and to the palette's "Set time range". `description` is the palette wording ("Last 3 days").
+- `ctx.contribute("sciqlop.themes", Theme(id, label, palette))` adds a theme to Settings → Appearance and to
+  `user_api.themes`. `palette` maps Qt palette roles (`Window`, `Base`, `Text`, …) to colours, as the files in
+  `SciQLop/resources/palettes` do. If your theme is the user's choice, it applies as soon as your plugin activates;
+  when your plugin is withdrawn SciQLop shows `space` and keeps the user's choice.
 
 ## Agents: backends, tools, skills
 
