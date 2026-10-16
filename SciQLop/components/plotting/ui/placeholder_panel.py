@@ -7,7 +7,7 @@ import json
 from typing import Optional
 
 import shiboken6
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 from SciQLop.components.plugins.install_offer import find_store_entry
@@ -92,17 +92,28 @@ class PlaceholderPanel(QWidget):
     def _on_install_finished(self, payload: str) -> None:
         if not shiboken6.isValid(self):
             return
-        self._status.setText(_install_outcome(json.loads(payload)))
-        if self._install is not None:
+        result = json.loads(payload)
+        self._status.setText(_install_outcome(result))
+        if self._install is not None and not result.get("ok"):
             self._install.setEnabled(True)
 
     def _on_kind_added(self, kind) -> None:
         if not shiboken6.isValid(self) or kind.id != self.missing_kind or self._main_window is None:
             return
+        # Deferred: `added` fires inside the plugin's activate; the swap waits until activate has finished
+        # (or failed, and the loader withdrew the kind).
+        QTimer.singleShot(0, self, self._swap_if_contributed)
+
+    def _swap_if_contributed(self) -> None:
+        if not shiboken6.isValid(self) or self.missing_kind not in PANEL_KINDS:
+            return
+        if self._main_window._dock_of(self) is None:  # already swapped by an earlier contribution
+            return
         try:
             _swap(self._main_window, self)
         except Exception as e:
-            log.error(f"Could not open the {self.missing_kind!r} panel in place of its placeholder: {e}")
+            log.error(f"Could not open the {self.missing_kind!r} panel in place of its placeholder: {e}",
+                      exc_info=True)
             self._status.setText(f"Could not open this panel: {e}")
 
 

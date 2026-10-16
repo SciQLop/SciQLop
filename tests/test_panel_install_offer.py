@@ -68,7 +68,7 @@ def installs(monkeypatch):
 
     def fake_install(self, name):
         calls.append(name)
-        if outcome["ok"]:
+        if outcome["ok"] and not outcome["restart_required"]:
             _contribute_kind()
         self.install_finished.emit(json.dumps({"name": name, **outcome}))
 
@@ -153,11 +153,53 @@ def test_install_failure_is_shown(qtbot, main_window, store, installs, placehold
     assert placeholder.install_button().isEnabled()
 
 
+def test_an_install_needing_a_restart_keeps_the_button_disabled(qtbot, main_window, store, installs, placeholder):
+    _, outcome = installs
+    outcome.update(restart_required=True)
+    qtbot.waitUntil(lambda: placeholder.install_button() is not None)
+    placeholder.install_button().click()
+    qtbot.waitUntil(lambda: "Restart" in placeholder.status())
+    assert not placeholder.install_button().isEnabled()
+
+
 def test_contribution_without_install_also_swaps(qtbot, main_window, placeholder):
     _contribute_kind()
     qtbot.waitUntil(lambda: placeholder not in main_window.panels())
     [real] = [p for p in main_window.panels() if p.objectName() == "io_viewer"]
     assert real.config == _ROOT["config"]
+
+
+def test_the_swap_hands_its_name_over_and_frees_the_temporary_one(qtbot, main_window, placeholder):
+    from SciQLop.core import unique_names
+    _contribute_kind()
+    qtbot.waitUntil(lambda: placeholder not in main_window.panels())
+    [real] = [p for p in main_window.panels() if p.objectName() == "io_viewer"]
+    temporary = main_window._dock_of(real).objectName()
+    assert temporary != "io_viewer"
+    assert temporary not in unique_names._all_reserved_names_
+    main_window.remove_panel(real)
+    assert main_window.open_panel(_KIND, name="io_viewer").objectName() == "io_viewer"
+
+
+def test_a_placeholder_closed_before_its_lookup_returns(qtbot, monkeypatch, main_window):
+    import threading
+    from PySide6.QtWidgets import QApplication, QPushButton
+    import shiboken6
+    from SciQLop.components.plotting.ui import placeholder_panel
+    release, delivered = threading.Event(), []
+    real_find = placeholder_panel.find_store_entry
+    monkeypatch.setattr(install_offer, "fetch_index",
+                        lambda *a, **k: release.wait(10) and [{"name": "absent", "versions": [_version("1.0")]}])
+    monkeypatch.setattr(placeholder_panel, "find_store_entry",
+                        lambda kind, done: real_find(kind, lambda e: (done(e), delivered.append(e))))
+    panel = placeholder_panel.open_placeholder(main_window, dict(_ROOT), name="io_early_close")
+    main_window.remove_panel(panel)
+    qtbot.waitUntil(lambda: not shiboken6.isValid(panel))
+    release.set()
+    qtbot.waitUntil(lambda: bool(delivered))
+    assert delivered[0]["name"] == "absent"
+    assert not [b for b in QApplication.allWidgets()
+                if isinstance(b, QPushButton) and b.text() == "Install absent"]
 
 
 def test_a_failing_open_keeps_the_placeholder(qtbot, main_window, placeholder):

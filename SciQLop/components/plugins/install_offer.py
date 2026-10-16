@@ -56,9 +56,9 @@ def _main_thread_delivery() -> _MainThreadDelivery:
     return _delivery
 
 
-def _lookup(kind_id: str) -> Optional[dict]:
+def _lookup(kind_id: str, fetch: Callable[[], list]) -> Optional[dict]:
     try:
-        return store_entry_for_kind(kind_id, filter_packages(fetch_index()))
+        return store_entry_for_kind(kind_id, filter_packages(fetch()))
     except Exception as e:
         log.warning(f"Could not look up the plugin for panel kind {kind_id!r} in the App Store: {e}")
         return None
@@ -68,4 +68,5 @@ def find_store_entry(kind_id: str, done: Callable[[Optional[dict]], None]) -> No
     """Call done(entry or None) on the main thread once the store index has been searched; call from the main thread.
     simplify: refetches the index each time a placeholder opens (no cache); cache it if many placeholders open at once."""
     delivery = _main_thread_delivery()
-    threading.Thread(target=lambda: delivery.ready.emit(done, _lookup(kind_id)), daemon=True).start()
+    fetch = fetch_index  # bound now, not when the thread runs: a test's patch may be gone by then
+    threading.Thread(target=lambda: delivery.ready.emit(done, _lookup(kind_id, fetch)), daemon=True).start()

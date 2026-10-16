@@ -12,7 +12,7 @@ from SciQLop.components.plugins.backend.loader import context, loader
 from SciQLop.core import extensions
 
 _OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell", "vp_maker", "vp_user", "ui_maker",
-           "agent_maker", "viewer_maker", "viewer_user")
+           "agent_maker", "viewer_maker", "viewer_user", "broken_viewer")
 
 
 @pytest.fixture
@@ -365,4 +365,42 @@ def test_plugin_contributes_a_panel_kind_and_another_extends_it(tmp_path, main_w
             main_window.open_panel("viewer_maker.viewer")
     finally:
         for panel in [*opened, *_viewers(main_window)]:
+            main_window.remove_panel(panel)
+
+
+_BROKEN_VIEWER = """
+    from PySide6.QtWidgets import QLabel
+    from SciQLop.core.panel_kinds import PanelKind
+
+    def activate(ctx):
+        ctx.contribute("sciqlop.panel_kinds", PanelKind("broken_viewer.viewer", "Viewer",
+                                                        create=lambda n, c: QLabel("real")))
+        raise RuntimeError("fails after contributing its kind")
+"""
+
+
+def _one_event_loop_turn(qtbot):
+    from PySide6.QtCore import QTimer
+    turned = []
+    QTimer.singleShot(0, lambda: turned.append(True))
+    qtbot.waitUntil(lambda: bool(turned))
+
+
+def test_a_plugin_failing_after_contributing_a_kind_leaves_the_placeholder(tmp_path, main_window, fresh, qtbot,
+                                                                         monkeypatch):
+    from SciQLop.components.plotting.ui.placeholder_panel import open_placeholder
+    from SciQLop.components.plugins import install_offer
+    from SciQLop.core.panel_kinds import PANEL_KINDS
+    monkeypatch.setattr(install_offer, "fetch_index", lambda *a, **k: [])
+    placeholder = open_placeholder(main_window, {"kind": "broken_viewer.viewer", "config": {}, "slots": {}},
+                                   name="io_broken")
+    try:
+        loader.activate_all([_plugin(tmp_path, "broken_viewer", _BROKEN_VIEWER)],
+                            main_window=main_window, ep_plugins={})
+        assert context.STATES["broken_viewer"].status == "failed"
+        _one_event_loop_turn(qtbot)
+        assert "broken_viewer.viewer" not in PANEL_KINDS
+        assert placeholder in main_window.panels() and placeholder.objectName() == "io_broken"
+    finally:
+        for panel in [p for p in main_window.panels() if p.objectName() == "io_broken"]:
             main_window.remove_panel(panel)
