@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import partial
 from operator import attrgetter
 from typing import Any, Callable
 
@@ -26,8 +25,5 @@ QUICKSTART = declare(ExtensionPoint("sciqlop.quickstart", QuickstartShortcut, wh
 
 def contribute_shortcut(shortcut: QuickstartShortcut, owner: str) -> None:
     """From any thread: the owner is captured by the caller, since the owner context does not cross threads."""
-    from SciQLop.user_api.threading import invoke_on_main_thread, _on_main_thread
-    if _on_main_thread():
-        QUICKSTART.contribute(shortcut, owner=owner)
-    else:
-        invoke_on_main_thread(partial(QUICKSTART.contribute, shortcut, owner=owner))
+    from SciQLop.user_api.threading import on_main_thread
+    on_main_thread(QUICKSTART.contribute)(shortcut, owner=owner)

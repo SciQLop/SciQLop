@@ -127,7 +127,7 @@ def activate(ctx):
 | `sciqlop.catalog_providers` | a `CatalogProvider` subclass instance; it registers itself when built | `name#address` |
 
 Locations, argument values and examples: the "Commands and menu entries", "Export targets", "Inspector sections",
-"Docks", "Panels: kinds and extensions", "Keyboard shortcuts" and "Agents: backends, tools, skills" sections of [ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws them all.
+"Docks", "Panels: kinds and extensions", "Keyboard shortcuts", "Quickstart shortcuts, tours, search domains, catalog providers" and "Agents: backends, tools, skills" sections of [ui-and-settings.md](ui-and-settings.md). A failed `activate` withdraws them all.
 
 ## Plot kinds, drop rules and saved panels
 

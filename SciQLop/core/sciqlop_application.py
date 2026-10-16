@@ -1,3 +1,4 @@
+import shiboken6
 from PySide6 import QtWidgets, QtCore, QtGui
 from typing import Dict, List, Optional, Any, Callable, TYPE_CHECKING
 from SciQLop.components.theming import load_stylesheets, setup_palette, SciQLopStyle
@@ -73,9 +74,13 @@ class SciQLopApp(QApplication):
         contribute_shortcut(QuickstartShortcut(name, description, icon, callback), current_owner())
 
     def _on_quickstart_added(self, shortcut) -> None:
+        if not shiboken6.isValid(self):
+            return
         self.quickstart_shortcuts_added.emit(shortcut.name)
 
     def _on_quickstart_removed(self, shortcut) -> None:
+        if not shiboken6.isValid(self):
+            return
         self.quickstart_shortcuts_removed.emit(shortcut.name)
 
     @QtCore.Property(list)

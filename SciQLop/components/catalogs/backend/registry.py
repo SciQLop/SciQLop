@@ -36,6 +36,7 @@ class CatalogRegistry(QObject):
         super().__init__(parent)
         self._silenced: set[int] = set()
         self._keys: dict[int, str] = {}
+        self._announced: set[int] = set()
         CATALOG_PROVIDERS.signals.added.connect(self._on_added)
         CATALOG_PROVIDERS.signals.removed.connect(self._on_removed)
 
@@ -51,9 +52,9 @@ class CatalogRegistry(QObject):
 
     @on_main_thread
     def _contribute(self, provider: CatalogProvider, owner: str) -> None:
-        key = provider_key(provider)
-        if key in CATALOG_PROVIDERS:
+        if id(provider) in self._keys:
             return
+        key = provider_key(provider)
         CATALOG_PROVIDERS.contribute(provider, owner=owner)
         self._keys[id(provider)] = key
         provider.destroyed.connect(lambda *_, k=key, i=id(provider): self._remove_silently(k, i))
@@ -75,7 +76,7 @@ class CatalogRegistry(QObject):
     def _remove_silently(self, key: str, ident: int) -> None:
         """A destroyed provider leaves without provider_unregistered: its slots would be handed a dead object."""
         self._keys.pop(ident, None)
-        if key not in CATALOG_PROVIDERS or not shiboken6.isValid(CATALOG_PROVIDERS.signals):
+        if key not in CATALOG_PROVIDERS or not shiboken6.isValid(CATALOG_PROVIDERS.signals):  # exit-time: the point's QObject may already be gone
             return
         self._silenced.add(ident)
         try:
@@ -84,10 +85,13 @@ class CatalogRegistry(QObject):
             self._silenced.discard(ident)
 
     def _on_added(self, provider: CatalogProvider) -> None:
-        if shiboken6.isValid(self):
+        if shiboken6.isValid(self) and id(provider) not in self._announced:
+            self._announced.add(id(provider))
             self.provider_registered.emit(provider)
 
     def _on_removed(self, provider: CatalogProvider) -> None:
+        self._keys.pop(id(provider), None)
+        self._announced.discard(id(provider))
         if shiboken6.isValid(self) and id(provider) not in self._silenced:
             self.provider_unregistered.emit(provider)
 

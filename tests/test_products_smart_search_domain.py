@@ -58,3 +58,18 @@ def test_register_smart_search_domain_registers_with_facade():
     mock_register.assert_called_once()
     registered = mock_register.call_args[0][0]
     assert isinstance(registered, mod.ProductsDomain)
+
+
+def test_the_products_domain_is_owned_by_sciqlop(qapp):
+    import SciQLop.components.products.smart_search_domain as mod
+    from SciQLop.components.smart_search.domain import SEARCH_DOMAINS
+
+    with patch.object(mod, "ProductsFlatFilterModel", return_value=MagicMock()), \
+         patch.object(mod, "ProductsModel") as mock_products_model, \
+         patch("SciQLop.components.smart_search._get_registry", return_value=MagicMock()):
+        mock_products_model.instance.return_value = MagicMock()
+        try:
+            mod.register_smart_search_domain()
+            assert SEARCH_DOMAINS.owner_of("products") == "sciqlop"
+        finally:
+            SEARCH_DOMAINS.remove("products") if "products" in SEARCH_DOMAINS else None

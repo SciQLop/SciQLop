@@ -498,11 +498,14 @@ withdrawn:
 - `sciqlop_app().add_quickstart_shortcut(name, description, icon, callback)` adds a welcome-page shortcut. A name
   already used by another plugin or by SciQLop is refused (`DuplicateContribution`).
 - `register_tour(Tour(...))` (`SciQLop.components.onboarding`) adds a guided tour. A tour needs at least one step,
-  and step ids must be unique; the `Tour` constructor checks both.
+  and step ids must be unique; the `Tour` constructor checks both. A tour id already used by another plugin is
+  refused (`DuplicateContribution`).
 - `register_domain(domain)` (`SciQLop.components.smart_search`) adds a smart-search domain: an object with a `name`
   and a `snapshot()` returning `NodeSnapshot(path_key, raw_text)` items. Call `notify_changed(name)` when its content
-  changes.
-- Subclass `CatalogProvider` and build it: it registers itself. Build it on the main thread.
+  changes. A domain name already used by another plugin is refused (`DuplicateContribution`).
+- Subclass `CatalogProvider` and build it: it registers itself. `register` works from any thread, but build the
+  provider on the main thread: a QObject keeps the thread it was built on. Do not `ctx.contribute` a provider:
+  building it registers it.
 
 ## Agents: backends, tools, skills
 

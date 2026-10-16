@@ -450,3 +450,11 @@ def test_plugin_contributes_quickstart_a_tour_a_search_domain_and_a_catalog_prov
     assert get_tour("tier3_maker.tour") is None
     assert "tier3_maker.events" not in SEARCH_DOMAINS.keys()
     assert "Tier3 maker" not in provider_names()
+
+
+@pytest.mark.parametrize("ep_id", ["sciqlop.quickstart", "sciqlop.tours", "sciqlop.search_domains",
+                                   "sciqlop.catalog_providers"])
+def test_prepare_extension_points_declares_the_tier3a_points(qapp, ep_id):
+    from SciQLop.components.extension_points import prepare_extension_points
+    prepare_extension_points()
+    assert extensions.get(ep_id).id == ep_id

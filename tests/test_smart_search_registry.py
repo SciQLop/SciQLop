@@ -72,6 +72,16 @@ def test_register_domain_then_notify_changed_submits_no_job_while_disabled(regis
     assert jobs_backend.list_jobs() == []
 
 
+def test_replacing_a_domain_deletes_the_previous_reindex_timer(registry, qtbot):
+    import shiboken6
+    from PySide6.QtCore import QCoreApplication, QEvent
+    registry.register_domain(_FakeDomain("d", []))
+    old_timer = registry._domains["d"].reindex_timer
+    registry.register_domain(_FakeDomain("d", []))
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    assert not shiboken6.isValid(old_timer)
+
+
 def test_unregister_domain_stops_pending_reindex(registry, jobs_backend, qtbot):
     domain = _FakeDomain("products", [])
     registry.register_domain(domain)

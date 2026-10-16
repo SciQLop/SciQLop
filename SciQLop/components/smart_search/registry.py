@@ -86,6 +86,7 @@ class SmartSearchRegistry(QObject):
         previous = self._domains.get(domain.name)
         if previous is not None:
             previous.reindex_timer.stop()
+            previous.reindex_timer.deleteLater()
         timer = QTimer(self)
         timer.setSingleShot(True)
         timer.timeout.connect(lambda name=domain.name: self._reindex_if_dirty(name))

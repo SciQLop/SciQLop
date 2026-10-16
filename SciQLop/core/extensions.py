@@ -111,7 +111,8 @@ class ExtensionPoint(Generic[T]):
         return list(self._items)
 
     def list(self, **filters) -> list[T]:
-        return [i for i in self._items.values() if all(getattr(i, k, None) == v for k, v in filters.items())]
+        """Iterates over a snapshot, so it is safe to call from any thread."""
+        return [i for i in list(self._items.values()) if all(getattr(i, k, None) == v for k, v in filters.items())]
 
     def owner_of(self, key: str) -> str:
         self.get(key)

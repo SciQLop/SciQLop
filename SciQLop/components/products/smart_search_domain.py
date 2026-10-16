@@ -35,4 +35,7 @@ class ProductsDomain:
 
 
 def register_smart_search_domain() -> None:
-    register_domain(ProductsDomain())
+    from SciQLop.core.extensions import owned_by
+    from SciQLop.core.name_follower import CORE_OWNER
+    with owned_by(CORE_OWNER):
+        register_domain(ProductsDomain())

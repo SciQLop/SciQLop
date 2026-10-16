@@ -43,6 +43,18 @@ def test_registering_twice_is_a_no_op(registry):
     assert registry.providers().count(p) == 1
 
 
+def test_a_re_contribution_does_not_announce_the_provider_twice(registry):
+    p = _provider()
+    seen = []
+    registry.provider_registered.connect(seen.append)
+    try:
+        with owned_by("cp_demo"):
+            CATALOG_PROVIDERS.contribute(p, owner="cp_demo")
+    finally:
+        registry.provider_registered.disconnect(seen.append)
+    assert seen == []
+
+
 def test_a_destroyed_provider_leaves_without_a_signal(registry, qtbot):
     p = _provider()
     key, seen = provider_key(p), []

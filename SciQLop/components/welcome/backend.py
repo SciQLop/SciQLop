@@ -8,6 +8,7 @@ import subprocess
 import threading
 import urllib.request
 
+import shiboken6
 from PySide6.QtCore import QBuffer, QFileSystemWatcher, QIODevice, QObject, Signal, Slot
 
 from SciQLop.components.appstore.backend import available_updates
@@ -203,6 +204,8 @@ class WelcomeBackend(QObject):
             log.debug("welcome page closed before %s was delivered", signal_name)
 
     def _on_quickstart_shortcuts_changed(self, _):
+        if not shiboken6.isValid(self):
+            return
         self.quickstart_changed.emit()
 
     def _on_templates_dir_changed(self, path: str):
