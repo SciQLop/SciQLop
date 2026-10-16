@@ -30,6 +30,7 @@ def prepare_extension_points() -> None:
     contribute_core_skills()  # declares sciqlop.agent_skills, contributes the bundled skills
     from SciQLop.components.catalogs.backend import catalog_mime, event_mime  # noqa: F401
     import SciQLop.components.plotting.core_kinds  # noqa: F401  contributes sciqlop.timeseries
+    import SciQLop.components.plotting.time_panel_kind  # noqa: F401  declares sciqlop.panel_kinds, contributes sciqlop.time_panel
     import SciQLop.components.scenes.contributions  # noqa: F401  contributes sciqlop.scenes.projection
     from SciQLop.components.scenes import registry  # noqa: F401  importing declares sciqlop.scenes.*
     from SciQLop.components.scenes.tree import follow_registries

@@ -50,6 +50,45 @@ def activate(ctx):
   second side pane with the same title from the same plugin raises `ValueError`.
   Withdrawing that pane deletes the widget you passed in: don't keep using it.
 
+## Panels: kinds and extensions
+
+A dock is one widget per window. A panel kind is a widget the user can open
+many times, like the plot panel. Contribute a `PanelKind` to `sciqlop.panel_kinds`.
+
+```python
+from SciQLop.core.panel_kinds import PanelKind
+
+def activate(ctx):
+    ctx.contribute("sciqlop.panel_kinds", PanelKind(
+        id="radio.waterfall", label="Waterfall",
+        create=lambda name, config: Waterfall(config.get("band", "HF")),  # (name, config) -> QWidget
+        to_config=None,            # None: this kind is not saved with the workspace
+        icon=None,                 # registered icon name or image path
+        in_new_menu=True))
+
+    ctx.main_window.open_panel("radio.waterfall", band="LF")   # returns the widget
+```
+
+- `open_panel(kind_id, name=None, area=None, **config)` claims a unique name,
+  calls `create(name, config)` with the keyword arguments as `config`, sets the
+  widget's `objectName` and `windowTitle` to that name, docks it, and returns it.
+- Names: with no `name`, the kind's `label` is the base (`Waterfall0`,
+  `Waterfall1`...). A taken name gets a suffix (`X`, then `X_1`). Read the name
+  back from `widget.objectName()`; renaming the widget renames its tab.
+- The core kind is `sciqlop.time_panel` (`SciQLop.core.plot_kinds.TIME_PANEL`):
+  `open_panel(TIME_PANEL)` is `new_plot_panel()`.
+- `panel_kind_of(widget)` (`SciQLop.core.panel_kinds`) gives a panel's kind id.
+  `main_window.panels()` lists every panel; `plot_panels()` still lists only
+  plot-panel names.
+- `main_window.remove_panel(widget_or_name)` and the tab's X close any kind,
+  docked or floating. The widget is deleted: don't keep using it.
+  `panel_added` is emitted with every new panel, of any kind.
+- `create` raising: SciQLop logs an error naming the kind, docks nothing and
+  `open_panel` re-raises. An unknown kind raises `NotRegistered` (a
+  `LookupError`) listing the available kinds.
+- Withdrawing a kind (plugin disabled or failed) keeps its open panels open;
+  only new ones can no longer be opened.
+
 ## Threading
 
 SciQLop runs a Qt event loop on the main thread (with asyncio on top, through

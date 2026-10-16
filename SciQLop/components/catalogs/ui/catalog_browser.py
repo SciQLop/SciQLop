@@ -825,8 +825,9 @@ class CatalogBrowser(QWidget):
         self.highlight_event(event, catalog)
 
     def connect_to_panel(self, panel) -> None:
-        """Wire bidirectional event selection between this browser and a panel."""
-        if panel in self._panels:
+        """Wire bidirectional event selection between this browser and a panel.
+        Panels of kinds without a catalog manager are skipped."""
+        if panel in self._panels or not hasattr(panel, "catalog_manager"):
             return
         self._panels.append(panel)
         manager = panel.catalog_manager
