@@ -29,3 +29,10 @@ class Tour:
     title: str
     description: str
     steps: list[TourStep]
+
+    def __post_init__(self):
+        if not self.steps:
+            raise ValueError(f"Tour {self.id!r} has no steps")
+        step_ids = [step.step_id for step in self.steps]
+        if len(step_ids) != len(set(step_ids)):
+            raise ValueError(f"Tour {self.id!r} has duplicate step_id values: {step_ids}")

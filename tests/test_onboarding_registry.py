@@ -1,5 +1,7 @@
 import pytest
 
+from SciQLop.core.extensions import owned_by
+
 
 def _make_step(step_id="step", resolver=None, completion=None, **kwargs):
     from SciQLop.components.onboarding.backend.tour import TourStep
@@ -47,11 +49,48 @@ def test_get_tour_returns_none_for_unknown_id():
     assert registry.get_tour("no_such_tour") is None
 
 
-def test_register_tour_rejects_duplicate_id():
+def test_the_same_owner_registering_a_tour_again_replaces_it():
     from SciQLop.components.onboarding.backend import registry
     registry.register_tour(_make_tour())
-    with pytest.raises(ValueError, match="already registered"):
+    second = _make_tour()
+    registry.register_tour(second)
+    assert registry.get_tour("fake_tour") is second
+
+
+def test_another_owner_cannot_take_a_tour_id():
+    from SciQLop.components.onboarding.backend import registry
+    registry.register_tour(_make_tour())
+    with owned_by("tour_thief"), pytest.raises(ValueError, match="already registered"):
         registry.register_tour(_make_tour())
+
+
+def test_a_withdrawn_plugin_takes_its_tours_away_and_can_register_them_again():
+    from SciQLop.components.onboarding.backend import registry
+    with owned_by("tour_demo"):
+        registry.register_tour(_make_tour())
+    assert registry.TOURS.owner_of("fake_tour") == "tour_demo"
+    registry.TOURS.remove_owner("tour_demo")
+    assert registry.get_tour("fake_tour") is None
+    with owned_by("tour_demo"):
+        registry.register_tour(_make_tour())
+    assert registry.get_tour("fake_tour") is not None
+
+
+def test_a_tour_without_steps_cannot_be_built():
+    with pytest.raises(ValueError, match="no steps"):
+        _make_tour(steps=[])
+
+
+def test_a_tour_registered_from_a_worker_thread_keeps_its_owner(qtbot, monkeypatch):
+    from SciQLop.components.onboarding.backend import registry
+    from .helpers import call_from_worker_thread
+
+    def register():
+        with owned_by("tour_demo"):
+            registry.register_tour(_make_tour())
+
+    call_from_worker_thread(qtbot, monkeypatch, register)
+    assert registry.TOURS.owner_of("fake_tour") == "tour_demo"
 
 
 def test_register_tour_rejects_empty_steps():
