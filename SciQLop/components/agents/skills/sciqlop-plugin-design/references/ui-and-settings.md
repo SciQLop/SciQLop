@@ -495,7 +495,7 @@ ctx.contribute("sciqlop.workspace_sections", WorkspaceSection("my_plugin", MyPlu
 Each of these is owned by your plugin when you add it from `activate(ctx)`, and leaves when your plugin is
 withdrawn:
 
-- `sciqlop_app().add_quickstart_shortcut(name, description, icon, callback)` adds a welcome-page shortcut. A name
+- `SciQLop.core.sciqlop_application.sciqlop_app().add_quickstart_shortcut(name, description, icon, callback)` adds a welcome-page shortcut. A name
   already used by another plugin or by SciQLop is refused (`DuplicateContribution`).
 - `register_tour(Tour(...))` (`SciQLop.components.onboarding`) adds a guided tour. A tour needs at least one step,
   and step ids must be unique; the `Tour` constructor checks both. A tour id already used by another plugin is
