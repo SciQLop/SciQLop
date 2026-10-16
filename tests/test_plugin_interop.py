@@ -12,7 +12,7 @@ from SciQLop.components.plugins.backend.loader import context, loader
 from SciQLop.core import extensions
 
 _OWNERS = ("io_vdf", "io_study", "io_late", "io_export", "io_shell", "vp_maker", "vp_user", "ui_maker",
-           "agent_maker")
+           "agent_maker", "viewer_maker", "viewer_user")
 
 
 @pytest.fixture
@@ -293,3 +293,74 @@ def test_plugin_contributes_an_agent_backend_a_tool_and_a_skill(tmp_path, main_w
     assert "agent_maker_ping" not in [t["name"] for t in build_sciqlop_tools(main_window)]
     sync_skills(workspace)
     assert not published.parent.exists()
+
+
+_VIEWER_MAKER = """
+    from PySide6.QtWidgets import QLabel
+    from SciQLop.core.panel_extensions import PanelExtension
+    from SciQLop.core.panel_kinds import PanelKind
+
+    class Api:
+        def __init__(self):
+            self.log = []
+
+        def attach(self, panel):
+            self.log.append(("attach", panel.text()))
+            return lambda: self.log.append(("cleanup", panel.text()))
+
+    def activate(ctx):
+        api = Api()
+        ctx.contribute("sciqlop.panel_kinds", PanelKind(
+            "viewer_maker.viewer", "Viewer", create=lambda n, c: QLabel(c.get("text", "")),
+            to_config=lambda w: {"text": w.text()}))
+        ctx.contribute("sciqlop.panel_extensions", PanelExtension(
+            "viewer_maker.badge", attach=api.attach, kinds=("viewer_maker.viewer",)))
+        return api
+"""
+
+_VIEWER_USER = """
+    from SciQLop.core.panel_extensions import PanelExtension
+
+    class Api:
+        def __init__(self):
+            self.attached = []
+
+    def activate(ctx):
+        api = Api()
+        ctx.main_window.open_panel("viewer_maker.viewer", text="from user")
+        ctx.contribute("sciqlop.panel_extensions", PanelExtension(
+            "viewer_user.time", attach=lambda p: api.attached.append(p.objectName()),
+            kinds=("sciqlop.time_panel",)))
+        return api
+"""
+
+
+def test_plugin_contributes_a_panel_kind_and_another_extends_it(tmp_path, main_window, fresh):
+    from SciQLop.core.panel_extensions import PANEL_EXTENSIONS
+    from SciQLop.core.panel_kinds import PANEL_KINDS
+    opened = []
+    try:
+        loader.activate_all([_plugin(tmp_path, "viewer_user", _VIEWER_USER, dependencies=["viewer_maker"]),
+                             _plugin(tmp_path, "viewer_maker", _VIEWER_MAKER)],
+                            main_window=main_window, ep_plugins={})
+        assert context.STATES["viewer_user"].status == "active", context.STATES["viewer_user"].reason
+        maker, user = context.STATES["viewer_maker"].api, context.STATES["viewer_user"].api
+        assert PANEL_KINDS.owner_of("viewer_maker.viewer") == "viewer_maker"
+        assert PANEL_EXTENSIONS.owner_of("viewer_maker.badge") == "viewer_maker"
+        assert PANEL_EXTENSIONS.owner_of("viewer_user.time") == "viewer_user"
+        assert maker.log == [("attach", "from user")]
+
+        time_panel = main_window.new_plot_panel()
+        opened.append(time_panel)
+        assert user.attached == [time_panel.objectName()]
+
+        loader._withdraw("viewer_maker")
+        assert maker.log == [("attach", "from user"), ("cleanup", "from user")]
+        viewers = [p for p in main_window.panels() if getattr(p, "text", None) and p.text() == "from user"]
+        assert len(viewers) == 1
+        opened.extend(viewers)
+        with pytest.raises(LookupError):
+            main_window.open_panel("viewer_maker.viewer")
+    finally:
+        for panel in opened:
+            main_window.remove_panel(panel)

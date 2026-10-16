@@ -187,7 +187,7 @@ candidates migrated only when a plugin needs one or when the cleanup is touched 
 | 1 | `sciqlop.plot_kinds` | `_plot_product` branches, remote plot branch, user_api plot/graph type mapping, scene dispatch |
 | 1 | `sciqlop.drop_rules` | scenes drop `_TABLE`, panel DnD callbacks, catalog tree drops |
 | 1 | `sciqlop.scenes.bodies/boundaries/scenes` | scenes registries; `planetary_scenes` contributes like a third party |
-| 2 | `sciqlop.panel_kinds` + slots | `new_plot_panel(backend="native")`; designed in the panels sub-project |
+| 2 | `sciqlop.panel_kinds` + slots | `new_plot_panel(backend="native")`; designed in the panels sub-project; **implemented** as panel kinds + panel extensions (no slot API): docs/superpowers/plans/2026-10-16-panel-kinds-and-extensions.md |
 | 2 | `sciqlop.commands`, `sciqlop.menus`, `sciqlop.shortcuts` | CommandRegistry, one-shot QAction harvest, panel_menus, fixed product-tree / export / graph / catalog menus; **implemented**: docs/superpowers/plans/2026-10-14-commands-menus-shortcuts.md |
 | 2 | `sciqlop.export_targets` | Export submenu, `PlotPanel.save` formats, proxy share; **implemented**: docs/superpowers/plans/2026-10-15-export-targets-inspector-sections.md |
 | 2 | `sciqlop.inspector_sections` | core-only `add_inspector_extension`; **implemented**: docs/superpowers/plans/2026-10-15-export-targets-inspector-sections.md |
@@ -205,8 +205,8 @@ location (`panel`, `panel.export`, `graph`, `product_tree`, `catalog_tree`, `mai
 
 ## 5. Panels as trees
 
-Tier 1 fixes the format; panel kinds and slots beyond the existing time panel come with the panels
-sub-project. A panel is a tree of nodes `{kind, id, config, slots}`:
+Tier 1 fixes the format; panel kinds and panel extensions: docs/superpowers/specs/2026-10-16-panel-kinds-and-extensions-design.md
+(extensions get the panel widget; no predefined slots). A panel is a tree of nodes `{kind, id, config, slots}`:
 
 ```yaml
 kind: sciqlop.time_panel
@@ -289,7 +289,7 @@ Not exposed in this design: disabling asks for a restart.
 - Manifest-declared contributions with lazy import (VS Code/napari): when startup time or app-store
   browsing needs capabilities without importing plugins.
 - Hot unload in the UI: when a user workflow needs it; §6 keeps it possible.
-- Panel kinds, slots and chrome injection: panels sub-project, driven by the first real VDF panel.
+- Foreign widget rows inside a time panel: when SciQLopPlots offers an API for them.
 - Tier 3 EPs: when a plugin asks for one, or when the code they replace is reworked anyway.
 
 ## 12. Review log
