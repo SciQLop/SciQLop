@@ -78,8 +78,9 @@ GraphSpec
   time_offset: float        # seconds; data is fetched at [start+off, stop+off] and shifted back
 ```
 
-Specs are read from the **live** base panel (not from the saved tree, which skips empty plots),
-so `plot_index` matches what the user sees. Only product-backed graphs (non-empty product path)
+Specs are read from the base **snapshot** (`PanelTemplate.from_panel`), and the inner panel is
+built from that same snapshot, so `plot_index` always matches the plots the comparison shows
+(the snapshot skipping empty plots of the source panel is then harmless). Only product-backed graphs (non-empty product path)
 get specs; function and static graphs are carried along unchanged and are never compared.
 
 A dimension's only job is to turn (base GraphSpecs, Variant) into the variant's GraphSpecs:
