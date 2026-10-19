@@ -7,7 +7,7 @@ import numpy as np
 from .boundary import Plane
 from .frames import rotation
 
-PANES = ((0, 1), (1, 2), (2, 0))   # XY, YZ, ZX
+PANES = ((0, 1), (0, 2), (1, 2))   # XY, XZ, YZ
 N_ANGLES = 720
 # A resampled angle whose valid neighbours on either side are more than this many section steps
 # apart is a gap. Distance to the nearest neighbour alone would keep a hook past an open end.

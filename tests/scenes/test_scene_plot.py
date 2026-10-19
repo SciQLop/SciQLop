@@ -27,6 +27,16 @@ def test_a_scene_plot_has_three_labelled_panes(plot_panel, earth):
     assert pane_labels(sp) == expected_labels("GSM", "R_E")
 
 
+def test_the_panes_show_xy_xz_and_yz(plot_panel, earth, fake_speasy, qtbot):
+    sp = plot_panel.plot_scene("Earth environment")
+    assert pane_labels(sp) == [("X GSM [R_E]", "Y GSM [R_E]"), ("X GSM [R_E]", "Z GSM [R_E]"),
+                               ("Y GSM [R_E]", "Z GSM [R_E]")]
+    sp.add_trajectory("MMS1")   # positions (1, 0, 0) then (2, 0, 0) R_E
+    xz = proj_of(sp).subplot(1).plottables()[-1]
+    wait_for_data(qtbot, xz)
+    assert np.allclose(xz.data()[0], [1.0, 2.0]) and np.allclose(xz.data()[1], [0.0, 0.0])
+
+
 def test_another_body_labels_its_own_frame_and_unit(plot_panel, earth):
     assert pane_labels(plot_panel.plot_scene("Mars environment")) == expected_labels("MSO", "R_M")
 
@@ -84,7 +94,7 @@ def test_a_model_in_another_frame_is_rotated(plot_panel, earth, qtbot, monkeypat
 
 def test_each_pane_draws_its_own_section(plot_panel, earth, qtbot):
     sp = plot_panel.plot_scene("Earth environment")
-    xy, yz = (sp._boundary_graphs["magnetopause"].graphs[pane][0] for pane in (0, 1))
+    xy, yz = (sp._boundary_graphs["magnetopause"].graphs[pane][0] for pane in (0, 2))
     for g in (xy, yz):
         wait_for_data(qtbot, g)
     assert np.nanmax(xy.data()[0]) == pytest.approx(10.251873, abs=0.05)

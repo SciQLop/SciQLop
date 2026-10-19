@@ -14,7 +14,7 @@ def circle(radius, n=360, phase=0.0, z=0.0):
 
 
 def test_pane_bases():
-    e1, e2, n = pane_basis(1)
+    e1, e2, n = pane_basis(2)   # YZ
     assert np.allclose(e1, [0, 1, 0]) and np.allclose(e2, [0, 0, 1]) and np.allclose(n, [1, 0, 0])
 
 
