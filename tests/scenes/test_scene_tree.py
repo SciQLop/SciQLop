@@ -269,6 +269,16 @@ def test_a_withdrawn_scene_leaves_the_tree(registered):
     assert ProductsModel.node(["Scenes", scene.name]) is None
 
 
+def test_a_boundary_replaced_under_another_label_moves_in_the_tree(registered):
+    import copy
+    from SciQLopPlots import ProductsModel
+    relabelled = copy.copy(registry.BOUNDARIES.get("shue1998"))
+    relabelled.label = "Shue 1998, relabelled"
+    registry.BOUNDARIES.register(relabelled, replace=True)
+    assert ProductsModel.node(SHUE) is None
+    assert ProductsModel.node(SHUE[:-1] + [relabelled.label]) is not None
+
+
 def test_removing_an_absent_node_is_a_no_op(main_window):
     from SciQLop.core.models import remove_product_node
     remove_product_node(["no", "such", "node"])

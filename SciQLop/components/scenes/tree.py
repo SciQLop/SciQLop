@@ -15,6 +15,7 @@ log = getLogger(__name__)
 KIND_KEY = "sciqlop_kind"
 _PRODUCT_KINDS = {"scene": SCENE, "boundary": BOUNDARY}
 _STATUS_BAR_MS = 8000
+_LISTED_BOUNDARIES: dict[str, list[str]] = {}
 
 
 def _status_bar(panel):
@@ -51,7 +52,14 @@ def add_scene_node(scene) -> None:
 
 
 def add_boundary_node(model) -> None:
-    _add_node(_boundary_path(model), "boundary", f"{model.description} {model.reference}".strip())
+    """A registry replaces an item without a `removed` signal (virtual products rely on that), and a model's
+    path follows its kind and label: the node listed for its name moves along."""
+    path = _boundary_path(model)
+    listed = _LISTED_BOUNDARIES.get(model.name, path)
+    if listed != path:
+        remove_product_node(listed)
+    _LISTED_BOUNDARIES[model.name] = path
+    _add_node(path, "boundary", f"{model.description} {model.reference}".strip())
 
 
 def remove_scene_node(scene) -> None:
@@ -59,6 +67,7 @@ def remove_scene_node(scene) -> None:
 
 
 def remove_boundary_node(model) -> None:
+    _LISTED_BOUNDARIES.pop(model.name, None)
     remove_product_node(_boundary_path(model))
 
 
