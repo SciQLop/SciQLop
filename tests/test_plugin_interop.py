@@ -112,8 +112,8 @@ _EXPORT = """
 
 
 def _contributed_ids(panel):
-    from SciQLop.components.plotting.ui.contributed_sections import ContributedSection
-    return [e.objectName() for e in panel._impl.inspector_extensions() if isinstance(e, ContributedSection)]
+    from SciQLop.components.plotting.ui.contributed_sections import ContributedSection, section_id
+    return [section_id(e) for e in panel._impl.inspector_extensions() if isinstance(e, ContributedSection)]
 
 
 def test_plugin_adds_an_export_format_and_a_panel_inspector_section(tmp_path, plot_panel, fresh):

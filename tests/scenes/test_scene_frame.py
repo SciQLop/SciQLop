@@ -59,7 +59,8 @@ def test_the_frame_round_trips_through_a_template(plot_panel, registered, earth)
 
 def _frame_combo(sp, parent):
     from PySide6.QtWidgets import QComboBox
-    ext = next(e for e in proj_of(sp).inspector_extensions() if e.objectName() == "sciqlop.scenes.frame")
+    from SciQLop.components.plotting.ui.contributed_sections import section_id
+    ext = next(e for e in proj_of(sp).inspector_extensions() if section_id(e) == "sciqlop.scenes.frame")
     return ext.build_widget(parent).findChild(QComboBox)
 
 

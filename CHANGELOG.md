@@ -35,6 +35,7 @@
 - Planetary scenes: `panel.plot_scene("Earth environment")` draws the planet and its magnetopause and bow shock, summarised over the panel's time range; `add_trajectory("MMS1")` adds an orbit, converted to the scene's frame and unit. Earth, Mars and Mercury are built in; plugins register their own bodies, models and scenes.
 - Products tree: Scenes/ and Models/ entries; drop a scene on a panel, a model on a scene plot, a spacecraft position on a scene plot.
 - Scene plots show their XY, XZ and YZ planes (they showed XY, YZ and ZX).
+- A section a plugin adds to the Properties panel is listed under its title in the inspector tree; it showed its id (e.g. `sciqlop.scenes.frame`).
 - A scene plot shows its legend on the first pane only; the same legend repeated on all three hid much of the scene.
 - A boundary model re-registered under another label moves in the products tree; the entry at its old label stayed behind.
 - A scene plot can switch frame: pick it in the plot's Properties panel (the frames centred on its body, e.g. GSE, GSM, SM for Earth) or call `scene_plot.set_frame("GSE")`. Boundaries and trajectories are redrawn in the new frame, and saved templates keep it.

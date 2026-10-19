@@ -47,18 +47,27 @@ def _wrap(host, target: str):
     return _WRAPPERS[target](host)
 
 
-class ContributedSection(InspectorExtension):
-    """One contributed section on one host. State lives in Qt storage (objectName = section id,
-    parent = host) because Shiboken may hand back a fresh wrapper with an empty __dict__."""
+_SECTION_ID = "sciqlop_section_id"
 
-    def __init__(self, section_id: str, host):
+
+def section_id(ext) -> str:
+    return ext.property(_SECTION_ID) or ""
+
+
+class ContributedSection(InspectorExtension):
+    """One contributed section on one host. State lives in Qt storage (a dynamic property holds the section id,
+    parent = host) because Shiboken may hand back a fresh wrapper with an empty __dict__. The objectName is the
+    title: the inspector tree shows it."""
+
+    def __init__(self, section: InspectorSection, host):
         super().__init__(host)
-        self.setObjectName(section_id)
+        self.setProperty(_SECTION_ID, section.id)
+        self.setObjectName(section.title)
 
     def _section(self) -> InspectorSection | None:
         """None once withdrawn: remove_owner empties the registry before the inspector drops each section."""
-        section_id = self.objectName()
-        return INSPECTOR_SECTIONS.get(section_id) if section_id in INSPECTOR_SECTIONS else None
+        sid = section_id(self)
+        return INSPECTOR_SECTIONS.get(sid) if sid in INSPECTOR_SECTIONS else None
 
     def section_title(self) -> str:
         section = self._section()
@@ -80,7 +89,7 @@ class ContributedSection(InspectorExtension):
 
 
 def _section_ids_on(host) -> set[str]:
-    return {e.objectName() for e in host.inspector_extensions() if isinstance(e, ContributedSection)}
+    return {section_id(e) for e in host.inspector_extensions() if isinstance(e, ContributedSection)}
 
 
 def _applies(section: InspectorSection, obj) -> bool:
@@ -91,8 +100,8 @@ def _applies(section: InspectorSection, obj) -> bool:
         return False
 
 
-def _add_section(host, section_id: str) -> None:
-    ext = ContributedSection(section_id, host)
+def _add_section(host, section: InspectorSection) -> None:
+    ext = ContributedSection(section, host)
     _alive.add(ext)
     ext.destroyed.connect(lambda *_, e=ext: _alive.discard(e))
     host.add_inspector_extension(ext)
@@ -107,7 +116,7 @@ def attach_sections(host, target: str) -> None:
     # because graph context attaches after graph_list_changed fires. Upgrade: re-check on a context-attached signal.
     for section in missing:
         if _applies(section, obj):
-            _add_section(host, section.id)
+            _add_section(host, section)
 
 
 def attach_graph_sections(plot) -> None:
@@ -144,7 +153,7 @@ def _on_section_added(section: InspectorSection) -> None:
 
 
 def _on_section_removed(section: InspectorSection) -> None:
-    for ext in [e for e in _alive if shiboken6.isValid(e) and e.objectName() == section.id]:
+    for ext in [e for e in _alive if shiboken6.isValid(e) and section_id(e) == section.id]:
         _alive.discard(ext)
         ext.deleteLater()
         ext.parent().remove_inspector_extension(ext)

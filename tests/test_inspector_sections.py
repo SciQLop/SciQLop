@@ -20,7 +20,7 @@ def demo_sections(qapp):
 
 
 def _sections(host):
-    return [e.objectName() for e in host.inspector_extensions() if isinstance(e, ContributedSection)]
+    return [contributed_sections.section_id(e) for e in host.inspector_extensions() if isinstance(e, ContributedSection)]
 
 
 def _contribute(id, target, build=lambda obj, parent: QLabel("x", parent), **kwargs):
@@ -35,7 +35,7 @@ def _plot_line(plot_panel):
 
 
 def _section_on(host, id):
-    return next(e for e in host.inspector_extensions() if isinstance(e, ContributedSection) and e.objectName() == id)
+    return next(e for e in host.inspector_extensions() if isinstance(e, ContributedSection) and contributed_sections.section_id(e) == id)
 
 
 def test_a_graph_section_appears_on_new_graphs(plot_panel):
@@ -113,10 +113,10 @@ def test_removing_a_graph_with_a_section_is_safe(plot_panel, qtbot):
     plot_panel.remove_plot(0)
     qtbot.wait(0)
     _contribute("is_demo.second", GRAPH_TARGET)
-    assert not [e for e in contributed_sections._alive if e.objectName() == "is_demo.second"]
+    assert not [e for e in contributed_sections._alive if contributed_sections.section_id(e) == "is_demo.second"]
     INSPECTOR_SECTIONS.remove_owner("is_demo")
     qtbot.wait(0)
-    assert not [e for e in contributed_sections._alive if e.objectName().startswith("is_demo.")]
+    assert not [e for e in contributed_sections._alive if contributed_sections.section_id(e).startswith("is_demo.")]
 
 
 def _show_in_inspector(name, qtbot):
@@ -152,8 +152,32 @@ def test_withdrawing_two_sections_while_the_inspector_shows_their_host(plot_pane
     INSPECTOR_SECTIONS.remove_owner("is_demo")
     qtbot.wait(0)
     assert _sections(plot._impl) == []
-    assert not [e for e in contributed_sections._alive if e.objectName().startswith("is_demo.")]
+    assert not [e for e in contributed_sections._alive if contributed_sections.section_id(e).startswith("is_demo.")]
     assert errors == []
+
+
+def _inspector_names(qtbot) -> list:
+    from PySide6.QtCore import QModelIndex
+    from SciQLopPlots import PlotsTreeView, PropertiesPanel
+    inspector = PropertiesPanel()
+    qtbot.addWidget(inspector)
+    model = inspector.findChild(PlotsTreeView).model()
+
+    def names(parent=QModelIndex()):
+        for row in range(model.rowCount(parent)):
+            index = model.index(row, 0, parent)
+            yield index.data()
+            yield from names(index)
+    return list(names())
+
+
+def test_the_inspector_tree_names_a_section_by_its_title(plot_panel, qtbot):
+    with owned_by("is_demo"):
+        INSPECTOR_SECTIONS.contribute(InspectorSection("is_demo.titled", "Readable title", PLOT_TARGET,
+                                                       lambda obj, parent: QLabel("x", parent)))
+    _plot_line(plot_panel)
+    names = _inspector_names(qtbot)
+    assert "Readable title" in names and "is_demo.titled" not in names
 
 
 def test_target_and_priority_are_validated():
