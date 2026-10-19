@@ -37,6 +37,14 @@ def test_the_panes_show_xy_xz_and_yz(plot_panel, earth, fake_speasy, qtbot):
     assert np.allclose(xz.data()[0], [1.0, 2.0]) and np.allclose(xz.data()[1], [0.0, 0.0])
 
 
+def test_only_the_first_pane_shows_the_legend(plot_panel, earth, fake_speasy):
+    sp = plot_panel.plot_scene("Earth environment")
+    sp.add_trajectory("MMS1")
+    sp.set_frame("GSE")
+    proj = proj_of(sp)
+    assert [proj.subplot(i).legend().is_visible() for i in range(3)] == [True, False, False]
+
+
 def test_another_body_labels_its_own_frame_and_unit(plot_panel, earth):
     assert pane_labels(plot_panel.plot_scene("Mars environment")) == expected_labels("MSO", "R_M")
 

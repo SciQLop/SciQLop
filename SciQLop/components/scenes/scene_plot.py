@@ -243,6 +243,7 @@ def _hold_extent(proj, extent: float) -> None:
 def create_scene_plot(panel_impl, resolved: ResolvedScene):
     proj = panel_impl.create_plot(len(panel_impl.plots()), PlotType.Projections)
     proj.set_dimension_pairs(list(PANES))   # before any curve: graphs keep the pairs they were added with
+    proj.set_shared_legend(True)   # every pane lists the same graphs; one legend hides less of the scene
     relabel(proj, resolved)
     _draw_body(proj, resolved)
     if resolved.scene.extent is not None:
