@@ -59,6 +59,7 @@ Comparison
   dimension:  id of a ComparisonDimension ("time", "product", "settings", plugins…)
   variants:   list[Variant]          # base is the implicit first side
   view:       id of a ComparisonView ("overlay", "difference", …)
+  anchor:     "start" | "center" | "end"   # time alignment (§3.3)
   view_options: dict[str, dict]      # per view id, so switching back keeps options
 
 Variant
@@ -91,7 +92,9 @@ A dimension's only job is to turn (base GraphSpecs, Variant) into the variant's 
 | product   | `node` of **one** target graph                              | `target` (plot, graph), `node`  |
 | settings  | `knobs` of **one** target graph                             | `target`, `knobs`               |
 
-Views only ever see "a list of sides, each a list of GraphSpecs, each with a label". A graph
+Views only ever see "a list of sides, each a list of GraphSpecs, each with a label" — plus,
+for the time dimension, each side's anchor time `t0` and `duration`, so a later Epoch view
+(fraction of duration) needs no model change. A graph
 whose spec is identical across all sides is *unchanged*; views draw it once (base styling) and
 build nothing comparative for it.
 
@@ -141,11 +144,14 @@ Base and anchor rules (my call):
 Two new EPs, following `SciQLop/core/extensions.py` (`declare(ExtensionPoint(...))`, owner-tagged,
 main-thread registration):
 
-- `sciqlop.comparison_dimensions` — `ComparisonDimension(id, label, apply(base_specs, variant) ->
-  specs, picker(...) -> QWidget for the wizard's step 3, validate(params))`.
-- `sciqlop.comparison_views` — `ComparisonView(id, label, applies(comparison) -> bool | reason,
-  build(comparison, options) -> QWidget, default_options)`. `applies` returning a reason lets
-  the switcher show a disabled tab with a tooltip ("Difference needs exactly two sides").
+- `sciqlop.comparison_dimensions` — `ComparisonDimension(id, label, noun, apply(base_specs,
+  variant, comparison) -> Side, base_side(base_specs, comparison) -> Side, validate(params))`.
+  Qt-free; the wizard's step-3 picker widgets are mapped by dimension id on the UI side.
+- `sciqlop.comparison_views` — `ComparisonView(id, label, applies(comparison, sides) -> None |
+  reason, build(comparison, sides, options, time_range, parent) -> QWidget, default_options,
+  order)`. `applies` returning a reason lets the switcher show a disabled tab with a tooltip
+  ("Difference needs exactly two sides"). The built widget exposes `time_range`, which the
+  panel carries into the next view's `build`.
 
 Core contributes the three dimensions and the two views through these EPs, like core plot and
 panel kinds already do.
@@ -184,6 +190,9 @@ One time panel with the base's plots. For each changed graph, each variant adds 
 on the same plot: same colour family as the base graph, lighter and dashed, legend
 `"<graph> — <variant label>"`. Any number of variants; above 6 a notice suggests Epoch (later).
 
+Mismatch rule (shared with Difference, §6.3): a ghost whose units or component labels differ from
+its base graph's (when both are known) is not drawn; the plot shows a message naming both.
+
 Colormap graphs cannot be overlaid meaningfully: Overlay draws the base colormap and puts a
 plot overlay message "spectrogram variants not shown — use Difference (or Swipe, later)".
 
@@ -205,8 +214,11 @@ with a diverging colormap centred on 0).
 
 - B is linearly interpolated onto A's time grid; samples outside B's span are NaN. Option:
   nearest instead of linear.
-- Component counts must match, units must match (from plot hints/metadata when known);
-  otherwise the row shows an Error overlay naming the mismatch.
+- Component counts must match; units and component labels must match when both are known (from
+  plot hints); otherwise the row shows an Error overlay naming the mismatch.
+- Fill values (`PlotHints.fill_value`, plus `|v| > 1e30` as the ISTP fallback) become NaN before
+  the relation is computed; non-finite results (division by zero) become NaN.
+- Spectrogram y orientation is normalised like the base row's.
 - Colormaps: y bins must be identical per sample, otherwise Error overlay "different energy
   bins — not supported yet". `simplify:` comment: upgrade path is 2D interpolation on A's bins
   in log-y.
