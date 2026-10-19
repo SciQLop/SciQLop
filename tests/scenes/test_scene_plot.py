@@ -75,6 +75,9 @@ def test_a_model_in_another_frame_is_rotated(plot_panel, earth, qtbot, monkeypat
     seen = set()
     monkeypatch.setattr(summary, "rotation",
                         lambda f, t, times: seen.add((f, t)) or Rotation.identity(len(times)))
+    # A range no other test uses: a late worker of an earlier test can refill the summary cache after the fixture
+    # clears it, and a cache hit never rotates.
+    plot_panel.time_range = TimeRange(7 * 86400.0, 8 * 86400.0)
     plot_panel.plot_scene("Earth environment")   # Jelinek 2012 is a GSE model in a GSM scene
     qtbot.waitUntil(lambda: ("GSM", "GSE") in seen, timeout=5000)
 
