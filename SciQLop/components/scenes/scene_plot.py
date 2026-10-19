@@ -66,7 +66,7 @@ def _draw_body(proj, resolved: ResolvedScene) -> None:
     a = np.linspace(0, 2 * np.pi, 181)
     for pane in range(len(PANES)):
         proj.subplot(pane).plot(np.cos(a), np.sin(a), graph_type=GraphType.ParametricCurve,
-                                labels=[resolved.body.threedview])
+                                name=resolved.body.threedview, labels=[resolved.body.threedview])
 
 
 def _style(graph, colour: str, dashed: bool) -> None:
@@ -79,7 +79,7 @@ def _style(graph, colour: str, dashed: bool) -> None:
 def _pane_graph(proj, pane: int, curve: _PaneCurve, label: str):
     sub = proj.subplot(pane)
     reporter = _CallbackErrorOverlay(curve)
-    graph = sub.plot(reporter, graph_type=GraphType.ParametricCurve, labels=[label])
+    graph = sub.plot(reporter, graph_type=GraphType.ParametricCurve, name=label, labels=[label])
     graph = graph[1] if isinstance(graph, tuple) else graph
     reporter.attach(sub)
     graph.observe(proj.time_axis())
@@ -209,7 +209,7 @@ def trajectory_source(source: str, resolved: ResolvedScene):
 def add_trajectory(proj, resolved: ResolvedScene, source: str):
     reporter = _CallbackErrorOverlay(trajectory_source(_speasy_id(source), resolved))
     name = source.split("/")[-1]
-    graph = proj.plot(reporter, labels=[name] * 3, graph_type=GraphType.ParametricCurve)
+    graph = proj.plot(reporter, name=name, labels=[name] * 3, graph_type=GraphType.ParametricCurve)
     graph = graph[1] if isinstance(graph, tuple) else graph
     reporter.attach(proj)
     proj.set_time_color_enabled(True)

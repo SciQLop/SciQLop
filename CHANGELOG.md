@@ -36,6 +36,7 @@
 - Products tree: Scenes/ and Models/ entries; drop a scene on a panel, a model on a scene plot, a spacecraft position on a scene plot.
 - Scene plots show their XY, XZ and YZ planes (they showed XY, YZ and ZX).
 - A section a plugin adds to the Properties panel is listed under its title in the inspector tree; it showed its id (e.g. `sciqlop.scenes.frame`).
+- Scene plot curves are named after what they show (Earth, Shue 1998 … min, MMS1) in the inspector tree, instead of Curve52 or Projection7.
 - A scene plot shows its legend on the first pane only; the same legend repeated on all three hid much of the scene.
 - A boundary model re-registered under another label moves in the products tree; the entry at its old label stayed behind.
 - A scene plot can switch frame: pick it in the plot's Properties panel (the frames centred on its body, e.g. GSE, GSM, SM for Earth) or call `scene_plot.set_frame("GSE")`. Boundaries and trajectories are redrawn in the new frame, and saved templates keep it.

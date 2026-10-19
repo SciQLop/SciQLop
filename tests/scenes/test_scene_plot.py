@@ -37,6 +37,16 @@ def test_the_panes_show_xy_xz_and_yz(plot_panel, earth, fake_speasy, qtbot):
     assert np.allclose(xz.data()[0], [1.0, 2.0]) and np.allclose(xz.data()[1], [0.0, 0.0])
 
 
+def test_scene_curves_are_named_after_what_they_show(plot_panel, earth, fake_speasy):
+    sp = plot_panel.plot_scene("Earth environment")
+    sp.add_trajectory("MMS1")
+    proj = proj_of(sp)
+    assert proj.plottables()[-1].objectName() == "MMS1"
+    names = [g.objectName() for g in proj.subplot(1).plottables()]
+    assert names[0] == "Earth"
+    assert {"Shue 1998 (Dp=2 nPa, Bz=0)", "Shue 1998 (Dp=2 nPa, Bz=0) min", "Shue 1998 (Dp=2 nPa, Bz=0) max"} <= set(names)
+
+
 def test_only_the_first_pane_shows_the_legend(plot_panel, earth, fake_speasy):
     sp = plot_panel.plot_scene("Earth environment")
     sp.add_trajectory("MMS1")
