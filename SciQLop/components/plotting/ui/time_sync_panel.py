@@ -958,6 +958,7 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
     # Parameter values for the product (knobs), never a SciQLopPlots kwarg.
     product_inputs = kwargs.pop("product_inputs", None)
     time_offset = kwargs.pop("time_offset", 0.0) or 0.0
+    product_path_str = "//".join(product)
     from SciQLop.components.plotting.backend.remote.registry import remote_registry
     if remote_registry().is_remote(product):
         if time_offset:
@@ -979,8 +980,9 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
             _attach_error_reporter(channel, r, target)
             _attach_remote_knob_state(provider, node, channel, r, target)
             _seed_product_inputs(graph, node, product_inputs)
+        if graph is not None:
+            _set_product_path(r, product_path_str)
         return r
-    product_path_str = "//".join(product)
     target, existing_plot = _resolve_plot_target(p, kwargs)
     kind = product_kind_of(node)
     log.debug(f"Product kind: {kind.id if kind else None}")
