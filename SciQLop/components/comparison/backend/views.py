@@ -20,6 +20,7 @@ class ComparisonView:
     build: Callable[[Comparison, list[Side], dict, tuple[float, float] | None, QWidget], QWidget]
     default_options: dict = field(default_factory=dict)
     option_choices: dict[str, tuple[str, ...]] = field(default_factory=dict)  # option key -> its choices in the header
+    choice_labels: dict[str, str] = field(default_factory=dict)  # choice -> the text the header shows for it
     order: int = 0
 
 

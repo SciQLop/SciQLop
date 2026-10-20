@@ -84,3 +84,13 @@ def test_line_relation_1d_against_single_column_keeps_a_shape():
     t = np.array([0.0, 1.0, 2.0])
     _, d = line_relation([t, np.array([3.0, 4.0, 5.0])], [t, np.array([[1.0], [1.0], [1.0]])], "difference", "linear")
     assert d.shape == (3,) and d.tolist() == [2.0, 3.0, 4.0]
+
+
+def test_bins_with_nan_rows_still_match():
+    import numpy as np
+    from SciQLop.components.comparison.backend.difference import colormap_relation
+    t = np.array([0.0, 1.0])
+    y = np.array([[1.0, np.nan], [1.0, np.nan]])
+    z = np.ones((2, 2))
+    out = colormap_relation([t, y, z], [t, y, 2 * z], "difference", "linear")
+    assert np.allclose(out[2], -1.0)

@@ -223,11 +223,12 @@ def test_difference_options_rebuild_and_persist(main_window, qtbot, opened):
     w = _open(main_window, _time_comparison_of_vp(variants=1, name="vp_options").model_copy(
         update={"view": "difference"}))
     assert set(w.option_combos) == {"operation", "method"}
-    assert w.option_combos["operation"].currentText() == "difference"
+    operation = w.option_combos["operation"]
+    assert (operation.currentText(), operation.currentData()) == ("A − B", "difference")
     w.inner.time_range = TimeRange(1_020.0, 1_080.0)
     qtbot.waitUntil(lambda: w.inner.time_range.start() == pytest.approx(1_020.0))
     old = w.inner
-    w.option_combos["operation"].setCurrentText("ratio")
+    operation.setCurrentIndex(operation.findData("ratio"))
     assert w.inner is not old
     assert (w.inner.time_range.start(), w.inner.time_range.stop()) == pytest.approx((1_020.0, 1_080.0))
     qtbot.waitUntil(lambda: any(n.endswith(": A / B") for n in _all_graph_names(w.inner)))
@@ -269,3 +270,32 @@ def test_panel_built_outside_open_panel_saves_as_comparison(main_window, qtbot):
     template = PanelTemplate.from_panel(w)
     assert template.panel_kind == COMPARISON_PANEL
     assert Comparison.model_validate(template.to_tree()["panel"]["config"]) == c
+
+
+def test_option_combos_show_readable_choices(main_window, qtbot, opened):
+    w = _open(main_window, _time_comparison_of_vp(variants=1, name="vp_readable").model_copy(
+        update={"view": "difference"}))
+    method = w.option_combos["method"]
+    assert [method.itemData(i) for i in range(method.count())] == ["linear", "nearest"]
+    assert all(method.itemText(i) != method.itemData(i) for i in range(method.count()))
+
+
+def test_operation_choices_are_the_operation_literal():
+    from typing import get_args
+    from SciQLop.components.comparison.backend.difference import Operation
+    from SciQLop.components.comparison.ui.difference_view import SYMBOLS
+    from SciQLop.components.comparison.ui.panel_kind import CORE_VIEWS
+    difference = next(v for v in CORE_VIEWS if v.id == "difference")
+    assert difference.option_choices["operation"] == get_args(Operation)
+    assert tuple(SYMBOLS) == get_args(Operation)
+
+
+def test_a_bare_comparison_panel_has_a_working_edit_item(main_window, qtbot):
+    from SciQLop.components.comparison.ui.panel import ComparisonPanel
+    from SciQLop.components.comparison.ui.wizard import CompareDialog
+    w = ComparisonPanel("bare_edit", _time_comparison_of_vp(variants=1, name="vp_bare_edit"))
+    qtbot.addWidget(w)
+    next(a for a in w.menu_button.menu().actions() if a.text().startswith("Edit comparison")).trigger()
+    dialogs = w.findChildren(CompareDialog)
+    assert len(dialogs) == 1 and dialogs[0].isVisible()
+    dialogs[0].close()

@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 
 default_options = {"operation": "difference", "method": "linear"}
 SYMBOLS = {"difference": "A − B", "ratio": "A / B", "log_ratio": "log₁₀(A / B)"}
+METHOD_LABELS = {"linear": "linear interpolation", "nearest": "nearest sample"}
 COLORMAP_OPERATION = "log_ratio"  # a spectrogram spans decades: only the log ratio reads well
 MIXED_REFUSAL = "cannot relate a spectrogram to a line plot"
 

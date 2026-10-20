@@ -40,6 +40,7 @@ class ComparisonPanel(QWidget):
         self.option_combos: dict[str, QComboBox] = {}
         self._options_view: Optional[str] = None
         self._build_header()
+        self.edit_requested.connect(self._edit)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(self._header)
@@ -74,6 +75,10 @@ class ComparisonPanel(QWidget):
         menu.addAction("Edit comparison…", self.edit_requested.emit)
         menu.addAction("Save as template…", self.save_as_template)
         return menu
+
+    def _edit(self) -> None:
+        from SciQLop.components.comparison.ui.wizard import edit_comparison  # the wizard imports this module
+        edit_comparison(self)
 
     @property
     def comparison(self) -> Comparison:
@@ -137,7 +142,7 @@ class ComparisonPanel(QWidget):
             self._replace_options_widget(view)
         options = options_for(self._comparison, view) if view is not None else {}
         for key, combo in self.option_combos.items():
-            self._quietly(combo, lambda c=combo, k=key: c.setCurrentIndex(c.findText(str(options.get(k)))))
+            self._quietly(combo, lambda c=combo, k=key: c.setCurrentIndex(c.findData(options.get(k))))
 
     def _replace_options_widget(self, view: Optional[ComparisonView]) -> None:
         if self.options_widget is not None:
@@ -148,8 +153,9 @@ class ComparisonPanel(QWidget):
         self.option_combos = {}
         for key, choices in (view.option_choices if view is not None else {}).items():
             combo = QComboBox()
-            combo.addItems(list(choices))
-            combo.currentTextChanged.connect(lambda text, k=key: self.set_option(k, text))
+            for choice in choices:
+                combo.addItem(view.choice_labels.get(choice, choice), choice)
+            combo.currentIndexChanged.connect(lambda i, c=combo, k=key: self.set_option(k, c.itemData(i)))
             box.addWidget(QLabel(key))
             box.addWidget(combo)
             self.option_combos[key] = combo

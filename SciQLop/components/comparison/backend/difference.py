@@ -4,6 +4,7 @@ from typing import Callable, Literal, get_args
 import numpy as np
 
 Operation = Literal["difference", "ratio", "log_ratio"]
+Method = Literal["linear", "nearest"]
 
 ISTP_FILL_THRESHOLD = 1e30
 
@@ -78,13 +79,13 @@ def _constant_bins(y: np.ndarray) -> np.ndarray | None:
     y = np.asarray(y, dtype=float)
     if y.ndim == 1:
         return y
-    return y[0] if np.allclose(y, y[0]) else None
+    return y[0] if np.allclose(y, y[0], equal_nan=True) else None
 
 
 def _same_bins(y_a: np.ndarray, y_b: np.ndarray) -> bool:
     bins_a, bins_b = _constant_bins(y_a), _constant_bins(y_b)
     return (bins_a is not None and bins_b is not None
-            and bins_a.shape == bins_b.shape and np.allclose(bins_a, bins_b))
+            and bins_a.shape == bins_b.shape and np.allclose(bins_a, bins_b, equal_nan=True))
 
 
 def colormap_relation(a: list, b: list, op: Operation, method: str) -> list:
