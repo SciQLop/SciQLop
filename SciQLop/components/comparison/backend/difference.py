@@ -53,9 +53,9 @@ def _resample_column(t_src: np.ndarray, column: np.ndarray, t_dst: np.ndarray, m
 def resample(t_src, values, t_dst, method: str = "linear") -> np.ndarray:
     t_src, t_dst = np.asarray(t_src, dtype=float), np.asarray(t_dst, dtype=float)
     values = np.asarray(values, dtype=float)
-    columns = values.reshape(len(values), -1) if len(t_src) else values.reshape(0, 1)
     if len(t_src) == 0:
         return np.full((len(t_dst),) + values.shape[1:], np.nan)
+    columns = values.reshape(len(values), -1)
     out = np.stack([_resample_column(t_src, c, t_dst, method) for c in columns.T], axis=1)
     outside = (t_dst < t_src[0]) | (t_dst > t_src[-1])
     out[outside] = np.nan

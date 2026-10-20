@@ -94,3 +94,11 @@ def test_bins_with_nan_rows_still_match():
     z = np.ones((2, 2))
     out = colormap_relation([t, y, z], [t, y, 2 * z], "difference", "linear")
     assert np.allclose(out[2], -1.0)
+
+
+def test_resample_from_an_empty_time_axis_is_all_nan():
+    from SciQLop.components.comparison.backend.difference import resample
+    out = resample(np.array([]), np.array([1.0, 2.0]), np.array([1.0, 3.0]))
+    assert out.shape == (2,) and np.isnan(out).all()
+    out = resample(np.array([]), np.ones((2, 3)), np.array([1.0]))
+    assert out.shape == (1, 3) and np.isnan(out).all()
