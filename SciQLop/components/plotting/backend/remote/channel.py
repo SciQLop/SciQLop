@@ -158,8 +158,8 @@ class RemoteChannel:
             weakref.finalize(v, _on_view_released)
 
     def dispose(self) -> None:
+        # The held segment is left to its _register_release finalizer: the
+        # graph's destroyed signal fires while its plot's resample job may
+        # still be reading the segment, and unmapping it then is a SIGSEGV.
         self._transport.release(self.channel_id)
-        if self._held is not None:
-            self._held.close()
-            self._transport.send_free(self.channel_id, self._held_name)
-            self._held, self._held_name = None, None
+        self._held, self._held_name = None, None

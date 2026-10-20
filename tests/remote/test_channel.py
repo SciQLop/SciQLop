@@ -268,3 +268,33 @@ def test_a_stale_empty_or_error_reply_does_not_end_the_newer_request():
     assert getattr(pipe, "requests_done", 0) == 0
     ch.on_empty(2)
     assert pipe.requests_done == 1
+
+
+def test_dispose_keeps_the_held_segment_mapped_while_a_reader_still_holds_it(monkeypatch):
+    """The graph's destroyed signal disposes the channel before its plot's
+    resample scheduler is gone, so a job can still be reading the segment.
+    Unmapping it then was a SIGSEGV inside qcp::algo2d::resample."""
+    closed_names = []
+    orig_close = shared_memory.SharedMemory.close
+
+    def spy_close(self):
+        closed_names.append(self.name)
+        orig_close(self)
+
+    monkeypatch.setattr(shared_memory.SharedMemory, "close", spy_close)
+
+    pipe, t = FakePipeline(retain_extra=True), FakeTransport()
+    ch = RemoteChannel(pipeline=pipe, channel_id=5, transport=t)
+    ch.on_data_requested_values(0.0, 1.0)
+    name, layout, shm = _make_segment([np.array([0.0, 1.0]), np.array([1.0])])
+    ch.on_result(1, name, layout, 2)
+    pipe._current = None  # the graph is gone; only the in-flight job remains
+
+    ch.dispose()
+    assert name not in closed_names, "must not unmap a segment a reader still holds"
+    assert t.frees == []
+
+    pipe.release_oldest_extra()
+    assert name in closed_names
+    assert t.frees == [(5, name)]
+    shm.unlink()
