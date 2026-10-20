@@ -100,3 +100,13 @@ def test_time_offset_round_trips_through_a_template(main_window, plot_panel, qtb
         assert [p.time_offset for p in PanelTemplate.from_panel(restored).plots[0].products] == [DAY]
     finally:
         main_window.remove_panel(restored)
+
+
+def test_zero_time_offset_is_omitted_without_pydantic_exclude_if():
+    """exclude_if needs pydantic >= 2.12, which the project does not pin."""
+    from SciQLop.components.plotting.panel_template import ProductModel
+    assert getattr(ProductModel.model_fields["time_offset"], "exclude_if", None) is None
+    assert "time_offset" not in ProductModel(path="a//b").model_dump()
+    assert "time_offset" not in ProductModel(path="a//b").model_dump(mode="json")
+    assert ProductModel(path="a//b", time_offset=DAY).model_dump()["time_offset"] == DAY
+    assert ProductModel.model_validate_json(ProductModel(path="a", time_offset=DAY).model_dump_json()).time_offset == DAY

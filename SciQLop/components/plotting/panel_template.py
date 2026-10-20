@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field, PrivateAttr, field_validator
+from pydantic import BaseModel, PrivateAttr, field_validator, model_serializer
 
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.graph_context import GraphContext, context_of, graph_name
@@ -38,9 +38,16 @@ class ProductModel(BaseModel):
     graph_type: str = ""
     knobs: dict[str, Any] = {}
     y_axis: Optional[Literal["y", "y2"]] = None  # None: where the graph type draws by default
-    # Seconds: data fetched this much later, drawn at the panel's time. Left out when 0 so unshifted templates
-    # keep the exact file they had before this field existed.
-    time_offset: float = Field(default=0.0, exclude_if=lambda offset: not offset)
+    time_offset: float = 0.0  # seconds: data fetched this much later, drawn at the panel's time
+
+    @model_serializer(mode="wrap")
+    def _omit_zero_offset(self, handler):
+        """Unshifted templates keep the exact file they had before time_offset existed.
+        Not Field(exclude_if=...): that needs pydantic >= 2.12, which is not pinned."""
+        data = handler(self)
+        if not self.time_offset:
+            data.pop("time_offset", None)
+        return data
 
     @field_validator("kind", mode="before")
     @classmethod
