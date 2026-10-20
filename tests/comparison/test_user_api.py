@@ -242,3 +242,18 @@ def test_show_changes_nothing_when_the_view_does_not_apply(plot_panel_with_vp):
     with pytest.raises(ValueError, match="exactly two sides"):
         h.show("difference", operation="ratio")
     assert h.view == "overlay" and h.options("difference")["operation"] == "difference"
+
+
+def test_set_view_tool_is_gated_and_builds_no_handle(plot_panel_with_vp, monkeypatch):
+    """Each handle connects to the panel's destroyed signal: the tool must not leave one per call."""
+    from SciQLop.user_api import comparison
+    tool = _tool("sciqlop_set_comparison_view")
+    assert tool.gated
+    h = _compare(plot_panel_with_vp, over="time", variants=[(t0 + 10, t1 + 10)])
+
+    def no_handle(*_args, **_kwargs):
+        raise AssertionError("sciqlop_set_comparison_view built a ComparisonHandle")
+
+    monkeypatch.setattr(comparison.ComparisonHandle, "__init__", no_handle)
+    tool.call({"name": h.name, "view": "difference", "options": {"operation": "ratio"}})
+    assert h.view == "difference" and h.options()["operation"] == "ratio"

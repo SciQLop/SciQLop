@@ -13,7 +13,7 @@ from PySide6.QtWidgets import QWidget
 
 from SciQLop.components.comparison.backend.dimensions import COMPARISON_DIMENSIONS, resolve_sides
 from SciQLop.components.comparison.backend.model import Comparison, GraphSpec, Variant, base_specs
-from SciQLop.components.comparison.backend.views import COMPARISON_VIEWS, ComparisonView, options_for
+from SciQLop.components.comparison.backend.views import check_view, find_view, options_for, showing, with_options
 from SciQLop.components.comparison.ui.panel_kind import COMPARISON_PANEL
 from SciQLop.components.comparison.ui.pickers import is_spectrogram, knobs_label, product_node
 from SciQLop.components.plotting.panel_template import PanelTemplate
@@ -122,36 +122,6 @@ def _labelled(variants: List[Variant], labels: Optional[List[str]]) -> List[Vari
     return [v.model_copy(update={"label": str(label)}) for v, label in zip(variants, labels)]
 
 
-def _find_view(view_id: str) -> ComparisonView:
-    view = COMPARISON_VIEWS.find(view_id)
-    if view is None:
-        raise ValueError(f"unknown comparison view {view_id!r}; installed: {', '.join(COMPARISON_VIEWS.keys())}")
-    return view
-
-
-def _check_view(comparison: Comparison, view_id: str) -> None:
-    reason = _find_view(view_id).applies(comparison, resolve_sides(comparison))
-    if reason is not None:
-        raise ValueError(f"cannot show {view_id!r}: {reason}")
-
-
-def _checked_options(view: ComparisonView, values: dict) -> dict:
-    known = {**view.default_options, **view.option_choices}
-    for key, value in values.items():
-        if key not in known:
-            raise ValueError(f"{view.id!r} has no option {key!r}; options: {', '.join(known)}")
-        choices = view.option_choices.get(key)
-        if choices is not None and value not in choices:
-            raise ValueError(f"{key!r} must be one of {', '.join(choices)}, got {value!r}")
-    return values
-
-
-def _with_options(comparison: Comparison, view: ComparisonView, values: dict) -> Comparison:
-    checked = _checked_options(view, values)
-    current = comparison.view_options.get(view.id, {})
-    return comparison.model_copy(update={"view_options": {**comparison.view_options, view.id: {**current, **checked}}})
-
-
 class ComparisonHandle(GuardedImpl):
     """A Comparison panel opened by :func:`compare`."""
 
@@ -192,7 +162,7 @@ class ComparisonHandle(GuardedImpl):
     @view.setter
     @on_main_thread
     def view(self, view_id: str) -> None:
-        _check_view(self._comparison(), view_id)
+        check_view(self._comparison(), view_id)
         self._get_impl_or_raise().set_view(view_id)
 
     @property
@@ -204,23 +174,21 @@ class ComparisonHandle(GuardedImpl):
     @on_main_thread
     def options(self, view: Optional[str] = None) -> dict:
         """The options of a view (the current one by default), defaults included."""
-        return options_for(self._comparison(), _find_view(view or self._comparison().view))
+        return options_for(self._comparison(), find_view(view or self._comparison().view))
 
     @on_main_thread
     def set_options(self, view: str, **values) -> None:
         """Set options of a view, e.g. ``set_options("difference", operation="ratio")``.
 
         Raises ``ValueError`` for an unknown option or a value outside its choices."""
-        self._get_impl_or_raise().set_comparison(_with_options(self._comparison(), _find_view(view), values))
+        self._get_impl_or_raise().set_comparison(with_options(self._comparison(), view, values))
 
     @on_main_thread
     def show(self, view: str, **options) -> None:
         """Switch to a view and set its options at once, e.g. ``show("difference", operation="ratio")``.
 
         Everything is checked first: on ``ValueError`` nothing changes."""
-        updated = _with_options(self._comparison(), _find_view(view), options).model_copy(update={"view": view})
-        _check_view(updated, view)
-        self._get_impl_or_raise().set_comparison(updated)
+        self._get_impl_or_raise().set_comparison(showing(self._comparison(), view, options))
 
 
 @on_main_thread
@@ -265,5 +233,5 @@ def compare(panel, *, over: str, variants: list, view: str = "overlay", labels: 
     for v in built:
         COMPARISON_DIMENSIONS.get(over).validate(v.params)
     comparison = Comparison(base=template.to_tree(), dimension=over, variants=built, view=view)
-    _check_view(comparison, view)
+    check_view(comparison, view)
     return ComparisonHandle(_get_main_window().open_panel(COMPARISON_PANEL, **comparison.model_dump(mode="json")))

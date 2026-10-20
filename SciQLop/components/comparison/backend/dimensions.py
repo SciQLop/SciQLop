@@ -37,7 +37,7 @@ def base_range(comparison: Comparison) -> tuple[float, float]:
     return datetime.fromisoformat(rng.start).timestamp(), datetime.fromisoformat(rng.stop).timestamp()
 
 
-def _require(params: dict, *keys: str) -> None:
+def require_keys(params: dict, *keys: str) -> None:
     for key in keys:
         if key not in params:
             raise ValueError(f"missing {key!r}")
@@ -49,7 +49,7 @@ def _replace_target(specs: list[GraphSpec], params: dict, change: Callable[[Grap
 
 
 def validate_time(params: dict) -> None:
-    _require(params, "start", "stop")
+    require_keys(params, "start", "stop")
     if params["stop"] <= params["start"]:
         raise ValueError("stop must be after start")
 
@@ -70,7 +70,7 @@ def base_time_side(specs: list[GraphSpec], comparison: Comparison) -> Side:
 
 
 def validate_product(params: dict) -> None:
-    _require(params, "target", "path")
+    require_keys(params, "target", "path")
 
 
 def apply_product(specs: list[GraphSpec], variant: Variant, comparison: Comparison) -> Side:
@@ -81,7 +81,7 @@ def apply_product(specs: list[GraphSpec], variant: Variant, comparison: Comparis
 
 
 def validate_settings(params: dict) -> None:
-    _require(params, "target", "knobs")
+    require_keys(params, "target", "knobs")
 
 
 def apply_settings(specs: list[GraphSpec], variant: Variant, comparison: Comparison) -> Side:

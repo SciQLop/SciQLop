@@ -56,15 +56,10 @@ def _comparison_widget(name: str):
     return found
 
 
-def _require(payload: dict, *keys: str) -> None:
-    for key in keys:
-        if key not in payload:
-            raise ValueError(f"missing {key!r}")
-
-
 def _compare(payload: dict) -> str:
+    from SciQLop.components.comparison.backend.dimensions import require_keys
     from SciQLop.user_api.comparison import compare
-    _require(payload, "panel", "over", "variants")
+    require_keys(payload, "panel", "over", "variants")
     target = payload.get("target")
     handle = compare(payload["panel"], over=payload["over"], variants=payload["variants"],
                      view=payload.get("view", "overlay"), labels=payload.get("labels"),
@@ -73,10 +68,11 @@ def _compare(payload: dict) -> str:
 
 
 def _set_view(payload: dict) -> str:
-    from SciQLop.user_api.comparison import ComparisonHandle
-    _require(payload, "name", "view")
+    from SciQLop.components.comparison.backend.dimensions import require_keys
+    from SciQLop.components.comparison.backend.views import showing
+    require_keys(payload, "name", "view")
     widget = _comparison_widget(payload["name"])
-    ComparisonHandle(widget).show(payload["view"], **(payload.get("options") or {}))
+    widget.set_comparison(showing(widget.comparison, payload["view"], payload.get("options") or {}))
     return describe(widget)
 
 
@@ -89,5 +85,5 @@ COMPARISON_TOOLS = [
     AgentTool("sciqlop_set_comparison_view", (
         "Switch a Comparison panel between its views (overlay, difference) and set view options. "
         "Fails with the reason when the view cannot show the panel's sides."),
-        _SET_VIEW_SCHEMA, _set_view),
+        _SET_VIEW_SCHEMA, _set_view, gated=True),
 ]
