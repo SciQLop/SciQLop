@@ -95,7 +95,13 @@ class RemoteChannel:
             # schedule, possibly before the original mapping's in-flight
             # reader is done with it. Nothing to do -- we're already using it.
             return
-        shm = shared_memory.SharedMemory(name=shm_name, create=False, track=False)
+        try:
+            shm = shared_memory.SharedMemory(name=shm_name, create=False, track=False)
+        except FileNotFoundError:
+            # The worker shut down (and unlinked its segments) with this RESULT still in the socket.
+            log.debug("%s: dropping a result whose segment %s is gone", self._name, shm_name)
+            self._pipeline.request_done()
+            return
         views = unpack_arrays(shm.buf, layout)
         delivered = self._deliver(views, arity)
         self._register_release(shm, shm_name, views)

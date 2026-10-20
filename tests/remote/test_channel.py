@@ -329,3 +329,14 @@ def test_a_pinned_segment_is_still_freed_and_closed_right_after(monkeypatch, qtb
     qtbot.waitUntil(lambda: attempts.count(n1) >= 2)   # the retry, maybe a GC close after it
     s1.unlink()
     s2.unlink()
+
+
+def test_a_result_whose_segment_is_already_gone_is_dropped():
+    """A worker shut down with a RESULT still in the socket unlinks its segment first."""
+    pipe, t = FakePipeline(), FakeTransport()
+    ch = RemoteChannel(pipeline=pipe, channel_id=5, transport=t)
+    ch.on_data_requested_values(0.0, 1.0)
+    layout = pack_arrays(memoryview(bytearray(total_nbytes([np.array([0.0])]))), [np.array([0.0])])
+    ch.on_result(1, "sciqlop_no_such_segment", layout, 1)
+    assert pipe.calls == []
+    assert t.frees == []
