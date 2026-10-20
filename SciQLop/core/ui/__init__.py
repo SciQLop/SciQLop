@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QFrame, QWidget, QSizePolicy, QLabel, QVBoxLayout, QApplication, QComboBox
+from PySide6.QtWidgets import QFrame, QWidget, QSizePolicy, QLabel, QVBoxLayout, QApplication, QComboBox, QProxyStyle
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QFontMetrics
 
@@ -101,15 +101,31 @@ def expand_size(size: QSize, horizontal: int, vertical: int) -> QSize:
     return QSize(size.width() + (2 * horizontal), size.height() + (2 * vertical))
 
 
+_FITTED = "sciqlop_fitted_to_content"
+
+
 def fit_combo_to_content(combo: QComboBox) -> None:
     """Keep the combo's minimum width at its widest item, now and after any
     repopulation, so the popup never clips item text (on macOS the popup
-    matches the widget width). Call once, right after creating the combo.
+    matches the widget width). ComboFitStyle applies it to every combo, so
+    calling it is only needed for a combo shown before the app style is set.
     """
     _refit_combo(combo)
+    if combo.property(_FITTED):
+        return
+    combo.setProperty(_FITTED, True)
     model = combo.model()
     for signal in (model.rowsInserted, model.rowsRemoved, model.modelReset, model.dataChanged):
         signal.connect(lambda *_, c=combo: _refit_combo(c))
+
+
+class ComboFitStyle(QProxyStyle):
+    """Fits every QComboBox to its content when Qt polishes it, so no widget can forget to."""
+
+    def polish(self, widget_or_other):
+        if isinstance(widget_or_other, QComboBox):
+            fit_combo_to_content(widget_or_other)
+        return super().polish(widget_or_other)
 
 
 def _refit_combo(combo: QComboBox) -> None:

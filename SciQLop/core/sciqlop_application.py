@@ -61,6 +61,9 @@ class SciQLopApp(QApplication):
             self._watchdog = watchdog.Watchdog()
             self._watchdog.start()
             self._watchdog_timer = watchdog.start_qt_heartbeat(self._watchdog)
+        from SciQLop.core.ui import ComboFitStyle
+        self._combo_fit_style = ComboFitStyle()  # held so its Python polish override stays alive
+        self.setStyle(self._combo_fit_style)
         # self.setAttribute(QtCore.Qt.AA_UseStyleSheetPropagationInWidgetStyles, True)
         self._current_palette = setup_palette(palette_name=_saved_theme())
         self._current_palette_name = active_theme_name()

@@ -49,3 +49,18 @@ def test_choice_knob_delegate_combo_fits(qtbot):
     delegate = _ChoiceDelegate(spec)
     qtbot.addWidget(delegate)
     assert _fits(delegate._combo)
+
+
+def test_every_combobox_fits_without_calling_the_helper(qtbot):
+    """On macOS the popup is as wide as the widget: no combo may rely on remembering a helper call."""
+    from PySide6.QtWidgets import QVBoxLayout, QWidget
+    host = QWidget()
+    qtbot.addWidget(host)
+    combo = QComboBox()
+    combo.addItems(["a", "a fairly long item that would be clipped on macOS"])
+    QVBoxLayout(host).addWidget(combo)
+    host.show()
+    qtbot.waitUntil(lambda: _fits(combo))
+    combo.clear()
+    combo.addItems(["an even longer item, added after the combo was shown and polished"])
+    assert _fits(combo)
