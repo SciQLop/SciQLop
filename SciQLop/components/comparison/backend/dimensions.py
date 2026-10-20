@@ -58,7 +58,8 @@ def apply_time(specs: list[GraphSpec], variant: Variant, comparison: Comparison)
     start, stop = variant.params["start"], variant.params["stop"]
     t0 = anchor_time(start, stop, comparison.anchor)
     offset = t0 - anchor_time(*base_range(comparison), comparison.anchor)
-    return Side(label=variant.label, specs=[s.model_copy(update={"time_offset": offset}) for s in specs],
+    return Side(label=variant.label, specs=[s.model_copy(update={"time_offset": s.time_offset + offset})
+                                            for s in specs],
                 t0=t0, duration=stop - start)
 
 

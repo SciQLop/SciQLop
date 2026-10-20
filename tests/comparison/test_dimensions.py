@@ -37,6 +37,12 @@ def test_time_dimension_shifts_every_graph_by_anchor_difference():
     assert {s.time_offset for s in apply_time(base_specs(c2.template()), c2.variants[0], c2).specs} == {1100.0}
 
 
+def test_time_dimension_adds_to_an_already_shifted_graph():
+    c = _comparison(variants=[Variant(label="e", params={"start": 1100.0, "stop": 1300.0})])
+    specs = [s.model_copy(update={"time_offset": 50.0}) for s in base_specs(c.template())]
+    assert {s.time_offset for s in apply_time(specs, c.variants[0], c).specs} == {1050.0}
+
+
 def test_time_dimension_refuses_base_without_range():
     c = _comparison(time_range=None, variants=[Variant(label="e", params={"start": 1.0, "stop": 2.0})])
     with pytest.raises(ValueError, match="no visible time range"):

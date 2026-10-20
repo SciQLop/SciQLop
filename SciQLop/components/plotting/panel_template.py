@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, PrivateAttr, field_validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.graph_context import GraphContext, context_of, graph_name
@@ -38,6 +38,9 @@ class ProductModel(BaseModel):
     graph_type: str = ""
     knobs: dict[str, Any] = {}
     y_axis: Optional[Literal["y", "y2"]] = None  # None: where the graph type draws by default
+    # Seconds: data fetched this much later, drawn at the panel's time. Left out when 0 so unshifted templates
+    # keep the exact file they had before this field existed.
+    time_offset: float = Field(default=0.0, exclude_if=lambda offset: not offset)
 
     @field_validator("kind", mode="before")
     @classmethod
@@ -102,6 +105,8 @@ def _restore_timeseries(panel, plot_model: PlotModel):
             continue
         resolved = resolve_product_path(product.path)
         inputs = {"product_inputs": product.knobs} if product.knobs else {}
+        if product.time_offset:
+            inputs["time_offset"] = product.time_offset
         if subplot is None:
             r = plot_product(panel, resolved, plot_type=_PlotType.TimeSeries, **inputs)
             if r is not None:
@@ -417,12 +422,13 @@ def _time_range_model(panel) -> Optional[TimeRangeModel]:
 
 def product_model(graph) -> ProductModel:
     ctx = context_of(graph)
+    time_offset = float(graph.property("sqp_time_offset") or 0.0)
     if ctx is None:
         return ProductModel(path=graph.property("sqp_product_path") or "",
-                            label=graph_name(graph))
+                            label=graph_name(graph), time_offset=time_offset)
     return ProductModel(path=context_product_path(ctx), label=graph_name(graph),
                         kind=ctx.kind, speasy_id=ctx.speasy_id,
-                        graph_type=ctx.graph_type, knobs=dict(ctx.knobs))
+                        graph_type=ctx.graph_type, knobs=dict(ctx.knobs), time_offset=time_offset)
 
 
 def context_product_path(ctx: GraphContext) -> str:

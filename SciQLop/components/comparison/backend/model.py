@@ -51,7 +51,7 @@ class Comparison(BaseModel):
 
 
 def base_specs(template: PanelTemplate) -> list[GraphSpec]:
-    return [GraphSpec(plot_index=i, product_index=j, path=p.path, knobs=p.knobs,
+    return [GraphSpec(plot_index=i, product_index=j, path=p.path, knobs=p.knobs, time_offset=p.time_offset,
                       is_colormap=p.is_colormap, y_axis=p.y_axis)
             for i, plot in enumerate(template.plots) if plot.kind == TIMESERIES
             for j, p in enumerate(plot.products) if p.path]

@@ -68,3 +68,35 @@ def test_shifted_graph_does_not_offer_jump_to_data(plot_panel, qtbot, monkeypatc
     else:
         qtbot.wait(100)  # negative case: nothing to wait for, only a short pump
         assert not _notices(plot_panel)
+
+
+def _product_graphs(panel_impl):
+    from SciQLop.components.plotting.panel_introspection import plot_graphs
+    return [g for plot in panel_impl.plots() for g in plot_graphs(plot) if g.property("sqp_product_path")]
+
+
+def test_shifted_graph_legend_says_it_is_shifted(plot_panel, qtbot):
+    from SciQLop.core.graph_context import graph_name
+    vp = _vp("test_time_offset/legend", [])
+    plot_panel.time_range = TimeRange(1000.0, 2000.0)
+    plot_panel.plot_product(vp, time_offset=DAY)
+    plot_panel.plot_product(vp, plot_index=0)
+    names = sorted(graph_name(g) for g in _product_graphs(plot_panel._get_impl_or_raise()))
+    assert names == ["legend", "legend (+1 day, 0:00:00)"]
+
+
+def test_time_offset_round_trips_through_a_template(main_window, plot_panel, qtbot, tmp_path):
+    from SciQLop.components.plotting.panel_template import PanelTemplate
+    vp = _vp("test_time_offset/template", [])
+    plot_panel.time_range = TimeRange(1000.0, 2000.0)
+    plot_panel.plot_product(vp, time_offset=DAY)
+    template = PanelTemplate.from_panel(plot_panel._get_impl_or_raise())
+    assert [p.time_offset for p in template.plots[0].products] == [DAY]
+    template.to_file(str(tmp_path / "shifted.json"))
+    restored = PanelTemplate.from_file(str(tmp_path / "shifted.json")).create_panel(main_window)
+    try:
+        graphs = _product_graphs(restored)
+        assert len(graphs) == 1 and graphs[0].property("sqp_time_offset") == DAY
+        assert [p.time_offset for p in PanelTemplate.from_panel(restored).plots[0].products] == [DAY]
+    finally:
+        main_window.remove_panel(restored)

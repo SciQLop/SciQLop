@@ -299,7 +299,8 @@ class PlotPanel(GuardedImpl):
             trajectory or AMDA template parameters. Unknown names are ignored.
         time_offset : float, optional
             Seconds; data is fetched ``time_offset`` later and drawn at the panel's
-            time, e.g. 27 days to overlay the next solar rotation.
+            time, e.g. 27 days to overlay the next solar rotation. The legend shows the shift
+            (``B (+27 days, 0:00:00)``) and saved templates keep it.
         **kwargs
             Forwarded to SciQLopPlots. Note: component labels, the graph name
             and log scales are supplied by the product's provider, so passing

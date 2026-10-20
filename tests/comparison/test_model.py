@@ -27,6 +27,13 @@ def test_base_specs_carry_colormap_flag_and_knobs():
     assert spec.is_colormap and spec.knobs == {"k": 1}
 
 
+def test_base_specs_carry_time_offset():
+    t = _template(["a//b"])
+    t.plots[0].products[0].time_offset = 86400.0
+    (spec,) = base_specs(t)
+    assert spec.time_offset == 86400.0
+
+
 def test_comparison_round_trips_through_json():
     c = Comparison(base=_template(["a//b"]).to_tree(), dimension="time",
                    variants=[Variant(label="v", params={"start": 1.0, "stop": 2.0})])

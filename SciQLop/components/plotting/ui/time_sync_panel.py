@@ -5,6 +5,7 @@ import math
 import threading
 import time as _time
 import traceback
+from datetime import timedelta
 import numpy as np
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtGui import QIcon
@@ -498,6 +499,19 @@ def _set_product_path(r, product_path_str):
     graph.setProperty("sqp_product_path", product_path_str)
 
 
+def _set_time_offset(r, time_offset: float) -> None:
+    if time_offset:
+        _graph_from_result(r).setProperty("sqp_time_offset", float(time_offset))
+
+
+def shifted_name(name: str, time_offset: float) -> str:
+    """The legend name of a graph drawn `time_offset` seconds shifted, e.g. "B (+27 days, 0:00:00)"."""
+    if not time_offset:
+        return name
+    sign = "+" if time_offset > 0 else "−"
+    return f"{name} ({sign}{timedelta(seconds=round(abs(time_offset), 3))})"
+
+
 def _plot_from_result(r, target):
     """Extract the plot object from target.plot()'s return value.
 
@@ -762,10 +776,11 @@ def _attach_error_reporter(callback, r, target) -> None:
 
 
 def _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
-               product_inputs: Optional[dict] = None):
+               product_inputs: Optional[dict] = None, time_offset: float = 0.0):
     if not hasattr(r, '__iter__') and existing_plot is not None:
         r = (existing_plot, r)
     _set_product_path(r, product_path_str)
+    _set_time_offset(r, time_offset)
     _attach_error_reporter(callback, r, target)
     callback._post_fetch = _register_graph_hints(provider, node, r, target)
     _attach_knob_state(provider, node, callback, r, target)
@@ -979,20 +994,17 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
         r = target.plot(callback, labels=labels, **kwargs)
         if components is not None:
             _label_projection_axes(r, components)
-        if hasattr(r, '__iter__'):
-            r[1].set_name(node.display_name())
-        else:
-            r.set_name(node.display_name())
+        _graph_from_result(r).set_name(shifted_name(node.display_name(), time_offset))
         _apply_product_color_axis(r, target, provider, node)
         return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
-                          product_inputs=product_inputs)
+                          product_inputs=product_inputs, time_offset=time_offset)
     if kind is not None and kind.arity == 3:
         callback = _specgram_callback(provider, node, time_offset=time_offset)
         log.debug(f"Building spectrogram plot for {node.name()} with kwargs: {kwargs}")
-        r = target.plot(callback, name=node.display_name(), graph_type=GraphType.ColorMap,
+        r = target.plot(callback, name=shifted_name(node.display_name(), time_offset), graph_type=GraphType.ColorMap,
                         y_log_scale=True, z_log_scale=True, **kwargs)
         return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
-                          product_inputs=product_inputs)
+                          product_inputs=product_inputs, time_offset=time_offset)
     return None
 
 
