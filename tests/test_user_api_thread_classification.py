@@ -36,6 +36,8 @@ NOT_MARSHALED_ON_PURPOSE = {
     "layers/_provider.py": {"LayerProvider.callback", "LayerProvider.get_knobs", "LayerProvider.path",
                             "LayerProvider.resolve_scope", "LayerProvider.update_callback"},
     "plot/_graphic_primitives.py": {"StraightLine.orientation"},
+    # Returns the widget on the GUI thread and a MainThreadProxy elsewhere; marshalling would defeat the proxy.
+    "comparison.py": {"ComparisonHandle.panel"},
     # Read the intervals kept from the last set_intervals call, not the C++ timeline.
     "plot/_timeline.py": {"Interval.duration", "Timeline.interval"},
     "plot/_graphs.py": {"Histogram2D.x_bin_edges", "Histogram2D.y_bin_edges",
