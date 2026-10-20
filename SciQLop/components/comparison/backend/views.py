@@ -18,6 +18,7 @@ class ComparisonView:
     applies: Callable[[Comparison, list[Side]], str | None]
     build: Callable[[Comparison, list[Side], dict, tuple[float, float] | None, QWidget], QWidget]
     default_options: dict = field(default_factory=dict)
+    option_choices: dict[str, tuple[str, ...]] = field(default_factory=dict)  # option key -> its choices in the header
     order: int = 0
 
 

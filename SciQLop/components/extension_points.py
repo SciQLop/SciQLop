@@ -38,6 +38,7 @@ def prepare_extension_points() -> None:
     from SciQLop.components.catalogs.backend import catalog_mime, event_mime  # noqa: F401
     import SciQLop.components.plotting.core_kinds  # noqa: F401  contributes sciqlop.timeseries
     import SciQLop.components.plotting.time_panel_kind  # noqa: F401  declares sciqlop.panel_kinds, contributes sciqlop.time_panel
+    import SciQLop.components.comparison.ui.panel_kind  # noqa: F401  declares sciqlop.comparison_*, contributes sciqlop.comparison
     import SciQLop.core.panel_extensions  # noqa: F401  declares sciqlop.panel_extensions; every main window follows it
     import SciQLop.components.scenes.contributions  # noqa: F401  contributes sciqlop.scenes.projection
     from SciQLop.components.scenes import registry  # noqa: F401  importing declares sciqlop.scenes.*
