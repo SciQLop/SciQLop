@@ -313,3 +313,24 @@ def test_shifted_remote_ghost_is_refused_with_a_reason(main_window, qtbot, monke
     text = _overlay_text(plot)
     assert "event 0: not overlaid — remote products cannot be shifted in time yet" in text
     assert "could not be plotted" not in text
+
+
+def test_ghost_components_beyond_the_base_are_dashed_and_lightened_once(main_window, qtbot):
+    from PySide6.QtCore import Qt
+    from SciQLop.components.comparison.ui.styling import ghost_style
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel, plot_product
+    from SciQLop.core import TimeRange
+    _, one = _vp("style_one")
+    _, three = _vp("style_three", labels=("a", "b", "c"))
+    panel = TimeSyncPanel("style", time_range=TimeRange(*BASE_RANGE))
+    qtbot.addWidget(panel)
+    plot, base = plot_product(panel, one.split("//"))
+    ghost = plot_product(plot, three.split("//"))
+    qtbot.waitUntil(lambda: len(base.components()) == 1 and len(ghost.components()) == 3)
+    own = [c.color() for c in ghost.components()]
+    assert ghost_style(ghost, base, 0)
+    ghost_style(ghost, base, 0)
+    colours = [c.color() for c in ghost.components()]
+    assert colours[0] == base.components()[0].color().lighter(130)
+    assert colours[1:] == [c.lighter(130) for c in own[1:]]
+    assert all(c.pen().style() == Qt.PenStyle.DashLine for c in ghost.components())
