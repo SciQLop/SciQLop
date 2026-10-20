@@ -21,13 +21,17 @@ CORE_VIEWS = [
 
 
 def _create(name: str, config: dict):
+    from pydantic import ValidationError
     from SciQLop.components.comparison.backend.model import Comparison
-    from SciQLop.components.comparison.ui.panel import ComparisonPanel
-    return ComparisonPanel(name, Comparison.model_validate(config))
+    from SciQLop.components.comparison.ui.panel import ComparisonPanel, UnreadableComparisonPanel
+    try:
+        return ComparisonPanel(name, Comparison.model_validate(config))
+    except ValidationError as e:
+        return UnreadableComparisonPanel(name, config, e)
 
 
 def _to_config(widget) -> dict:
-    return widget.comparison.model_dump(mode="json")
+    return widget.to_config()
 
 
 contribute_core_dimensions()

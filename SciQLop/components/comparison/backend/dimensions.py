@@ -110,6 +110,16 @@ def dimension(id: str) -> ComparisonDimension:
     return COMPARISON_DIMENSIONS.get(id)
 
 
+def validate_variants(d: ComparisonDimension, variants: list[Variant]) -> None:
+    for v in variants:
+        try:
+            d.validate(v.params)
+        except ValueError as e:
+            raise ValueError(f"variant {v.label!r}: {e}") from e
+
+
 def resolve_sides(comparison: Comparison) -> list[Side]:
+    """Raises ValueError for a variant its dimension rejects: a stored comparison was never validated."""
     d = dimension(comparison.dimension)
+    validate_variants(d, comparison.variants)
     return sides(comparison, d.base_side, d.apply)

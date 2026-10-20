@@ -299,3 +299,32 @@ def test_a_bare_comparison_panel_has_a_working_edit_item(main_window, qtbot):
     dialogs = w.findChildren(CompareDialog)
     assert len(dialogs) == 1 and dialogs[0].isVisible()
     dialogs[0].close()
+
+
+def test_stored_product_variant_without_target_shows_message(main_window, tmp_path, qtbot, opened):
+    from SciQLop.components.comparison.ui.panel import ComparisonPanel
+    c = Comparison(base=_template([_vp_path("vp_no_target")]).to_tree(), dimension="product",
+                   variants=[Variant(label="other", params={"path": _vp_path("vp_no_target_b")})])
+    w = _open(main_window, _time_comparison_of_vp(variants=1, name="vp_no_target_src"))
+    tree = PanelTemplate.from_panel(w).to_tree()
+    tree["panel"]["config"] = c.model_dump(mode="json")
+    PanelTemplate.from_tree(tree).to_file(str(tmp_path / "bad.json"))
+    reopened = PanelTemplate.from_file(str(tmp_path / "bad.json")).create_panel(main_window)
+    assert isinstance(reopened, ComparisonPanel)
+    assert isinstance(reopened.inner, QLabel) and "missing 'target'" in reopened.inner.text()
+    assert reopened.comparison == c
+
+
+def test_garbage_config_opens_a_panel_with_a_message(main_window, qtbot, opened):
+    garbage = {"base": "not a template", "variants": 3}
+    w = main_window.open_panel(COMPARISON_PANEL, **garbage)
+    labels = [label.text() for label in w.findChildren(QLabel)]
+    assert any("cannot open this comparison" in text for text in labels)
+    assert panel_tree(w)["config"] == garbage
+
+
+def test_agent_tools_refuse_an_unreadable_comparison_panel(main_window, qtbot, opened):
+    from SciQLop.components.agents.tools.comparison_tool import _comparison_widget
+    w = main_window.open_panel(COMPARISON_PANEL, base="not a template")
+    with pytest.raises(ValueError, match="could not be read"):
+        _comparison_widget(w.objectName())

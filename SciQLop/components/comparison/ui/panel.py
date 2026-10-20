@@ -84,6 +84,9 @@ class ComparisonPanel(QWidget):
     def comparison(self) -> Comparison:
         return self._comparison
 
+    def to_config(self) -> dict:
+        return self._comparison.model_dump(mode="json")
+
     def set_comparison(self, comparison: Comparison) -> None:
         self._comparison = comparison
         sides = self._sides()
@@ -220,3 +223,20 @@ class ComparisonPanel(QWidget):
             template.name = name.strip()
             template.to_file(path)
             panel_template.save_preview(self, path)
+
+
+class UnreadableComparisonPanel(QWidget):
+    """A stored comparison that does not parse: says why, and saves back exactly what was stored."""
+
+    def __init__(self, name: str, config: dict, error: Exception, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setObjectName(name)
+        self.setWindowTitle(name)
+        self.setProperty(KIND_PROPERTY, COMPARISON_PANEL)
+        self._config = config
+        layout = QVBoxLayout(self)
+        layout.addWidget(_message(f"cannot open this comparison: {error}"))
+        layout.addStretch()
+
+    def to_config(self) -> dict:
+        return self._config

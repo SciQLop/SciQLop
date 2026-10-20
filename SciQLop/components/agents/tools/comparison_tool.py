@@ -53,6 +53,8 @@ def _comparison_widget(name: str):
                   if p.objectName() == name and p.property(KIND_PROPERTY) == COMPARISON_PANEL), None)
     if found is None:
         raise ValueError(f"no comparison panel named {name!r}")
+    if not hasattr(found, "comparison"):
+        raise ValueError(f"comparison panel {name!r} could not be read from its stored config")
     return found
 
 
