@@ -8,7 +8,8 @@ from PySide6.QtWidgets import (QComboBox, QFormLayout, QHBoxLayout, QLabel, QLin
                                QPushButton, QVBoxLayout, QWidget)
 
 from SciQLop.components.comparison.backend.model import GraphSpec, Variant, base_specs
-from SciQLop.components.plotting.panel_template import PanelTemplate, resolve_product_path
+from SciQLop.components.comparison.ui.inner_panel import provider_and_node
+from SciQLop.components.plotting.panel_template import PanelTemplate
 from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
@@ -106,8 +107,7 @@ def _target_combo(template: PanelTemplate, specs: list[GraphSpec]) -> QComboBox:
 
 
 def product_node(path: str):
-    from SciQLopPlots import ProductsModel
-    return ProductsModel.node(resolve_product_path(path)) if path else None
+    return provider_and_node(path)[1]
 
 
 def is_spectrogram(node) -> Optional[bool]:
@@ -189,9 +189,7 @@ class ProductPicker(VariantPicker):
 
 def knobs_of(path: str) -> list:
     """Main thread only: the knob specs the product's provider declares, [] when none or unknown."""
-    from SciQLop.components.plotting.backend.data_provider import providers
-    node = product_node(path)
-    provider = providers.get(node.provider()) if node is not None else None
+    provider, node = provider_and_node(path)
     if provider is None:
         return []
     try:

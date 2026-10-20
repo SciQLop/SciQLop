@@ -2,11 +2,12 @@
 that changes, and the variants; views render the resulting sides."""
 from __future__ import annotations
 
-from typing import Any, Callable, Literal
+from datetime import datetime, timezone
+from typing import Any, Callable, Literal, Optional
 
 from pydantic import BaseModel
 
-from SciQLop.components.plotting.panel_template import PanelTemplate, TIMESERIES
+from SciQLop.components.plotting.panel_template import PanelTemplate, TIMESERIES, TimeRangeModel
 
 Anchor = Literal["start", "center", "end"]
 Key = tuple[int, int]
@@ -48,6 +49,18 @@ class Comparison(BaseModel):
 
     def template(self) -> PanelTemplate:
         return PanelTemplate.from_tree(self.base)
+
+
+def _iso(t: float) -> str:
+    return datetime.fromtimestamp(t, tz=timezone.utc).isoformat()
+
+
+def template_at_range(template: PanelTemplate, time_range: Optional[tuple[float, float]]) -> PanelTemplate:
+    """The template showing `time_range` (epoch seconds) instead of its own; unchanged when None."""
+    if time_range is None:
+        return template
+    return template.model_copy(update={"time_range": TimeRangeModel(start=_iso(time_range[0]),
+                                                                    stop=_iso(time_range[1]))})
 
 
 def base_specs(template: PanelTemplate) -> list[GraphSpec]:

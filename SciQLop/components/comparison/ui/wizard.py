@@ -1,7 +1,6 @@
 """The Compare dialog: base panel, what changes and what to compare against, on one page (spec §7)."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
@@ -9,10 +8,10 @@ from PySide6.QtWidgets import (QButtonGroup, QComboBox, QDialog, QDialogButtonBo
                                QRadioButton, QVBoxLayout, QWidget)
 
 from SciQLop.components.comparison.backend.dimensions import COMPARISON_DIMENSIONS
-from SciQLop.components.comparison.backend.model import Comparison, Variant
+from SciQLop.components.comparison.backend.model import Comparison, Variant, template_at_range
 from SciQLop.components.comparison.ui.panel_kind import COMPARISON_PANEL
 from SciQLop.components.comparison.ui.pickers import VariantPicker, picker_for
-from SciQLop.components.plotting.panel_template import PanelTemplate, TimeRangeModel
+from SciQLop.components.plotting.panel_template import PanelTemplate
 
 Preset = tuple[str, list[Variant]]
 
@@ -24,17 +23,6 @@ def panel_name(panel) -> Optional[str]:
     if hasattr(panel, "_get_impl_or_raise"):
         panel = panel._get_impl_or_raise()
     return panel.name
-
-
-def _iso(t: float) -> str:
-    return datetime.fromtimestamp(t, tz=timezone.utc).isoformat()
-
-
-def _with_range(template: PanelTemplate, time_range: Optional[tuple[float, float]]) -> PanelTemplate:
-    if time_range is None:
-        return template
-    return template.model_copy(update={"time_range": TimeRangeModel(start=_iso(time_range[0]),
-                                                                    stop=_iso(time_range[1]))})
 
 
 class CompareDialog(QDialog):
@@ -114,7 +102,7 @@ class CompareDialog(QDialog):
         if self._comparison is not None:
             return self._comparison.template()
         panel = self._main_window.plot_panel(self.base_combo.currentText())
-        return _with_range(PanelTemplate.from_panel(panel), self._base_range) if panel is not None else None
+        return template_at_range(PanelTemplate.from_panel(panel), self._base_range) if panel is not None else None
 
     def _rebuild_picker(self) -> None:
         if self.picker is not None:

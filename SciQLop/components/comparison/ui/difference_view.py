@@ -12,9 +12,8 @@ from SciQLop.components.comparison.backend.checks import REMOTE_REFUSAL, compati
 from SciQLop.components.comparison.backend.difference import (ComparisonMismatch, Operation, colormap_relation,
                                                                line_relation, mask_fill)
 from SciQLop.components.comparison.backend.model import Comparison, GraphSpec, Side, changed_keys
-from SciQLop.components.comparison.ui.inner_panel import _labels, build_inner_panel
+from SciQLop.components.comparison.ui.inner_panel import build_inner_panel, product_labels, provider_and_node
 from SciQLop.components.comparison.ui.overlay_view import add_ghost, base_graphs
-from SciQLop.components.plotting.panel_template import resolve_product_path
 from SciQLop.core.graph_context import graph_name
 from SciQLop.core.plot_hints import PlotHints, merge_hints
 
@@ -38,16 +37,13 @@ class ResolvedSide(NamedTuple):
 
 
 def resolve_side(spec: GraphSpec) -> Optional[ResolvedSide]:
-    from SciQLopPlots import ProductsModel
-    from SciQLop.components.plotting.backend.data_provider import providers
     from SciQLop.components.plotting.ui.time_sync_panel import _safe_plot_hints
-    node = ProductsModel.node(resolve_product_path(spec.path)) if spec.path else None
-    provider = providers.get(node.provider()) if node is not None else None
+    provider, node = provider_and_node(spec.path)
     if provider is None:
         return None
     hints = _safe_plot_hints(provider, node)
     return ResolvedSide(provider, node, spec.knobs, spec.time_offset, hints.fill_value, hints,
-                        _labels(provider, node))
+                        product_labels(provider, node))
 
 
 def _side_hints(side: ResolvedSide, variable) -> PlotHints:

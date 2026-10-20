@@ -11,7 +11,7 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from PySide6.QtWidgets import QWidget
 
-from SciQLop.components.comparison.backend.dimensions import COMPARISON_DIMENSIONS, resolve_sides
+from SciQLop.components.comparison.backend.dimensions import COMPARISON_DIMENSIONS
 from SciQLop.components.comparison.backend.model import Comparison, GraphSpec, Variant, base_specs
 from SciQLop.components.comparison.backend.views import check_view, find_view, options_for, showing, with_options
 from SciQLop.components.comparison.ui.panel_kind import COMPARISON_PANEL

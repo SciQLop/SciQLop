@@ -56,3 +56,12 @@ def test_changed_keys_ignores_identical_specs():
     var = Side(label="v", specs=[GraphSpec(plot_index=0, product_index=0, path="a", time_offset=5.0),
                                  GraphSpec(plot_index=1, product_index=0, path="c")])
     assert changed_keys([base, var]) == {(0, 0)}
+
+
+def test_template_at_range_replaces_only_the_time_range():
+    from SciQLop.components.comparison.backend.model import template_at_range
+    t = _template(["a//b"])
+    assert template_at_range(t, None) is t
+    moved = template_at_range(t, (0.0, 60.0))
+    assert (moved.time_range.start, moved.time_range.stop) == ("1970-01-01T00:00:00+00:00", "1970-01-01T00:01:00+00:00")
+    assert moved.plots == t.plots
