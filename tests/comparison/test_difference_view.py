@@ -286,3 +286,29 @@ def test_spectrogram_and_line_sides_are_refused(main_window, qtbot):
     panel = _build(comparison, qtbot)
     assert _graphs(panel.plots()[1]) == []
     assert "cannot relate a spectrogram to a line plot" in _overlay_text(panel.plots()[1])
+
+
+def test_descending_bins_relation_row_lines_up_with_the_base_row(main_window, qtbot):
+    _, path = _spectrogram_vp("descending_rows")
+    panel = _build(_settings_comparison(path, {"gain": 1.0}, {"gain": 3.0}, is_colormap=True), qtbot)
+    base, rel = _graphs(panel.plots()[0])[0], _graphs(panel.plots()[1])[0]
+    qtbot.waitUntil(lambda: _buffers(base)[0].size > 0 and _buffers(rel)[0].size > 0)
+    y_base, y_rel = (np.asarray(_buffers(g)[1]).reshape(-1, 3)[0] for g in (base, rel))
+    assert np.allclose(y_base, y_rel)
+    z_base, z_rel = (np.asarray(_buffers(g)[2]).reshape(-1, 3)[0] for g in (base, rel))
+    assert np.allclose(z_base, y_base) and np.allclose(z_rel, -2 * np.log10(y_base))
+
+
+def test_keep_symmetric_applies_to_the_range_the_axis_already_has(main_window, qtbot):
+    from SciQLopPlots import SciQLopPlotRange
+    from SciQLop.components.comparison.ui.difference_view import _keep_symmetric
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel, plot_product
+    from SciQLop.core import TimeRange
+    panel = TimeSyncPanel("sym", time_range=TimeRange(*BASE_RANGE))
+    qtbot.addWidget(panel)
+    _, path = _gain_vp("symmetric")
+    plot, _ = plot_product(panel, path.split("//"))
+    axis = plot.y_axis()
+    axis.set_range(SciQLopPlotRange(1.0, 5.0))
+    _keep_symmetric(axis)
+    assert (axis.range().start(), axis.range().stop()) == pytest.approx((-5.0, 5.0))

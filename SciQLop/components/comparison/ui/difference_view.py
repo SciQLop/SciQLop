@@ -170,6 +170,7 @@ def _keep_symmetric(axis) -> None:
             axis.set_range(SciQLopPlotRange(-half, half))
 
     axis.range_changed.connect(symmetrize)
+    symmetrize(axis.range())
 
 
 def _show_refusal(panel, position: int, message: str) -> None:
