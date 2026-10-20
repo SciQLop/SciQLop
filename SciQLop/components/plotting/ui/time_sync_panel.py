@@ -104,6 +104,14 @@ class _PlotHintsRegistry:
         self._recompute()
         return key
 
+    @property
+    def plot(self):
+        return self._plot
+
+    def hints_for(self, key: int) -> Optional[PlotHints]:
+        """One graph's hints: the provider's static ones, refined by its first fetch."""
+        return self._entries.get(key)
+
     def update_if_present(self, key: int, hints: PlotHints) -> None:
         if key in self._entries:
             self._entries[key] = hints
@@ -181,6 +189,12 @@ def _get_or_create_registry(plot) -> Optional["_PlotHintsRegistry"]:
         except (AttributeError, RuntimeError):
             log.debug("plot has no destroyed signal; relying on isValid eviction")
     return reg
+
+
+def hints_registry_of(plot_key: int) -> Optional["_PlotHintsRegistry"]:
+    """The live registry of the plot with this C++-pointer key (see _plot_key), if it has one."""
+    reg = _PLOT_REGISTRIES.get(plot_key)
+    return reg if reg is not None and shiboken6.isValid(reg._plot) else None
 
 
 class _PostFetchHintsApplier:
@@ -1281,13 +1295,17 @@ def attach_layer(plot, product: list[str], panel=None):
 class TimeSyncPanel(SciQLopMultiPlotPanel):
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None,
-                 show_search_overlay: bool = True):
+                 show_search_overlay: bool = True, read_only: bool = False):
         super().__init__(parent, synchronize_x=False, synchronize_time=True)
         self.setObjectName(name)
         self.setWindowTitle(name)
         self._parent_node = None
         self._template_source_path: str | None = None
-        accept_drop_rules(self)
+        self._read_only = read_only
+        if read_only:
+            self.setAcceptDrops(False)
+        else:
+            accept_drop_rules(self)
         self.set_color_palette(make_color_list(Palette()))
         self.update_theme()
         if time_range is not None:
@@ -1305,7 +1323,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self.plot_added.connect(_attach_plot_sections)
 
         self._search_overlay = None
-        if show_search_overlay:
+        if show_search_overlay and not read_only:
             self._search_overlay = ProductSearchOverlay(self.viewport())
             self._search_overlay.product_selected.connect(self._on_overlay_product_selected)
             self._search_overlay.proxy_config_pasted.connect(self._on_overlay_proxy_config)
@@ -1389,9 +1407,11 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self._add_selection_actions(menu, source)
         menu.addSeparator()
         self._build_export_share_menu(menu)
-        self._build_templates_menu(menu)
+        if not self._read_only:
+            self._build_templates_menu(menu)
         self._add_plugin_menus(menu)
-        add_menu_entries(menu, PANEL, self._menu_context())
+        if not self._read_only:
+            add_menu_entries(menu, PANEL, self._menu_context())
         self._append_knob_reset_actions(menu)
         return menu
 

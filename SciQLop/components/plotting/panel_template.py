@@ -274,7 +274,8 @@ class PanelTemplate(BaseModel):
                                            copy.deepcopy(self._foreign_root.get("config", {})))
         return open_placeholder(main_window, self._foreign_root, name=self.name)
 
-    def apply(self, panel) -> None:
+    def apply(self, panel) -> list:
+        """Rebuilds the panel; returns what restoring each of ``self.plots`` gave, index-aligned (None: nothing)."""
         if self._foreign_root is not None:
             raise TypeError(f"template {self.name!r} is a {self.panel_kind} template, not a time panel one")
         # Limit and range go first: a graph fetches on its first range change,
@@ -283,9 +284,9 @@ class PanelTemplate(BaseModel):
         self._apply_zoom_limit(panel)
         if self.time_range is not None:
             panel.set_time_axis_range(self._time_range())
-        for plot_model in self.plots:
-            _restore_plot(panel, plot_model)
+        restored = [_restore_plot(panel, plot_model) for plot_model in self.plots]
         self._apply_zoom_limit(panel)
+        return restored
 
     def _time_range(self):
         from SciQLop.core import TimeRange as TR
