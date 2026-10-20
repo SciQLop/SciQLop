@@ -240,6 +240,18 @@ class _PostFetchHintsApplier:
             attach_data_meta(graph, data_meta)
 
 
+def shift_buffers(result, offset: float):
+    """Provider buffers with the time array moved back by ``offset`` seconds.
+    Only the time array is copied: value arrays are passed through, a
+    spectrogram's can be large."""
+    if not offset or not result:
+        return result
+    if isinstance(result, dict):
+        return {**result, "data": shift_buffers(result["data"], offset)}
+    t, *rest = result
+    return type(result)([np.asarray(t) - offset, *rest])
+
+
 class _ProductCallbackBase:
     """Shared state for product-fetch callbacks: provider, node, optional
     post-fetch hints applier, knob state. Subclasses override ``__call__``
@@ -247,9 +259,10 @@ class _ProductCallbackBase:
 
     def __init__(self, provider: DataProvider, node,
                  post_fetch: Optional["_PostFetchHintsApplier"] = None,
-                 knob_state=None):
+                 knob_state=None, time_offset: float = 0.0):
         self.provider = provider
         self.node = node
+        self.time_offset = time_offset
         self._post_fetch = post_fetch
         self.knob_state = knob_state
         self.last_error: Optional[str] = None
@@ -274,9 +287,11 @@ class _ProductCallbackBase:
 
     def _fetch(self, start, stop):
         observer = self._post_fetch.observe if self._post_fetch is not None else None
-        return self.provider._get_data(self.node, start, stop,
-                                       on_variable=observer,
-                                       knobs=self._knob_values())
+        result = self.provider._get_data(self.node, start + self.time_offset,
+                                         stop + self.time_offset,
+                                         on_variable=observer,
+                                         knobs=self._knob_values())
+        return shift_buffers(result, self.time_offset)
 
 
 class _plot_product_callback(_ProductCallbackBase):
@@ -910,8 +925,13 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
         return None
     # Parameter values for the product (knobs), never a SciQLopPlots kwarg.
     product_inputs = kwargs.pop("product_inputs", None)
+    time_offset = kwargs.pop("time_offset", 0.0) or 0.0
     from SciQLop.components.plotting.backend.remote.registry import remote_registry
     if remote_registry().is_remote(product):
+        if time_offset:
+            # simplify: apply the offset where plot_remote builds its request when remote comparisons are needed.
+            log.error(f"time_offset is not supported for remote product {product}")
+            return None
         from SciQLop.components.plotting.backend.remote.plot_remote import plot_remote
         from SciQLopPlots import PlotType
         target, _ = _resolve_plot_target(p, kwargs)
@@ -933,7 +953,7 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
     kind = product_kind_of(node)
     log.debug(f"Product kind: {kind.id if kind else None}")
     if kind is not None and kind.arity == 2:
-        callback = _plot_product_callback(provider, node)
+        callback = _plot_product_callback(provider, node, time_offset=time_offset)
         labels = listify(provider.labels(node))
         log.debug(f"Building plot for {node.name()} with labels: {labels}, kwargs: {kwargs}")
         from SciQLopPlots import PlotType as _SQPPlotType
@@ -953,7 +973,7 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
         return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
                           product_inputs=product_inputs)
     if kind is not None and kind.arity == 3:
-        callback = _specgram_callback(provider, node)
+        callback = _specgram_callback(provider, node, time_offset=time_offset)
         log.debug(f"Building spectrogram plot for {node.name()} with kwargs: {kwargs}")
         r = target.plot(callback, name=node.display_name(), graph_type=GraphType.ColorMap,
                         y_log_scale=True, z_log_scale=True, **kwargs)

@@ -280,7 +280,7 @@ class PlotPanel(GuardedImpl):
     @_tracing.traced("PlotPanel.plot_product", cat="plot")
     def plot_product(self, product: AnyProductType, plot_index=-1, *,
                      plot_type=_UNSET, graph_type=_UNSET, product_inputs=_UNSET,
-                     **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:
+                     time_offset=_UNSET, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:
         """Plot a product in the panel.
 
         Parameters
@@ -297,6 +297,9 @@ class PlotPanel(GuardedImpl):
             Initial values for the product's parameters (the knobs shown in
             the inspector), e.g. ``{"coordinate_system": "gsm"}`` for an SSC
             trajectory or AMDA template parameters. Unknown names are ignored.
+        time_offset : float, optional
+            Seconds; data is fetched ``time_offset`` later and drawn at the panel's
+            time, e.g. 27 days to overlay the next solar rotation.
         **kwargs
             Forwarded to SciQLopPlots. Note: component labels, the graph name
             and log scales are supplied by the product's provider, so passing
@@ -307,7 +310,7 @@ class PlotPanel(GuardedImpl):
         Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]
         """
         kwargs = _with_explicit(kwargs, plot_type=plot_type, graph_type=graph_type,
-                                product_inputs=product_inputs)
+                                product_inputs=product_inputs, time_offset=time_offset)
         kwargs = _normalize_plot_kwargs(kwargs)
         _p, _g = plot_product_or_raise(self._get_impl_or_raise(), product, index=plot_index, **kwargs)
         wrapped_plot = to_plot(_p)
