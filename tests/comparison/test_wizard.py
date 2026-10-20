@@ -92,7 +92,13 @@ def test_dialog_builds_time_comparison(main_window, qtbot, opened):
     panel = dialog.opened
     assert isinstance(panel, ComparisonPanel) and panel in main_window.panels()
     assert panel.comparison.dimension == "time"
-    assert [v.label for v in panel.comparison.variants] == ["2020-01-01T00:00+00:00", "2020-01-01T05:00+00:00"]
+    assert [v.label for v in panel.comparison.variants] == ["2020-01-01T00:00:00+00:00", "2020-01-01T05:00:00+00:00"]
+
+
+def test_time_variants_in_the_same_minute_get_distinct_labels():
+    from SciQLop.components.comparison.ui.pickers import time_variant
+    events = [_event("a", 0), _event("b", 20 / 3600)]
+    assert [time_variant(e).label for e in events] == ["2020-01-01T00:00:00+00:00", "2020-01-01T00:00:20+00:00"]
 
 
 def test_time_variant_keeps_event_duration(qtbot):
@@ -182,7 +188,7 @@ def test_open_compare_events_presets_the_dialog(main_window, qtbot, opened):
     qtbot.addWidget(dialog)
     assert dialog.base_combo.currentText() == base.name
     assert dialog.dimension_buttons["time"].isChecked()
-    assert [v.label for v in dialog.picker.variants()] == ["2020-01-01T03:00+00:00", "2020-01-01T06:00+00:00"]
+    assert [v.label for v in dialog.picker.variants()] == ["2020-01-01T03:00:00+00:00", "2020-01-01T06:00:00+00:00"]
     dialog.compare_button.click()
     rng = dialog.opened.comparison.template().time_range
     assert datetime.fromisoformat(rng.start) == T0 and datetime.fromisoformat(rng.stop) == T0 + timedelta(hours=1)
@@ -213,7 +219,7 @@ def test_edit_mode_updates_existing_panel(main_window, qtbot, opened):
     assert [v.label for v in dialog.picker.variants()] == ["a"]
     _check_events(dialog.picker, catalog, 2)
     dialog.compare_button.click()
-    assert [v.label for v in panel.comparison.variants] == ["2020-01-01T00:00+00:00", "2020-01-01T01:00+00:00"]
+    assert [v.label for v in panel.comparison.variants] == ["2020-01-01T00:00:00+00:00", "2020-01-01T01:00:00+00:00"]
     assert panel.comparison.base == original.base
     assert dialog.opened is None
 

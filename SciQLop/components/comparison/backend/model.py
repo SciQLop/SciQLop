@@ -55,6 +55,11 @@ def _iso(t: float) -> str:
     return datetime.fromtimestamp(t, tz=timezone.utc).isoformat()
 
 
+def time_label(t: float) -> str:
+    """A time variant's label: to the second, so two events in the same minute stay apart."""
+    return datetime.fromtimestamp(t, tz=timezone.utc).isoformat(timespec="seconds")
+
+
 def template_at_range(template: PanelTemplate, time_range: Optional[tuple[float, float]]) -> PanelTemplate:
     """The template showing `time_range` (epoch seconds) instead of its own; unchanged when None."""
     if time_range is None:

@@ -53,6 +53,11 @@ def _compare(*args, **kwargs):
     return compare(*args, **kwargs)
 
 
+def test_time_variants_in_the_same_minute_get_distinct_labels(plot_panel_with_vp, qtbot):
+    h = _compare(plot_panel_with_vp, over="time", variants=[(t0 + 86400, t1 + 86400), (t0 + 86410, t1 + 86410)])
+    assert h.variants == ["1970-01-02T00:16:40+00:00", "1970-01-02T00:16:50+00:00"]
+
+
 def test_compare_over_time_from_tuples(plot_panel_with_vp, qtbot):
     h = _compare(plot_panel_with_vp, over="time", variants=[(t0 + 86400, t1 + 86400)])
     assert h.view == "overlay" and len(h.variants) == 1

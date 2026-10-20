@@ -6,13 +6,13 @@
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Callable, List, Optional, Tuple
 
 from PySide6.QtWidgets import QWidget
 
 from SciQLop.components.comparison.backend.dimensions import COMPARISON_DIMENSIONS
-from SciQLop.components.comparison.backend.model import Comparison, GraphSpec, Variant, base_specs
+from SciQLop.components.comparison.backend.model import Comparison, GraphSpec, Variant, base_specs, time_label
 from SciQLop.components.comparison.backend.views import check_view, find_view, options_for, showing, with_options
 from SciQLop.components.comparison.ui.panel_kind import COMPARISON_PANEL
 from SciQLop.components.comparison.ui.pickers import is_spectrogram, knobs_label, product_node
@@ -25,10 +25,6 @@ from .threading import on_main_thread
 __all__ = ["compare", "ComparisonHandle"]
 
 Target = Optional[Tuple[int, int]]
-
-
-def _iso_minutes(t: float) -> str:
-    return datetime.fromtimestamp(t, tz=timezone.utc).isoformat(timespec="minutes")
 
 
 def _time_pair(value) -> Any:
@@ -45,7 +41,7 @@ def _time_variant(value) -> Variant:
         rng = as_time_range(_time_pair(value))
     except TypeError as e:
         raise ValueError(f"not a time variant: {value!r} ({e})") from e
-    return Variant(label=_iso_minutes(rng.start()), params={"start": rng.start(), "stop": rng.stop()})
+    return Variant(label=time_label(rng.start()), params={"start": rng.start(), "stop": rng.stop()})
 
 
 def _target_spec(specs: List[GraphSpec], target: Target) -> GraphSpec:

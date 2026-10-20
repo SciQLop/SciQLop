@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QComboBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
                                QPushButton, QVBoxLayout, QWidget)
 
-from SciQLop.components.comparison.backend.model import GraphSpec, Variant, base_specs
+from SciQLop.components.comparison.backend.model import GraphSpec, Variant, base_specs, time_label
 from SciQLop.components.comparison.ui.inner_panel import provider_and_node
 from SciQLop.components.plotting.panel_template import PanelTemplate
 from SciQLop.components.sciqlop_logging import getLogger
@@ -51,7 +51,7 @@ def _fill(view: QListWidget, variants: list[Variant], checked: bool) -> None:
 
 
 def time_variant(event) -> Variant:
-    return Variant(label=event.start.isoformat(timespec="minutes"),
+    return Variant(label=time_label(event.start.timestamp()),
                    params={"start": event.start.timestamp(), "stop": event.stop.timestamp()})
 
 
