@@ -187,6 +187,32 @@ def test_overlay_does_not_ghost_spectrogram_variants(main_window, qtbot):
         Variant(label="spec", params={"target": [0, 0], "path": path, "is_colormap": True})])
     plot = _build(comparison, qtbot).plots()[0]
     assert len(_graphs(plot)) == 1
+    text = _overlay_text(plot)
+    assert "a spectrogram and a line plot cannot be overlaid" in text
+    assert "use Difference" not in text
+
+
+def _spectrogram_path(name):
+    from SciQLop.user_api.plot._plots import to_product_path
+    from SciQLop.user_api.virtual_products import VirtualProductType, create_virtual_product
+
+    def spectrogram(start: float, stop: float, gain: float = 1.0):
+        x = np.linspace(start, stop, 20)
+        y = np.array([1.0, 10.0, 100.0])
+        return x, y, np.ones((len(x), 1)) * y[None, :] * gain
+
+    vp = create_virtual_product(f"test_cmp/{name}", spectrogram, VirtualProductType.Spectrogram)
+    return "//".join(to_product_path(vp))
+
+
+def test_overlay_points_spectrogram_variants_of_a_spectrogram_to_difference(main_window, qtbot):
+    path = _spectrogram_path("spec_settings")
+    template = PanelTemplate(name="P", time_range=TimeRangeModel(start=_iso(BASE_RANGE[0]), stop=_iso(BASE_RANGE[1])),
+                             plots=[PlotModel(products=[ProductModel(path=path, knobs={"gain": 1.0},
+                                                                     graph_type="SciQLopColorMap")])])
+    comparison = Comparison(base=template.to_tree(), dimension="settings",
+                            variants=[Variant(label="v", params={"target": [0, 0], "knobs": {"gain": 2.0}})])
+    plot = _build(comparison, qtbot).plots()[0]
     assert "spectrogram variants are not shown in Overlay — use Difference" in _overlay_text(plot)
 
 

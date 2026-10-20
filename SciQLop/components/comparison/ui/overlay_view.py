@@ -95,10 +95,20 @@ def _add_ghosts(plots: list, graphs: dict, sides: list[Side], keys: set[Key]) ->
                 add_ghost(plots[spec.plot_index], spec, graphs[spec.key], side.label, index)
 
 
-def _note_colormaps(plots: list, keys: set[Key]) -> None:
-    for plot_index in sorted({k[0] for k in keys}):
-        if plots[plot_index] is not None:
-            note(plots[plot_index], "spectrogram variants are not shown in Overlay — use Difference")
+SPECTROGRAM_NOTE = "spectrogram variants are not shown in Overlay — use Difference"
+MIXED_NOTE = "a spectrogram and a line plot cannot be overlaid"
+
+
+def _colormap_note(sides: list[Side], key: Key) -> str:
+    """Difference relates two spectrograms but refuses a spectrogram against a line plot."""
+    kinds = {s.is_colormap for side in sides for s in side.specs if s.key == key}
+    return SPECTROGRAM_NOTE if kinds == {True} else MIXED_NOTE
+
+
+def _note_colormaps(plots: list, sides: list[Side], keys: set[Key]) -> None:
+    for key in sorted(keys):
+        if plots[key[0]] is not None:
+            note(plots[key[0]], _colormap_note(sides, key))
 
 
 def _summary_notes(sides: list[Side]) -> list[str]:
@@ -122,7 +132,7 @@ def build_overlay(comparison: Comparison, sides: list[Side], options: dict,
     keys = changed_keys(sides)
     colormaps = _colormap_keys(sides, keys)
     _add_ghosts(plots, base_graphs(plots, comparison.template()), sides, keys - colormaps)
-    _note_colormaps(plots, colormaps)
+    _note_colormaps(plots, sides, colormaps)
     first = _first_plot(plots)
     for message in _summary_notes(sides) if first is not None else []:
         note(first, message)
