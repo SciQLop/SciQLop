@@ -22,6 +22,23 @@ def opened(main_window, qtbot):
     qtbot.waitUntil(lambda: set(main_window.panels()) <= before)
 
 
+def _dummy_providers():
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    return [p for p in CatalogRegistry.instance().providers() if isinstance(p, DummyProvider)]
+
+
+@pytest.fixture(autouse=True)
+def _no_leftover_dummy_providers(qapp):
+    """_catalog_with registers a DummyProvider per test: leave the registry as it was."""
+    before = set(map(id, _dummy_providers()))
+    yield
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    for provider in [p for p in _dummy_providers() if id(p) not in before]:
+        CatalogRegistry.instance().unregister(provider)
+    assert set(map(id, _dummy_providers())) <= before
+
+
 def _iso(t):
     return datetime.fromtimestamp(t, timezone.utc).isoformat()
 

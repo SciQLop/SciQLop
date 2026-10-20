@@ -298,7 +298,9 @@ def test_a_bare_comparison_panel_has_a_working_edit_item(main_window, qtbot):
     next(a for a in w.menu_button.menu().actions() if a.text().startswith("Edit comparison")).trigger()
     dialogs = w.findChildren(CompareDialog)
     assert len(dialogs) == 1 and dialogs[0].isVisible()
-    dialogs[0].close()
+    with qtbot.waitSignal(dialogs[0].destroyed, timeout=2000):
+        dialogs[0].close()
+    assert w.findChildren(CompareDialog) == []
 
 
 def test_stored_product_variant_without_target_shows_message(main_window, tmp_path, qtbot, opened):
