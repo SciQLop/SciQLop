@@ -24,10 +24,8 @@ def _comparison(time_range=(100.0, 200.0), variants=(), dimension="time", paths=
 
 @pytest.fixture
 def core_dimensions():
+    """The production registrations are left in place: other test files rely on them."""
     contribute_core_dimensions()
-    yield
-    for key in ("time", "product", "settings"):
-        COMPARISON_DIMENSIONS.remove(key)
 
 
 def test_time_dimension_shifts_every_graph_by_anchor_difference():
