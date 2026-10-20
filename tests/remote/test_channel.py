@@ -298,3 +298,34 @@ def test_dispose_keeps_the_held_segment_mapped_while_a_reader_still_holds_it(mon
     assert name in closed_names
     assert t.frees == [(5, name)]
     shm.unlink()
+
+
+
+def test_a_pinned_segment_is_still_freed_and_closed_right_after(monkeypatch, qtbot):
+    """close() refuses while the last view is mid-deallocation (its buffer export
+    pins the mapping): the worker must still get FREE, and the close must retry."""
+    attempts, pinned = [], set()
+    orig_close = shared_memory.SharedMemory.close
+
+    def pinned_once(self):
+        attempts.append(self.name)
+        if self.name in pinned:
+            pinned.discard(self.name)
+            raise BufferError("cannot close exported pointers exist")
+        orig_close(self)
+
+    monkeypatch.setattr(shared_memory.SharedMemory, "close", pinned_once)
+    pipe, t = FakePipeline(), FakeTransport()
+    ch = RemoteChannel(pipeline=pipe, channel_id=5, transport=t)
+    ch.on_data_requested_values(0.0, 1.0)
+    n1, l1, s1 = _make_segment([np.array([0.0, 1.0]), np.array([1.0])])
+    pinned.add(n1)
+    ch.on_result(1, n1, l1, 2)
+    ch.on_data_requested_values(1.0, 2.0)
+    n2, l2, s2 = _make_segment([np.array([1.0, 2.0]), np.array([2.0])])
+    ch.on_result(2, n2, l2, 2)   # supersedes segment 1: its views die here
+
+    assert (5, n1) in t.frees
+    qtbot.waitUntil(lambda: attempts.count(n1) >= 2)   # the retry, maybe a GC close after it
+    s1.unlink()
+    s2.unlink()

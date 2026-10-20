@@ -29,6 +29,7 @@ def test_request_returns_result_with_readable_arrays():
     x, y = unpack_arrays(shm.buf, layout)
     np.testing.assert_array_equal(x, [0.0, 10.0])
     np.testing.assert_array_equal(y, [1.0, 2.0])
+    del x, y  # views pin the mapping: close() refuses while they live
     shm.close()
     main.send((P.SHUTDOWN,))
 
@@ -135,6 +136,7 @@ def test_worker_applies_knobs_to_callback():
     shm = shared_memory.SharedMemory(name=name, track=False)
     x, y = unpack_arrays(shm.buf, layout)
     np.testing.assert_array_equal(y, [3.0, 6.0])
+    del x, y
     shm.close()
     main.send((P.SHUTDOWN,))
 

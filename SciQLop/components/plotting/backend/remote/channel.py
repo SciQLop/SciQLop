@@ -17,9 +17,10 @@ underlying C++ shared_ptr chain (SciQLopColorMap's _dataHolder) already
 correctly keeps a view's Py_buffer export alive for exactly as long as any
 C++ reference -- including an in-flight resample job's own copy -- needs
 it; weakref.finalize on the views handed into set_data() rides that same
-guarantee instead of re-deriving it. SharedMemory.close() itself is NOT
-protected against outstanding views: closing a segment while something
-still reads through it is an immediate SIGSEGV, not a Python exception."""
+guarantee instead of re-deriving it. The views themselves pin the mapping
+(protocol.unpack_arrays builds them with np.frombuffer), so an early
+SharedMemory.close() raises BufferError instead of unmapping memory a
+reader still uses -- which used to be an immediate SIGSEGV."""
 from __future__ import annotations
 
 import logging
@@ -27,10 +28,21 @@ import weakref
 from multiprocessing import shared_memory
 from typing import Optional
 
+from PySide6.QtCore import QTimer
+
 from SciQLop.core import tracing
 from .protocol import unpack_arrays
 
 log = logging.getLogger(__name__)
+
+
+def _close_once_unpinned(shm: shared_memory.SharedMemory) -> None:
+    try:
+        shm.close()
+    except BufferError:
+        # The last view is mid-deallocation: numpy runs weakref callbacks before
+        # it drops the buffer export that pins the mapping. Close right after.
+        QTimer.singleShot(0, shm.close)
 
 
 def _last_line(tb: str) -> str:
@@ -151,8 +163,8 @@ class RemoteChannel:
         def _on_view_released():
             remaining[0] -= 1
             if remaining[0] == 0:
-                shm.close()
                 self._transport.send_free(self.channel_id, name)
+                _close_once_unpinned(shm)
 
         for v in views:
             weakref.finalize(v, _on_view_released)

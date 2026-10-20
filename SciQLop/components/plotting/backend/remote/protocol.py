@@ -54,7 +54,12 @@ def pack_arrays(buf: memoryview, arrays: List[np.ndarray]) -> List[ArrayLayout]:
 
 
 def unpack_arrays(buf: memoryview, layout: List[ArrayLayout]) -> List[np.ndarray]:
-    return [
-        np.ndarray(tuple(l.shape), dtype=np.dtype(l.dtype), buffer=buf, offset=l.offset)
-        for l in layout
-    ]
+    return [_pinned_view(buf, l) for l in layout]
+
+
+def _pinned_view(buf: memoryview, l: ArrayLayout) -> np.ndarray:
+    # frombuffer, not ndarray(buffer=): only frombuffer holds a buffer export,
+    # so closing the segment under a live view raises BufferError instead of
+    # unmapping memory a resample job is still reading (a SIGSEGV).
+    count = int(np.prod(l.shape))
+    return np.frombuffer(buf, dtype=np.dtype(l.dtype), count=count, offset=l.offset).reshape(l.shape)

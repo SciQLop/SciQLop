@@ -33,3 +33,27 @@ def test_unpack_returns_views_not_copies():
     out = unpack_arrays(memoryview(buf), layout)
     out[0][0] = 999.0
     assert np.frombuffer(buf, dtype=np.float64, count=1)[0] == 999.0
+
+
+def test_unpacked_views_keep_the_segment_mapped():
+    """Closing a segment under a live view must refuse, not unmap memory the view still reads."""
+    from multiprocessing import shared_memory
+    a = np.arange(6, dtype=np.float32).reshape(2, 3)
+    shm = shared_memory.SharedMemory(create=True, size=total_nbytes([a]), track=False)
+    try:
+        layout = pack_arrays(shm.buf, [a])
+        views = unpack_arrays(shm.buf, layout)
+        with pytest.raises(BufferError):
+            shm.close()
+        np.testing.assert_array_equal(views[0], a)
+        del views
+        shm.close()
+    finally:
+        shm.unlink()
+
+
+def test_unpack_handles_empty_arrays():
+    a = np.empty((0, 3), dtype=np.float64)
+    buf = bytearray(total_nbytes([a]) or 8)
+    out = unpack_arrays(memoryview(buf), pack_arrays(memoryview(buf), [a]))
+    assert out[0].shape == (0, 3)
