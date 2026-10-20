@@ -319,3 +319,15 @@ class PanelCatalogManager(QObject):
     def _on_event_clicked(self, event: CatalogEvent, catalog: Catalog | None = None) -> None:
         self.event_clicked.emit(event)
         self.catalog_event_clicked.emit(catalog, event)
+
+
+def _shows(manager: PanelCatalogManager, provider_name: str, catalog_uuid: str) -> bool:
+    overlay = manager.overlay(catalog_uuid)
+    provider = overlay.catalog.provider if overlay is not None else None
+    return provider is not None and provider.name == provider_name
+
+
+def panels_showing(main_window, provider_name: str, catalog_uuid: str) -> list:
+    """The open time panels whose catalog manager shows that catalog."""
+    panels = (main_window.plot_panel(name) for name in main_window.plot_panels())
+    return [p for p in panels if p is not None and _shows(p.catalog_manager, provider_name, catalog_uuid)]

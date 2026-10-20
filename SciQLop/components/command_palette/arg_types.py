@@ -3,20 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from SciQLop.components.command_palette.backend.registry import CommandArg, Completion
-
-
-def _palette_product_path(raw: str) -> str:
-    """Normalize a flat-model mime path for use as a palette completion value.
-
-    Strips the ``root//`` prefix but keeps ``//`` separators so
-    ``to_product_path`` can split unambiguously even when a product's display
-    name contains ``/`` (AMDA's ``"final / prelim"`` is the historical reason
-    the snippet generator stopped using single-slash too — see
-    ``snippet-templates-system`` memory).
-    """
-    if raw.startswith("root//"):
-        raw = raw[len("root//"):]
-    return raw
+from SciQLop.core.mime import tree_product_path
 
 
 @dataclass
@@ -88,7 +75,7 @@ class ProductArg(CommandArg):
             mime = flat.mimeData(indexes)
             if mime and mime.text():
                 for path_text in mime.text().strip().split("\n"):
-                    product_path = _palette_product_path(path_text)
+                    product_path = tree_product_path(path_text)
                     description = _node_stable_id(ProductsModel, product_path)
                     items.append(Completion(value=product_path, display=product_path, description=description))
         return items
@@ -132,6 +119,19 @@ class CatalogArg(CommandArg):
                     display=path,
                 ))
         return items
+
+
+@dataclass
+class EventsArg(CommandArg):
+    """Events of the catalog picked by the preceding CatalogArg."""
+    name: str = "events"
+
+    def completions(self, context: dict) -> list[Completion]:
+        catalog = resolve_catalog_arg(context["catalog"]) if "catalog" in context else None
+        if catalog is None or catalog.provider is None:
+            return []
+        return [Completion(value=event.uuid, display=event.start.isoformat(timespec="minutes"))
+                for event in catalog.provider.events(catalog)]
 
 
 @dataclass

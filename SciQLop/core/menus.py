@@ -8,6 +8,7 @@ from SciQLop.core.extensions import ExtensionPoint, declare
 
 PANEL, PANEL_EXPORT, GRAPH = "panel", "panel.export", "graph"
 PRODUCT_TREE, CATALOG_TREE, MAIN_TOOLS = "product_tree", "catalog_tree", "main.tools"
+CATALOG_EVENTS = "catalog.events"
 
 
 def _always(context: dict) -> bool:

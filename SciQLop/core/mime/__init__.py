@@ -67,6 +67,15 @@ def _register_product_list_decoder():
 _register_product_list_decoder()
 
 
+def tree_product_path(raw: str) -> str:
+    """A products-tree MIME path (``root//a//b``) as a product path (``a//b``).
+
+    Keeps ``//`` separators so ``to_product_path`` can split unambiguously even when a product's display
+    name contains ``/`` (AMDA's ``"final / prelim"`` is why single-slash paths were dropped).
+    """
+    return raw[len("root//"):] if raw.startswith("root//") else raw
+
+
 def _register_time_range_codec():
     """TIME_RANGE_MIME_TYPE (declared in types.py, accepted by
     TimeRangeDnDCallback on every plot panel) had no producer and no

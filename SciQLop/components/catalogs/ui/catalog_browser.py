@@ -22,7 +22,7 @@ from PySide6.QtGui import QAction, QKeySequence, QPen, QColor, QShortcut
 from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components.command_palette.arg_types import catalog_arg_value
 from SciQLop.components.command_palette.menu_entries import add_menu_entries
-from SciQLop.core.menus import CATALOG_TREE
+from SciQLop.core.menus import CATALOG_EVENTS, CATALOG_TREE
 from SciQLop.components.theming.icons import get_icon
 
 import math
@@ -973,7 +973,25 @@ class CatalogBrowser(QWidget):
             if not menu.isEmpty():
                 menu.addSeparator()
             self._build_color_by_menu(menu, self._current_catalog)
+        add_menu_entries(menu, CATALOG_EVENTS, self._event_menu_context())
         return menu
+
+    def _selected_events(self) -> list:
+        sm = self._event_table.selectionModel()
+        if sm is None:
+            return []
+        events = (self._event_model.event_at(self._sort_proxy.mapToSource(i).row()) for i in sm.selectedRows())
+        return [ev for ev in events if ev is not None]
+
+    def _event_menu_context(self) -> dict:
+        if self._current_provider is None or self._current_catalog is None:
+            return {}
+        name = self._current_provider.name
+        context = {"provider": name, "catalog": catalog_arg_value(name, self._current_catalog.uuid)}
+        events = self._selected_events()
+        if events:
+            context["events"] = ",".join(ev.uuid for ev in events)
+        return context
 
     def _on_event_table_context_menu(self, pos) -> None:
         url = self._url_at(self._event_table.indexAt(pos))

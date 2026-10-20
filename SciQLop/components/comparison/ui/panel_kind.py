@@ -17,7 +17,10 @@ CORE_VIEWS = [
 def _create(name: str, config: dict):
     from SciQLop.components.comparison.backend.model import Comparison
     from SciQLop.components.comparison.ui.panel import ComparisonPanel
-    return ComparisonPanel(name, Comparison.model_validate(config))
+    from SciQLop.components.comparison.ui.wizard import edit_comparison
+    panel = ComparisonPanel(name, Comparison.model_validate(config))
+    panel.edit_requested.connect(lambda: edit_comparison(panel))
+    return panel
 
 
 def _to_config(widget) -> dict:
