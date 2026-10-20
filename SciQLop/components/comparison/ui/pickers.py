@@ -50,6 +50,22 @@ def _fill(view: QListWidget, variants: list[Variant], checked: bool) -> None:
         view.addItem(_variant_item(variant, checked))
 
 
+def _variant_key(variant: Variant) -> tuple:
+    return variant.params.get("start"), variant.params.get("stop")
+
+
+def _fill_ticked(view: QListWidget, variants: list[Variant], ticked: set) -> None:
+    view.clear()
+    for variant in variants:
+        view.addItem(_variant_item(variant, _variant_key(variant) in ticked))
+
+
+def _loading_item() -> QListWidgetItem:
+    item = QListWidgetItem("loading events…")
+    item.setFlags(Qt.ItemFlag.NoItemFlags)
+    return item
+
+
 def time_variant(event) -> Variant:
     return Variant(label=time_label(event.start.timestamp()),
                    params={"start": event.start.timestamp(), "stop": event.stop.timestamp()})
@@ -68,8 +84,10 @@ class TimePicker(VariantPicker):
         super().__init__(parent)
         self.catalog_combo = QComboBox()
         self.event_list = QListWidget()
-        for provider, catalog in _all_catalogs():
+        catalogs = _all_catalogs()
+        for provider, catalog in catalogs:
             self.catalog_combo.addItem("/".join([provider.name, *catalog.path, catalog.name]), (provider, catalog))
+        self._follow_event_loading({provider for provider, _ in catalogs})
         self.catalog_combo.setCurrentIndex(-1)
         self.catalog_combo.currentIndexChanged.connect(self._show_catalog)
         self.event_list.itemChanged.connect(lambda _item: self.changed.emit())
@@ -77,10 +95,28 @@ class TimePicker(VariantPicker):
         layout.addWidget(self.catalog_combo)
         layout.addWidget(self.event_list)
 
+    def _follow_event_loading(self, providers) -> None:
+        # Remote catalogs (AMDA, CDAWeb) return no events at first and fill them in the background.
+        for provider in providers:
+            provider.events_changed.connect(self._on_catalog_changed)
+            provider.loading_finished.connect(self._on_catalog_changed)
+
+    def _picked(self):
+        return self.catalog_combo.currentData()
+
+    def _on_catalog_changed(self, catalog) -> None:
+        picked = self._picked()
+        if picked is not None and picked[1] is catalog:
+            self._show_catalog(self.catalog_combo.currentIndex())
+
     def _show_catalog(self, index: int) -> None:
         picked = self.catalog_combo.itemData(index)
+        ticked = {_variant_key(v) for v in self.variants()}
         events = picked[0].events(picked[1]) if picked is not None else []
-        _fill(self.event_list, [time_variant(e) for e in events], checked=False)
+        variants = [time_variant(e) for e in events]
+        _fill_ticked(self.event_list, variants, ticked)
+        if not variants and picked is not None and picked[0].is_loading(picked[1]):
+            self.event_list.addItem(_loading_item())
         self.changed.emit()
 
     def variants(self) -> list[Variant]:

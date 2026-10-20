@@ -128,6 +128,31 @@ def test_time_variant_keeps_event_duration(qtbot):
     assert variant.params["stop"] - variant.params["start"] == 7200
 
 
+
+def test_time_picker_shows_events_that_arrive_after_the_catalog_is_picked(qtbot):
+    """Remote catalogs (AMDA, CDAWeb) return no events at first and load them in the background."""
+    from SciQLop.components.comparison.ui.pickers import PICKERS
+    provider, catalog = _catalog_with("CmpWizLate", _event("early", 0))
+    picker = PICKERS["time"](_template(), None)
+    qtbot.addWidget(picker)
+    _check_events(picker, catalog, 1)
+
+    provider.add_event(catalog, _event("late", 5))
+
+    assert picker.event_list.count() == 2
+    assert len(picker.variants()) == 1, "the event ticked before the refresh stays ticked"
+
+
+def test_time_picker_says_events_are_loading(qtbot, monkeypatch):
+    from SciQLop.components.comparison.ui.pickers import PICKERS
+    provider, catalog = _catalog_with("CmpWizLoading")
+    monkeypatch.setattr(provider, "is_loading", lambda _catalog: True)
+    picker = PICKERS["time"](_template(), None)
+    qtbot.addWidget(picker)
+    _check_events(picker, catalog, 0)
+    assert [picker.event_list.item(r).text() for r in range(picker.event_list.count())] == ["loading events…"]
+    assert picker.variants() == []
+
 def test_menu_entries_are_registered(qapp):
     from SciQLop.components.command_palette.backend.registry import CommandRegistry
     from SciQLop.components.comparison.ui.commands import register_comparison_commands
