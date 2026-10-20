@@ -226,3 +226,54 @@ def test_inner_panel_uses_the_given_time_range(main_window, qtbot):
     qtbot.addWidget(panel)
     rng = panel.time_axis_range()
     assert (rng.start(), rng.stop()) == (5_000.0, 5_050.0)
+
+
+def _knob_vp(name):
+    def scaled(start: float, stop: float, scale: float = 1.0):
+        x = np.linspace(start, stop, 50)
+        return x, np.sin(x) * scale
+    return _vp(name, callback=scaled)
+
+
+def _settings_overlay(path, qtbot):
+    return _build(_comparison(path, dimension="settings", variants=[
+        Variant(label="x2", params={"target": [0, 0], "knobs": {"scale": 2.0}})]), qtbot)
+
+
+def test_read_only_graphs_keep_their_knob_values_without_editing_ui(main_window, qtbot):
+    _, path = _knob_vp("knob_ro")
+    plot = _settings_overlay(path, qtbot).plots()[0]
+    qtbot.waitUntil(lambda: len(_graphs(plot)) == 2)
+    base, ghost = _graphs(plot)
+    assert ghost._knob_state.values["scale"] == 2.0
+    for graph in (base, ghost):
+        assert getattr(graph, "_knob_inspector_ext", None) is None
+        assert getattr(graph, "_visual_knob_dispose", None) is None
+
+
+def _menu_texts(menu):
+    texts = []
+    for action in menu.actions():
+        texts.append(action.text())
+        if action.menu() is not None:
+            texts += _menu_texts(action.menu())
+    return texts
+
+
+@pytest.mark.parametrize("read_only", [False, True])
+def test_read_only_panel_menu_has_no_export_or_input_reset(main_window, qtbot, read_only):
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel, plot_product
+    from SciQLop.core import TimeRange
+    from SciQLop.user_api.plot._plots import to_product_path
+    vp, _ = _knob_vp(f"knob_menu_{read_only}")
+    panel = TimeSyncPanel("ro", time_range=TimeRange(*BASE_RANGE), read_only=read_only)
+    qtbot.addWidget(panel)
+    plot_product(panel, to_product_path(vp))
+    menu = panel._build_context_menu()
+    texts = _menu_texts(menu)
+    menu.deleteLater()
+    editable = not read_only
+    assert ("Export" in texts) == editable
+    assert any(t.startswith("Reset inputs:") for t in texts) == editable
+    graph = _graphs(panel.plots()[0].data())[0]
+    assert (getattr(graph, "_knob_inspector_ext", None) is not None) == editable

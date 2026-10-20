@@ -26,7 +26,7 @@ from SciQLop.components.plotting.backend.easy_provider import EasyProvider
 from SciQLop.core.graph_context import (
     attach_context, attach_data_meta, build_speasy_ctx, build_provider_ctx, build_vp_ctx,
     build_static_ctx, build_function_ctx, GraphRichRefs,
-    update_knobs,
+    graph_name, update_knobs,
 )
 from SciQLop.user_api.threading import on_main_thread
 import weakref
@@ -610,6 +610,27 @@ def _seed_product_inputs(graph, node, product_inputs: Optional[dict]) -> None:
     state.set_all(dict(product_inputs))
 
 
+def _in_read_only_panel(plot) -> bool:
+    return bool(getattr(_owning_time_sync_panel(plot), "_read_only", False))
+
+
+def _install_knob_ui(graph, plot, state) -> None:
+    """The inspector section and on-plot handles that edit the graph's knobs; none in a read-only panel,
+    where the knob values still reach the fetch."""
+    from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import create_plot_items
+    graph._visual_knob_dispose = None
+    if _in_read_only_panel(plot):
+        return
+    if plot is not None:
+        graph._visual_knob_dispose = create_plot_items(plot, state)
+    if hasattr(graph, "add_inspector_extension"):
+        ext = KnobInspectorExtension(state, parent=graph)
+        graph._knob_inspector_ext = ext
+        graph.add_inspector_extension(ext)
+        ext.destroyed.connect(lambda *_: _dispose_graph_knobs(graph))
+
+
 def _attach_knob_state(provider, node, callback, r, target=None):
     specs = []
     try:
@@ -619,8 +640,6 @@ def _attach_knob_state(provider, node, callback, r, target=None):
     if not specs:
         return
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
-    from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension
-    from SciQLop.components.plotting.ui.knob_inspector.plot_items import create_plot_items
     graph = _graph_from_result(r)
     plot = _plot_from_result(r, target)
     state = GraphKnobState(specs, parent=graph)
@@ -632,14 +651,7 @@ def _attach_knob_state(provider, node, callback, r, target=None):
     state.knobs_changed.connect(
         lambda values, g=graph: update_knobs(g, dict(values))
     )
-    graph._visual_knob_dispose = None
-    if plot is not None:
-        graph._visual_knob_dispose = create_plot_items(plot, state)
-    if hasattr(graph, "add_inspector_extension"):
-        ext = KnobInspectorExtension(state, parent=graph)
-        graph._knob_inspector_ext = ext
-        graph.add_inspector_extension(ext)
-        ext.destroyed.connect(lambda *_: _dispose_graph_knobs(graph))
+    _install_knob_ui(graph, plot, state)
 
 
 def _attach_remote_knob_state(provider, node, channel, r, target=None):
@@ -662,8 +674,6 @@ def _attach_remote_knob_state(provider, node, channel, r, target=None):
     if not specs:
         return
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
-    from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension
-    from SciQLop.components.plotting.ui.knob_inspector.plot_items import create_plot_items
     graph = _graph_from_result(r)
     plot = _plot_from_result(r, target)
     state = GraphKnobState(specs, parent=graph)
@@ -676,14 +686,7 @@ def _attach_remote_knob_state(provider, node, channel, r, target=None):
     state.knobs_changed.connect(
         lambda values, g=graph: update_knobs(g, dict(values))
     )
-    graph._visual_knob_dispose = None
-    if plot is not None:
-        graph._visual_knob_dispose = create_plot_items(plot, state)
-    if hasattr(graph, "add_inspector_extension"):
-        ext = KnobInspectorExtension(state, parent=graph)
-        graph._knob_inspector_ext = ext
-        graph.add_inspector_extension(ext)
-        ext.destroyed.connect(lambda *_: _dispose_graph_knobs(graph))
+    _install_knob_ui(graph, plot, state)
 
 
 def _dispose_graph_knobs(graph):
@@ -1418,13 +1421,13 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self._add_layout_actions(menu, source)
         self._add_selection_actions(menu, source)
         menu.addSeparator()
-        self._build_export_share_menu(menu)
         if not self._read_only:
+            self._build_export_share_menu(menu)
             self._build_templates_menu(menu)
         self._add_plugin_menus(menu)
         if not self._read_only:
             add_menu_entries(menu, PANEL, self._menu_context())
-        self._append_knob_reset_actions(menu)
+            self._append_knob_reset_actions(menu)
         return menu
 
     def _menu_context(self) -> dict:
@@ -1581,11 +1584,12 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
     def _append_knob_reset_actions(self, menu):
         actions = []
+        from SciQLop.components.plotting.panel_introspection import plot_graphs
         for plot in self.plots():
-            for child in plot.children():
+            for child in plot_graphs(plot):
                 state = getattr(child, "_knob_state", None)
                 if state is not None and state.specs:
-                    label = child.name() if hasattr(child, "name") else "graph"
+                    label = graph_name(child)
                     a = _build_knob_reset_action(state, parent=menu)
                     a.setText(f"Reset inputs: {label}")
                     a.setToolTip(
