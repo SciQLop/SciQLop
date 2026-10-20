@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Comparison
+
+- Compare panels: overlay or difference of two events, products or settings. "Compare…" in the Tools menu, "Compare with…" on a panel and "Compare" on two or more selected catalog events open the Compare dialog. It opens a Comparison panel that shows the base panel next to its variants, as an overlay or, for two sides, as their difference, ratio or log ratio. The panel is a snapshot: closing the base panel leaves it unchanged, and it is saved with the workspace and as a template.
+- From Python, `compare(panel, over="time", variants=[...])` (in `SciQLop.user_api.comparison`) opens a Comparison panel and returns a handle. Time variants can be speasy events, catalog events, `TimeRange`s or `(start, stop)` pairs; product variants are product paths or virtual products; settings variants are dicts of knob values. `handle.view = "difference"` switches the view, and raises with the reason when it cannot show these sides. `handle.set_options("difference", operation="ratio")` sets view options.
+- Agents get `sciqlop_compare` and `sciqlop_set_comparison_view` to do the same.
+
 ### Batch mode
 
 - `sciqlop --batch script.py [args...]` runs a Python script inside SciQLop with no window, then exits with the script's exit code. The script uses the usual API: build panels, set the time range, `panel.save("ql.png")`, in a loop if needed. Relative paths are relative to the folder you ran the command from. It needs no display: Qt renders offscreen unless `QT_QPA_PLATFORM` says otherwise, so it runs in a container or a cron job. Arguments after the script name are passed to it in `sys.argv`; `-w` picks the workspace as usual.

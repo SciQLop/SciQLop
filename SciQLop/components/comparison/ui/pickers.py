@@ -105,12 +105,12 @@ def _target_combo(template: PanelTemplate, specs: list[GraphSpec]) -> QComboBox:
     return combo
 
 
-def _node(path: str):
+def product_node(path: str):
     from SciQLopPlots import ProductsModel
     return ProductsModel.node(resolve_product_path(path)) if path else None
 
 
-def _is_spectrogram(node) -> Optional[bool]:
+def is_spectrogram(node) -> Optional[bool]:
     from SciQLop.core.product_kinds import SPECTROGRAM, product_kind_of
     kind = product_kind_of(node)
     return None if kind is None else kind.id == SPECTROGRAM
@@ -164,7 +164,7 @@ class ProductPicker(VariantPicker):
     def problem(self) -> Optional[str]:
         if self.target_combo.currentData() is None:
             return "the base panel has no product to replace"
-        if self._path() and _node(self._path()) is None:
+        if self._path() and product_node(self._path()) is None:
             return f"{self._path()!r} is not in the products tree"
         return None
 
@@ -172,7 +172,7 @@ class ProductPicker(VariantPicker):
         target, path = self.target_combo.currentData(), self._path()
         if target is None or not path or self.problem() is not None:
             return []
-        colormap = _is_spectrogram(_node(path))
+        colormap = is_spectrogram(product_node(path))
         return [Variant(label=path.split("//")[-1], params={
             "target": list(target.key), "path": path,
             "is_colormap": target.is_colormap if colormap is None else colormap})]
@@ -190,7 +190,7 @@ class ProductPicker(VariantPicker):
 def knobs_of(path: str) -> list:
     """Main thread only: the knob specs the product's provider declares, [] when none or unknown."""
     from SciQLop.components.plotting.backend.data_provider import providers
-    node = _node(path)
+    node = product_node(path)
     provider = providers.get(node.provider()) if node is not None else None
     if provider is None:
         return []
@@ -201,7 +201,7 @@ def knobs_of(path: str) -> list:
         return []
 
 
-def _knobs_label(knobs: dict) -> str:
+def knobs_label(knobs: dict) -> str:
     return ", ".join(f"{k}={v}" for k, v in knobs.items()) or "unchanged"
 
 
@@ -253,7 +253,7 @@ class SettingsPicker(VariantPicker):
         values = {name: d.get_value() for name, d in self.delegates.items()}
         changed = {k: v for k, v in values.items() if self._baseline.get(k) != v}
         self.variant_list.addItem(_variant_item(
-            Variant(label=_knobs_label(changed), params={"target": list(target.key), "knobs": changed}), True))
+            Variant(label=knobs_label(changed), params={"target": list(target.key), "knobs": changed}), True))
         self.changed.emit()
 
     def variants(self) -> list[Variant]:

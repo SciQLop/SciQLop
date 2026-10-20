@@ -358,7 +358,7 @@ def test_knobs_of_logs_a_failing_provider(main_window, monkeypatch):
     from SciQLop.components.comparison.ui import pickers
     from SciQLop.components.plotting.backend.data_provider import providers
     path = _vp_path("vp_bad_knobs")
-    provider = providers.get(pickers._node(path).provider())
+    provider = providers.get(pickers.product_node(path).provider())
     warnings = []
     monkeypatch.setattr(provider, "get_knobs", lambda node: 1 / 0)
     monkeypatch.setattr(pickers.log, "warning", lambda msg, *a, **k: warnings.append(msg))

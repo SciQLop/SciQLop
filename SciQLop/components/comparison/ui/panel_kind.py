@@ -1,4 +1,6 @@
-"""The core Comparison panel kind, with the core dimensions and views it draws."""
+"""The core Comparison panel kind, with the core dimensions and views it draws, and its agent tools."""
+from SciQLop.components.agents.tools.comparison_tool import COMPARISON_TOOLS
+from SciQLop.components.agents.tools.contributed import AGENT_TOOLS
 from SciQLop.components.comparison.backend.dimensions import contribute_core_dimensions
 from SciQLop.components.comparison.backend.views import COMPARISON_VIEWS, ComparisonView
 from SciQLop.components.comparison.ui import difference_view, overlay_view
@@ -30,5 +32,7 @@ def _to_config(widget) -> dict:
 contribute_core_dimensions()
 for _view in CORE_VIEWS:
     COMPARISON_VIEWS.contribute(_view, owner="sciqlop", replace=True)
+for _tool in COMPARISON_TOOLS:
+    AGENT_TOOLS.contribute(_tool, owner="sciqlop", replace=True)
 PANEL_KINDS.contribute(PanelKind(COMPARISON_PANEL, "Comparison", create=_create, to_config=_to_config,
                                  icon="plot_panel", in_new_menu=False), owner="sciqlop")
