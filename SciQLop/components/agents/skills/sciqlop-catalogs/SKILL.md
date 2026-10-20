@@ -1,6 +1,6 @@
 ---
 name: sciqlop-catalogs
-description: Use when the user wants to label, list, create, edit or show events — "mark the magnetopause crossings", "make a catalog of the shocks", "show my events on the panel", "detect intervals where B exceeds 50 nT and save them". Covers SciQLop's catalog API (create, add, edit, remove events) and catalog overlays on plot panels.
+description: Use when the user wants to label, list, create, edit or show events — "mark the magnetopause crossings", "make a catalog of the shocks", "show my events on the panel", "detect intervals where B exceeds 50 nT and save them", "compare these two crossings". Covers SciQLop's catalog API (create, add, edit, remove events) and catalog overlays on plot panels.
 ---
 
 # Catalogs and events in SciQLop
@@ -69,6 +69,25 @@ and Ctrl+Shift+M:
   Set this when the user wants to step through the events.
 - `"edit"`: the user draws new events with Shift+click and moves the spans of
   editable catalogs.
+
+## Comparing events
+
+To show a panel next to itself at other events, open a Comparison panel with
+`sciqlop_compare` (`over: "time"`, `variants`: `[start, stop]` ISO pairs), or
+from a cell:
+
+```python
+from SciQLop.user_api.comparison import compare
+h = compare("Panel0", over="time", variants=list(cat)[1:])   # speasy events, TimeRanges or (start, stop)
+h.show("difference", operation="ratio")                      # two sides only; raises with the reason otherwise
+```
+
+The base panel's time range is the first side; each variant is drawn shifted
+onto it (aligned on the event start). `over` can also be `"product"` (another
+product in place of one graph) or `"settings"` (other knob values).
+`sciqlop_set_comparison_view` switches an open Comparison panel between
+`overlay` and `difference`. The panel is a snapshot of the base panel; keep it
+with its menu's "Save as template".
 
 ## Workflow for "find and label events"
 

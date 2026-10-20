@@ -4,9 +4,10 @@
 
 ### Comparison
 
-- Compare panels: overlay or difference of two events, products or settings. "Compare…" in the Tools menu, "Compare with…" on a panel and "Compare" on two or more selected catalog events open the Compare dialog. It opens a Comparison panel that shows the base panel next to its variants, as an overlay or, for two sides, as their difference, ratio or log ratio. The panel is a snapshot: closing the base panel leaves it unchanged, and it is saved with the workspace and as a template.
+- Compare panels: overlay or difference of two events, products or settings. "Compare…" in the Tools menu, "Compare with…" on a panel and "Compare" on two or more selected catalog events open the Compare dialog. It opens a Comparison panel that shows the base panel next to its variants, as an overlay or, for two sides, as their difference, ratio or log ratio. The panel is a snapshot: closing the base panel leaves it unchanged. Keep it with "Save as template…" in its menu; it is not yet saved with the workspace.
 - From Python, `compare(panel, over="time", variants=[...])` (in `SciQLop.user_api.comparison`) opens a Comparison panel and returns a handle. Time variants can be speasy events, catalog events, `TimeRange`s or `(start, stop)` pairs; product variants are product paths or virtual products; settings variants are dicts of knob values. `handle.view = "difference"` switches the view, and raises with the reason when it cannot show these sides. `handle.set_options("difference", operation="ratio")` sets view options.
 - Agents get `sciqlop_compare` and `sciqlop_set_comparison_view` to do the same.
+- `panel.plot_product(product, time_offset=seconds)` draws a product shifted in time: data is fetched `time_offset` later and drawn at the panel's time, e.g. 27 days to overlay the next solar rotation. The legend says it is shifted (`B (+27 days, 0:00:00)`), and panel templates keep the shift.
 
 ### Batch mode
 

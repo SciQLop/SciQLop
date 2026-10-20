@@ -24,8 +24,11 @@ _DOCUMENTS = {"AGENTS.md": SCIQLOP_GUIDANCE} | {
 
 
 @pytest.fixture(scope="module")
-def registered_tools():
+def registered_tools(qapp):
+    """The tools an agent sees in the app: core extension points (contributed tools included) are prepared."""
     import SciQLop.components.agents.tools._builder as builder
+    from SciQLop.components.extension_points import prepare_extension_points
+    prepare_extension_points()
     return {t["name"] for t in builder.build_sciqlop_tools(MagicMock())}
 
 
