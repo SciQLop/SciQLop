@@ -8,7 +8,7 @@ from typing import Callable, NamedTuple, Optional, get_args
 
 import numpy as np
 
-from SciQLop.components.comparison.backend.checks import compatible, is_remote
+from SciQLop.components.comparison.backend.checks import REMOTE_REFUSAL, compatible, is_remote
 from SciQLop.components.comparison.backend.difference import (ComparisonMismatch, Operation, colormap_relation,
                                                                line_relation, mask_fill)
 from SciQLop.components.comparison.backend.model import Comparison, GraphSpec, Side, changed_keys
@@ -23,7 +23,6 @@ log = logging.getLogger(__name__)
 default_options = {"operation": "difference", "method": "linear"}
 SYMBOLS = {"difference": "A − B", "ratio": "A / B", "log_ratio": "log₁₀(A / B)"}
 COLORMAP_OPERATION = "log_ratio"  # a spectrogram spans decades: only the log ratio reads well
-REMOTE_REFUSAL = "remote products are not supported in the Difference view"
 MIXED_REFUSAL = "cannot relate a spectrogram to a line plot"
 
 
@@ -140,7 +139,6 @@ def _refusal(specs: tuple[GraphSpec, GraphSpec], resolved: tuple, colormap: bool
     if missing is not None:
         return f"{missing} could not be plotted"
     if any(is_remote(spec.path) for spec in specs):
-        # simplify: plot_remote ignores time offsets; apply them where it builds its request to support remote.
         return REMOTE_REFUSAL
     return compatible(*(_side_hints(side, None) for side in resolved), colormap)
 

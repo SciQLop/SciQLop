@@ -5,7 +5,7 @@ from collections import Counter
 from datetime import timedelta
 from typing import Optional
 
-from SciQLop.components.comparison.backend.checks import compatible
+from SciQLop.components.comparison.backend.checks import REMOTE_SHIFT_REFUSAL, compatible, is_remote
 from SciQLop.components.comparison.backend.model import Comparison, GraphSpec, Key, Side, changed_keys
 from SciQLop.components.comparison.ui.inner_panel import build_inner_panel, hints_for_path, resolve_hints
 from SciQLop.components.comparison.ui.ghost_watch import GhostWatch
@@ -61,10 +61,14 @@ def base_graphs(plots: list, template: PanelTemplate) -> dict[Key, object]:
             for j, graph in _plot_base_graphs(plot, model.products).items()}
 
 
+def _remote_shift_refusal(spec: GraphSpec) -> Optional[str]:
+    return REMOTE_SHIFT_REFUSAL if spec.time_offset and is_remote(spec.path) else None
+
+
 def add_ghost(plot, spec: GraphSpec, base_graph, label: str, index: int):
     from SciQLop.components.plotting.ui.time_sync_panel import plot_product, _graph_from_result
     statics = (hints_for_path(base_graph.property("sqp_product_path") or ""), resolve_hints(spec))
-    reason = compatible(*statics, spec.is_colormap)
+    reason = compatible(*statics, spec.is_colormap) or _remote_shift_refusal(spec)
     if reason is not None:
         note(plot, f"{label}: not overlaid — {reason}")
         return None

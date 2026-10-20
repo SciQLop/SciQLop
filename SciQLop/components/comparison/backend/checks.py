@@ -5,6 +5,11 @@ from typing import Optional
 
 from SciQLop.core.plot_hints import PlotHints
 
+# simplify: plot_remote ignores time offsets and the Difference view fetches in-process; apply the offset where
+# plot_remote builds its request, and fetch through the worker, to support remote products.
+REMOTE_REFUSAL = "remote products are not supported in the Difference view"
+REMOTE_SHIFT_REFUSAL = "remote products cannot be shifted in time yet"
+
 
 def _value_unit(hints: Optional[PlotHints], colormap: bool) -> Optional[str]:
     if hints is None:

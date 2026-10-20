@@ -277,3 +277,13 @@ def test_read_only_panel_menu_has_no_export_or_input_reset(main_window, qtbot, r
     assert any(t.startswith("Reset inputs:") for t in texts) == editable
     graph = _graphs(panel.plots()[0].data())[0]
     assert (getattr(graph, "_knob_inspector_ext", None) is not None) == editable
+
+
+def test_shifted_remote_ghost_is_refused_with_a_reason(main_window, qtbot, monkeypatch):
+    from SciQLop.components.comparison.ui import overlay_view
+    monkeypatch.setattr(overlay_view, "is_remote", lambda path: True)
+    _, path = _vp("remote_shift")
+    plot = _build(_comparison(path, variants=_time_variants(2_000.0)), qtbot).plots()[0]
+    text = _overlay_text(plot)
+    assert "event 0: not overlaid — remote products cannot be shifted in time yet" in text
+    assert "could not be plotted" not in text
