@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QMenu, QTabBar, Q
 from SciQLop.components.comparison.backend.dimensions import ANCHOR_LABELS, dimension, resolve_sides
 from SciQLop.components.comparison.backend.model import Comparison, Side
 from SciQLop.components.comparison.backend.views import (COMPARISON_VIEWS, ComparisonView, available_views,
-                                                         options_for)
+                                                         option_label, options_for)
 from SciQLop.components.comparison.ui.panel_kind import COMPARISON_PANEL
 from SciQLop.core.extensions import NotRegistered
 from SciQLop.core.panel_kinds import KIND_PROPERTY
@@ -149,6 +149,8 @@ class ComparisonPanel(QWidget):
 
     def _replace_options_widget(self, view: Optional[ComparisonView]) -> None:
         if self.options_widget is not None:
+            self._options_box.removeWidget(self.options_widget)
+            self.options_widget.hide()
             self.options_widget.deleteLater()
         self.options_widget = QWidget()
         box = QHBoxLayout(self.options_widget)
@@ -159,7 +161,7 @@ class ComparisonPanel(QWidget):
             for choice in choices:
                 combo.addItem(view.choice_labels.get(choice, choice), choice)
             combo.currentIndexChanged.connect(lambda i, c=combo, k=key: self.set_option(k, c.itemData(i)))
-            box.addWidget(QLabel(key))
+            box.addWidget(QLabel(option_label(view, key)))
             box.addWidget(combo)
             self.option_combos[key] = combo
         self._options_box.addWidget(self.options_widget)

@@ -328,3 +328,18 @@ def test_agent_tools_refuse_an_unreadable_comparison_panel(main_window, qtbot, o
     w = main_window.open_panel(COMPARISON_PANEL, base="not a template")
     with pytest.raises(ValueError, match="could not be read"):
         _comparison_widget(w.objectName())
+
+
+def test_options_row_holds_only_the_current_views_options(main_window, qtbot, opened):
+    w = _open(main_window, _time_comparison_of_vp(variants=1, name="vp_options_row"))
+    w.set_view("difference")
+    w.set_view("overlay")
+    w.set_view("difference")
+    assert w._options_box.count() == 1 and w._options_box.itemAt(0).widget() is w.options_widget
+
+
+def test_option_keys_show_readable_labels(main_window, qtbot, opened):
+    w = _open(main_window, _time_comparison_of_vp(variants=1, name="vp_option_keys").model_copy(
+        update={"view": "difference"}))
+    texts = [label.text() for label in w.options_widget.findChildren(QLabel)]
+    assert texts == ["Operation", "Resampling"]

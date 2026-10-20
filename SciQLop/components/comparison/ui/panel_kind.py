@@ -16,7 +16,8 @@ CORE_VIEWS = [
     ComparisonView("difference", "Difference", difference_view.applies_difference, difference_view.build_difference,
                    default_options=dict(difference_view.default_options), order=10,
                    option_choices={"operation": get_args(Operation), "method": get_args(Method)},
-                   choice_labels={**difference_view.SYMBOLS, **difference_view.METHOD_LABELS}),
+                   choice_labels={**difference_view.SYMBOLS, **difference_view.METHOD_LABELS},
+                   option_labels={"method": "Resampling"}),
 ]
 
 

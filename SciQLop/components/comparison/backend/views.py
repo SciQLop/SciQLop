@@ -21,6 +21,7 @@ class ComparisonView:
     default_options: dict = field(default_factory=dict)
     option_choices: dict[str, tuple[str, ...]] = field(default_factory=dict)  # option key -> its choices in the header
     choice_labels: dict[str, str] = field(default_factory=dict)  # choice -> the text the header shows for it
+    option_labels: dict[str, str] = field(default_factory=dict)  # option key -> its label; default: the key, capitalised
     order: int = 0
 
 
@@ -32,6 +33,10 @@ COMPARISON_VIEWS = declare(ExtensionPoint(
 def available_views(comparison: Comparison, sides: list[Side]) -> list[tuple[ComparisonView, str | None]]:
     views = sorted(COMPARISON_VIEWS.list(), key=lambda v: (v.order, v.id))
     return [(v, v.applies(comparison, sides)) for v in views]
+
+
+def option_label(view: ComparisonView, key: str) -> str:
+    return view.option_labels.get(key, key.replace("_", " ").capitalize())
 
 
 def options_for(comparison: Comparison, view: ComparisonView) -> dict:
