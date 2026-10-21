@@ -26,3 +26,14 @@ QTabBar::tab:!selected {
     margin-top: 0.2ex;
     color: {{ palette('UnselectedText') }};
 }
+
+/* Without its own image, macOS draws the selected tab's close glyph light, for its native dark
+   selected tab: on the restyled base-coloured tab it vanished (QTBUG-61092). */
+QTabBar::close-button {
+    image: {{ icon('close') }};
+    border-radius: 0.3ex;
+}
+
+QTabBar::close-button:hover {
+    background: {{ palette('highlight') | alpha(30) }};
+}
