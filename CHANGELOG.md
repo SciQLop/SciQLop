@@ -101,6 +101,7 @@
 - `%install` now loads a new plugin right away, like the plugin store does. Before, you had to restart SciQLop. Only an upgrade of a plugin that is already loaded still asks for a restart. `install_packages()` and the agents' install tool behave the same way.
 - `%install gh:owner/repo@tag` installs a package straight from GitHub. A GitHub URL works too. The package name is taken from the repo name.
 - `%install name @ git+https://...` works without quotes. Before, the spaces split it into three separate arguments.
+- `%restart` restarts SciQLop into the same workspace, like the Restart button in the settings. `%install` now points at it when an upgraded package needs a restart.
 
 ### Catalogs
 

@@ -23,7 +23,7 @@ def _report(result: dict) -> None:
     if result["already_present"]:
         print(f"Already present: {', '.join(result['already_present'])}")
     if result.get("restart_required"):
-        print(f"Restart SciQLop to use the new version of: {', '.join(result['restart_required'])}")
+        print(f"Run %restart to use the new version of: {', '.join(result['restart_required'])}")
     for name, reason in result.get("not_loaded", {}).items():
         print(f"{name} was not loaded: {reason}")
 

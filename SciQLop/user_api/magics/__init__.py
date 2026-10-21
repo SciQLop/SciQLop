@@ -13,6 +13,7 @@ def _core_magics() -> tuple:
     from SciQLop.user_api.magics.install_magic import install_magic
     from SciQLop.user_api.magics.workspace_magic import workspace_magic
     from SciQLop.user_api.magics.job_magic import job_magic
+    from SciQLop.user_api.magics.restart_magic import restart_magic
     from SciQLop.user_api.magics.completions import (
         _match_plot, _match_timerange, _match_vp, _match_workspace, _match_job,
     )
@@ -24,6 +25,7 @@ def _core_magics() -> tuple:
         Magic("sciqlop.install", "install", LINE, install_magic),
         Magic("sciqlop.workspace", "workspace", LINE, workspace_magic, _match_workspace),
         Magic("sciqlop.job", "job", LINE, job_magic, _match_job),
+        Magic("sciqlop.restart", "restart", LINE, restart_magic),
     )
 
 

@@ -60,6 +60,7 @@ NOT_MARSHALED_ON_PURPOSE = {
     "layers/_provider.py#startup": {"follow_layers"},
     "magics/install_magic.py": {"install_magic"},
     "magics/job_magic.py": {"job_magic"},
+    "magics/restart_magic.py": {"restart_magic"},
     "magics/plot_magic.py": {"create_plot_panel", "plot_magic", "plot_panel"},
     "magics/timerange_magic.py": {"timerange_magic"},
     "magics/workspace_magic.py": {"workspace_magic"},

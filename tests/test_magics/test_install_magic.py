@@ -50,7 +50,7 @@ def test_install_reports_what_still_needs_a_restart_or_was_refused(capsys):
                              not_loaded={"b": "needs SciQLop >=9"})
         install_magic("a b")
     out = capsys.readouterr().out
-    assert "Restart SciQLop to use the new version of: a" in out
+    assert "%restart to use the new version of: a" in out
     assert "b was not loaded: needs SciQLop >=9" in out
 
 
