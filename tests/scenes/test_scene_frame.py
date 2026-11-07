@@ -75,3 +75,13 @@ def test_the_inspector_picks_among_the_frames_centred_on_the_body(plot_panel, ea
     assert combo.currentText() == "GSM"
     combo.setCurrentText("GSE")
     assert sp.scene.frame == "GSE"
+
+
+def test_the_inspector_follows_a_frame_set_from_python(plot_panel, earth, qtbot):
+    from PySide6.QtWidgets import QWidget
+    sp = plot_panel.plot_scene("Earth environment")
+    parent = QWidget()
+    qtbot.addWidget(parent)
+    combo = _frame_combo(sp, parent)
+    sp.set_frame("SM")
+    assert combo.currentText() == "SM"

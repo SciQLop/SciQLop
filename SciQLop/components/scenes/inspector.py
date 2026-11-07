@@ -10,6 +10,7 @@ def frame_picker(scene_plot, parent: QWidget) -> QWidget:
     combo.addItems(frames_of(scene_plot._resolved))
     combo.setCurrentText(scene_plot.scene.frame)
     combo.currentTextChanged.connect(scene_plot.set_frame)
+    scene_plot._frame_signal.changed.connect(combo.setCurrentText)
     layout = QFormLayout(widget)
     layout.addRow("Frame", combo)
     return widget

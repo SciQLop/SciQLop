@@ -50,6 +50,7 @@ class ScenePlot(GuardedImpl):
         self._boundary_graphs = {}
         self._trajectories: list[str] = []
         self._trajectory_curves: list[tuple] = []
+        self._frame_signal = _scene_plot.FrameSignal(proj)
         proj.destroyed.connect(self._on_destroyed)
         _scene_plot.remember_scene_plot(proj, self)
 
@@ -97,8 +98,11 @@ class ScenePlot(GuardedImpl):
         """Redraw the scene, its boundaries and trajectories in another frame centred on its body
         (e.g. "GSE" or "SM" for an Earth scene); a frame centred elsewhere raises FrameError."""
         proj = self._get_impl_or_raise()
+        if frame == self._resolved.scene.frame:
+            return
         self._resolved = resolve(dataclasses.replace(self._resolved.scene, frame=frame))
         self._redraw(proj)
+        self._frame_signal.changed.emit(self._resolved.scene.frame)
 
     def _redraw(self, proj) -> None:
         for curves in self._boundary_graphs.values():

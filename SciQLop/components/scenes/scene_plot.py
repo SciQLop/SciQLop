@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import astropy.units as u
 import numpy as np
 import shiboken6
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QColor, QPen
 from SciQLopPlots import GraphType, PlotType
 
@@ -26,6 +26,11 @@ _KIND_COLOURS = {"magnetopause": "#4FC3F7", "bow_shock": "#FFB74D", "mpb": "#BA6
 _DEFAULT_COLOUR = "#B0BEC5"
 _CURVE_SUFFIX = {"centre": "", "low": " min", "high": " max"}
 _SCENE_PLOTS: dict[int, object] = {}
+
+
+class FrameSignal(QObject):
+    """Parented to the projection plot, so widgets showing the frame disconnect with it or with themselves."""
+    changed = Signal(str)
 
 
 @dataclass(frozen=True)
