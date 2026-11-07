@@ -1106,7 +1106,6 @@ class _PlotErrorReporter(QObject):
             overlay_of(self._plot).clear_message()
 
 
-
 class _CallbackErrorOverlay(_PlotErrorReporter):
     """A plot-function callback that reports its exceptions on its plot."""
 
