@@ -87,6 +87,11 @@ def _swaps_in_place(existing: LayerProvider, func: Callable) -> bool:
     return isinstance(wrapper, MutableCallback) and signature_kwargs(wrapper.callback) == signature_kwargs(func)
 
 
+def _layer_key(path: str) -> str:
+    """The registry key of the layer at ``path``, with or without its leading Layers/."""
+    return f"{_LAYERS_ROOT}/{path.removeprefix(_LAYERS_ROOT + '/')}"
+
+
 @on_main_thread
 def define_layer(path: str, func: Callable, scope: str = "auto") -> LayerProvider:
     """Create the layer at Layers/<path>, or hot-reload the one already there.
@@ -95,9 +100,9 @@ def define_layer(path: str, func: Callable, scope: str = "auto") -> LayerProvide
     Other signature: the provider gets a new wrapper; new drops get the new knobs,
     layers already attached keep the old wrapper.
     Either way the layer is contributed again, so the redefiner becomes its owner."""
-    key = f"{_LAYERS_ROOT}/{path}"
+    key = _layer_key(path)
     if key not in LAYERS:
-        return LayerProvider(path, MutableCallback(func), scope=scope)
+        return LayerProvider(key.removeprefix(_LAYERS_ROOT + "/"), MutableCallback(func), scope=scope)
     existing = LAYERS.get(key)
     existing._scope = scope
     if _swaps_in_place(existing, func):

@@ -86,5 +86,5 @@ def remove_layer(path: str) -> None:
     LookupError
         If no layer exists at ``path``; the message lists the available layers.
     """
-    from SciQLop.user_api.layers._provider import LAYERS
-    LAYERS.remove(f"Layers/{path}")
+    from SciQLop.user_api.layers._provider import LAYERS, _layer_key
+    LAYERS.remove(_layer_key(path))

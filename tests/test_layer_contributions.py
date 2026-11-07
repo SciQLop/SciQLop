@@ -137,6 +137,13 @@ def test_remove_layer(layers):
         remove_layer("lc/nowhere")
 
 
+def test_layer_paths_may_spell_out_the_layers_root(layers):
+    register_layer("Layers/lc/b")(f1)
+    assert "Layers/lc/b" in LAYERS
+    remove_layer("Layers/lc/b")
+    assert "Layers/lc/b" not in LAYERS
+
+
 def test_attach_layer_finds_the_provider(layers, plot_panel, qtbot):
     from SciQLop.components.plotting.ui.time_sync_panel import attach_layer
     define_layer("lc/attach", f1)
