@@ -16,7 +16,7 @@ PLACEMENTS = ("center", "left", "right", "bottom")
 class Dock:
     id: str
     title: str
-    build: Callable  # () -> QWidget, called once per main window that places the dock
+    build: Callable  # () -> a NEW QWidget on every call: re-contributing the dock deletes the previous one
     placement: str = "center"
     icon: Optional[str] = None  # a registered icon name or an image file path
     visible: bool = True

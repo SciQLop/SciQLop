@@ -1,5 +1,10 @@
 # Plugin contract: activate(ctx), dependencies, extension points
 
+> **Provisional in this release.** `activate(ctx)`, the `sciqlop.*` extension points and their contribution
+> classes may still change in a minor release. `load(main_window)` keeps working. Pin SciQLop below the next
+> minor release in your package's dependencies; the app store's compatibility check uses that pin.
+> Kind ids saved in templates and workspace files are the exception: they stay stable.
+
 ## Two entry points
 
 - `activate(ctx)` — the current contract. SciQLop calls it once, in dependency order. Return your public API (or None).
@@ -30,7 +35,10 @@ Editable installs often list no files, so their `plugin.json` is not found and t
 | `ctx.main_window` | the main window, for docks and menus |
 
 Extension points are main-thread objects: contributing from another thread raises `WrongThread`.
-Core ids today: `sciqlop.scenes.bodies`, `sciqlop.scenes.boundaries`, `sciqlop.scenes.scenes`.
+Every core extension point id starts with `sciqlop.`; `extensions.all_extension_points()` lists them.
+
+Disabling a plugin takes effect at the next restart: there is no live unload. A plugin's contributions are
+withdrawn while SciQLop runs only when its `activate` raises, or when code removes them.
 
 ## Collaborating with another plugin
 

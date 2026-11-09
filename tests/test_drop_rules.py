@@ -72,3 +72,14 @@ def test_open_panels_accept_a_mime_type_added_later(qtbot, withdraw):
         assert dropped == ["hello"]
     finally:
         MIME_TYPES.remove_owner("dr_demo")
+
+
+def test_a_raising_rule_for_another_mime_type_is_contained(withdraw):
+    from SciQLop.components.plotting.drops import dispatch_drop
+
+    def broken(plot, payload, panel):
+        raise RuntimeError("plugin bug")
+
+    with owned_by("dr_demo"):
+        DROP_RULES.contribute(DropRule("dr_demo.broken", _THING, broken))
+    assert dispatch_drop(None, None, _THING, ["anything"]) is None

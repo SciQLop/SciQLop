@@ -191,3 +191,24 @@ def test_a_pane_resolves_to_its_scene_plot(plot_panel, earth):
     other, _ = plot_panel.plot_data(np.arange(10.0), np.arange(10.0))
     assert scene_plot_for(proj_of(sp).subplot(1)) is sp
     assert scene_plot_for(other._get_impl_or_raise()) is None
+
+
+def test_scene_plot_of_finds_the_scene_behind_a_panel_plot(plot_panel, earth):
+    from SciQLop.user_api.scenes import scene_plot_of
+    sp = plot_panel.plot_scene("Earth environment")
+    assert scene_plot_of(plot_panel.plots[-1]) is sp
+    assert scene_plot_of(sp.projection) is sp
+
+
+def test_scene_plot_of_a_plain_plot_is_none(plot_panel):
+    from SciQLop.user_api.scenes import scene_plot_of
+    plot, _ = plot_panel.plot_data(np.arange(3.), np.arange(3.))
+    assert scene_plot_of(plot) is None
+
+
+def test_the_add_docstring_names_a_real_scene(earth):
+    from SciQLop.user_api.plot._panel import PlotPanel
+    from SciQLop.user_api.scenes import list_scenes
+    names = [s.name for s in list_scenes()]
+    assert 'scene="earth_gsm"' not in PlotPanel.add.__doc__
+    assert any(f'scene="{n}"' in PlotPanel.add.__doc__ for n in names)

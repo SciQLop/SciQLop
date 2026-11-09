@@ -28,7 +28,7 @@ from SciQLop.core.docks import Dock
 def activate(ctx):
     ctx.contribute("sciqlop.docks", Dock(
         id="radio.spectrum", title="Radio spectrum",
-        build=lambda: SpectrumWidget(),   # called by the window that places it
+        build=lambda: SpectrumWidget(),   # must return a NEW widget on every call
         placement="center",               # "center", "left", "right" or "bottom"
         icon=None,                        # registered icon name or image path; None: the widget's windowIcon
         visible=False,                    # center docks start hidden
@@ -39,9 +39,11 @@ def activate(ctx):
   `left`/`right`/`bottom` make an auto-hide side pane, collapsed until clicked.
 - The toggle action always goes to the View menu. Show and hide the dock only
   through it; `widget.show()` bypasses the docking system.
-- Withdrawing the contribution (plugin disabled or failed) closes and deletes
+- Withdrawing the contribution (activation failed, or code removed it) closes and deletes
   the dock and removes its toggle from every menu and toolbar.
-- Contributing the same `id` again with `replace=True` rebuilds the dock.
+- Contributing the same `id` again with `replace=True` rebuilds the dock: the old
+  widget is deleted, then `build` runs again. A `build` that returns a cached
+  widget hands back one that is being deleted.
 - This replaces the old dance: a `_find_central_area` helper,
   `addWidgetIntoDock(..., area=...)`, `findDockWidget(title)`,
   `toggleView(False)`, then adding the toggle by hand.
@@ -86,7 +88,7 @@ def activate(ctx):
 - `create` raising: SciQLop logs an error naming the kind, docks nothing and
   `open_panel` re-raises. An unknown kind raises `NotRegistered` (a
   `LookupError`) listing the available kinds.
-- Withdrawing a kind (plugin disabled or failed) keeps its open panels open;
+- Withdrawing a kind (activation failed, or code removed it) keeps its open panels open;
   only new ones can no longer be opened.
 - The "+" button in a dock area's title bar opens a time panel as before. With a
   second kind that has `in_new_menu=True`, it becomes a split button: the arrow
@@ -154,8 +156,8 @@ def activate(ctx):
 - `attach` runs on every open panel of a matching kind when the extension is
   contributed, and on every new one when it opens.
 - The clean-up runs once: when the panel closes (`remove_panel`, the tab's X,
-  docked or floating), when the extension is withdrawn (plugin disabled or
-  failed: the panels stay open), and before the new `attach` when the same id
+  docked or floating), when the extension is withdrawn (activation failed,
+  or code removed it: the panels stay open), and before the new `attach` when the same id
   is contributed again.
 - The clean-up never runs for a panel already destroyed, or one whose window
   was destroyed. So keep the extension's state as children of the panel (they
@@ -593,6 +595,6 @@ def activate(ctx):
 - Skills are copied into `<workspace>/.claude/skills/<name>/` once all plugins have loaded (and whenever a session
   starts). A chat with no messages yet is restarted so its agent sees them; a chat with messages gets them on New
   session.
-- SciQLop records what it published in `.claude/skills/.sciqlop-published`. A skill withdrawn later (plugin
-  disabled or unloaded) is removed from the workspace the same way; folders not in that record, such as the
+- SciQLop records what it published in `.claude/skills/.sciqlop-published`. A skill withdrawn later (activation
+  failed, or code removed it) is removed from the workspace the same way; folders not in that record, such as the
   user's own skills, are never touched.

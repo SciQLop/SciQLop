@@ -62,11 +62,17 @@ def drop_product(plot, product: list[str], panel):
     rule = rule_for(PRODUCT_LIST_MIME_TYPE, _kind_id(product_kind_of(node)), _kind_id(plot_kind_of(plot)))
     if rule is None:
         return None
+    return _guarded_drop(rule, plot, product, panel, product[-1])
+
+
+def _guarded_drop(rule, plot, payload, panel, what: str):
+    """A plugin's rule that raises is reported on the plot, not into Qt's drop handler."""
+    from SciQLop.components.scenes.tree import show_refusal
     try:
-        return rule.drop(plot, product, panel)
+        return rule.drop(plot, payload, panel)
     except Exception as e:
-        log.error(f"drop of {product} failed", exc_info=True)
-        show_refusal(plot, panel, f"{product[-1]}: {e}")
+        log.error(f"drop rule {rule.id} failed on {what}", exc_info=True)
+        show_refusal(plot, panel, f"{what}: {e}")
         return None
 
 
@@ -76,7 +82,7 @@ def dispatch_drop(panel, plot, mime_type: str, payload):
     if mime_type == PRODUCT_LIST_MIME_TYPE:
         return [drop_product(plot, product, panel) for product in payload]
     rule = rule_for(mime_type, None, _kind_id(plot_kind_of(plot)))
-    return None if rule is None else rule.drop(plot, payload, panel)
+    return None if rule is None else _guarded_drop(rule, plot, payload, panel, mime_type)
 
 
 class RuleDnDCallback(PlotDragNDropCallback):

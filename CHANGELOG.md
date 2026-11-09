@@ -34,6 +34,7 @@
 - Projection plots draw again. `panel.plot_data(t, xyz, plot_type=PlotType.Projection)` and products with more than three components, such as an MMS position with its magnitude, gave three empty panes with no error. A projection now uses the first three components. Data with fewer than three components raises an error instead of drawing nothing.
 - On a projection plot, every pane's legend now shows the graph's name: the product's name, or `name=` given to `plot_data`. The component names label the pane axes. Before, `name=` was ignored, each pane's legend showed one component, and the axes had no titles.
 - Planetary scenes: `panel.plot_scene("Earth environment")` draws the planet and its magnetopause and bow shock, summarised over the panel's time range; `add_trajectory("MMS1")` adds an orbit, converted to the scene's frame and unit. Earth, Mars and Mercury are built in; plugins register their own bodies, models and scenes.
+- `scene_plot_of(plot)` (in `SciQLop.user_api.scenes`) gives back the scene plot behind a plot from `panel.plots`, a drop or a template, so `set_frame` and `add_trajectory` work on it too.
 - Products tree: Scenes/ and Models/ entries; drop a scene on a panel, a model on a scene plot, a spacecraft position on a scene plot.
 - Scene plots show their XY, XZ and YZ planes (they showed XY, YZ and ZX).
 - A section a plugin adds to the Properties panel is listed under its title in the inspector tree; it showed its id (e.g. `sciqlop.scenes.frame`).
@@ -89,7 +90,11 @@
 
 ### Plugins
 
-- Plugins can add quickstart shortcuts, guided tours, smart-search domains, catalog providers, panel template file formats, time-range presets and themes. Everything a plugin adds goes away when the plugin is disabled.
+- New plugin contract: a plugin defines `activate(ctx)` and adds what it provides through extension points with `ctx.contribute(...)`. `load(main_window)` still works.
+- `plugin.json` can list `dependencies` and `optional_dependencies` on other plugins, with version ranges. Plugins load in dependency order, and the plugin list shows why one did not load.
+- Plugins can add data providers, product and plot kinds, drop rules, panel kinds and panel extensions, commands, menu entries, shortcuts, export formats, Properties panel sections, magics, settings pages, docks, workspace sections, agent backends, tools and skills, quickstart shortcuts, guided tours, smart-search domains, catalog providers, panel template file formats, time-range presets and themes.
+- A plugin whose `activate` fails is removed with everything it added; the other plugins keep running. Disabling a plugin takes effect at the next restart.
+- **Provisional:** `activate(ctx)`, the extension points and their contribution classes may still change in the next minor release. Plugins using them should pin SciQLop below the next minor version. Kind ids saved in templates and workspaces stay stable.
 - The time-range bar offers "1M" (30 days), and the command palette's "Set time range" offers every duration the bar has.
 - "Set time range" in the command palette takes any typed duration: a number and a unit (m, h, d, w, M for 30 days, y), such as "2d", "90m" or "1w". Text it cannot read leaves the range unchanged and says so in the status bar. Before, anything other than 1h, 1d, 1w and 1M silently became one day.
 - `%install` now loads a new plugin right away, like the plugin store does. Before, you had to restart SciQLop. Only an upgrade of a plugin that is already loaded still asks for a restart. `install_packages()` and the agents' install tool behave the same way.

@@ -16,7 +16,7 @@ from SciQLop.user_api.plot._thread_safety import GuardedImpl
 from SciQLop.user_api.threading import on_main_thread
 
 __all__ = ["Body", "Scene", "Plane", "Boundary", "RadialBoundary", "FrameError", "NotRegistered", "ScenePlot",
-           "register_body", "register_boundary", "register_scene",
+           "scene_plot_of", "register_body", "register_boundary", "register_scene",
            "list_bodies", "list_boundaries", "list_scenes"]
 
 list_bodies = BODIES.list
@@ -39,6 +39,13 @@ def register_boundary(model: Boundary, replace: bool = False) -> Boundary:
 def register_scene(scene: Scene, replace: bool = False) -> Scene:
     """Also lists the scene in the products tree, under Scenes; drop it on a panel to plot it."""
     return SCENES.register(scene, replace)
+
+
+@on_main_thread
+def scene_plot_of(plot):
+    """The ScenePlot shown by *plot* (from ``panel.plots()``, a drop or a template), or None if it shows no scene."""
+    impl = plot._get_impl_or_raise() if isinstance(plot, GuardedImpl) else plot
+    return _scene_plot.scene_plot_for(impl)
 
 
 class ScenePlot(GuardedImpl):

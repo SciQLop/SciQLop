@@ -415,7 +415,7 @@ class PlotPanel(GuardedImpl):
         """Add a plot of a registered plot kind, built from its config — the same path templates and plugins use.
 
         ``panel.add("sciqlop.timeseries", product="speasy/amda/imf")`` (or ``products=[path, ...]``),
-        ``panel.add("sciqlop.scenes.projection", scene="earth_gsm", trajectories=["MMS1"])``,
+        ``panel.add("sciqlop.scenes.projection", scene="Earth environment", trajectories=["MMS1"])``,
         ``panel.add("vdf.slice_plot", product="vdf//mms1/dis", plane="XY")``. Returns what the plot kind builds
         (a TimeSeriesPlot, a ScenePlot, or the plugin's own object). Unknown config keys of a time-series plot
         raise ValueError."""

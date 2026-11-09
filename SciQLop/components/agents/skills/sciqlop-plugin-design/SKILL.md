@@ -13,6 +13,10 @@ plugins it depends on. Everything the plugin adds goes through
 SciQLop's public API: `SciQLop.user_api` for products and plots, the main
 window for docks and menus, `ConfigEntry` for settings.
 
+The `activate(ctx)` contract and the extension points are provisional in this release:
+they may change in a minor release, so pin SciQLop below the next minor release.
+See references/plugin-contract.md.
+
 Most plugin bugs are silent. The plugin loads, the product shows in the tree,
 and the plot stays empty. Each trap below was hit in a real plugin. Read the
 table before writing code, and come back to it when something shows nothing.
