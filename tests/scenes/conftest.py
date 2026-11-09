@@ -74,3 +74,18 @@ def registered(main_window, earth):
     yield
     for root in roots:
         ProductsModel.instance().remove_node([root])
+
+
+@pytest.fixture
+def nominal_omni(monkeypatch):
+    """OMNI-driven models see a constant nominal solar wind (2 nPa, Bz 0) instead of the network."""
+    import numpy as np
+    from SciQLop.plugins.planetary_scenes import solar_wind
+
+    def get(product, start, stop):
+        t = np.arange(start, stop + 60, 60.0)
+        return t, np.full(t.shape, 2.0 if product == solar_wind.PRESSURE else 0.0)
+    monkeypatch.setattr(solar_wind, "_get", get)
+    solar_wind._upstream.cache_clear()
+    yield
+    solar_wind._upstream.cache_clear()

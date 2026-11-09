@@ -52,7 +52,7 @@ def test_register_all_makes_the_scenes_resolvable(isolated_registries):
 
 
 @pytest.mark.parametrize("model", MODELS, ids=lambda m: m.name)
-def test_radius_at_the_tail_axis_raises_no_warning(model):
+def test_radius_at_the_tail_axis_raises_no_warning(model, nominal_omni):
     t = np.array([[np.pi]])
     with warnings.catch_warnings():
         warnings.simplefilter("error")

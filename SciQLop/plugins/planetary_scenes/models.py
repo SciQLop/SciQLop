@@ -2,9 +2,22 @@ import numpy as np
 
 from SciQLop.components.scenes.boundary import RadialBoundary
 
-# simplify: nominal solar wind only (Dp in nPa, IMF Bz in nT); upgrade path is instance parameters or
-# time-varying inputs read through `times`.
-_DP, _BZ = 2.0, 0.0
+from .solar_wind import BZ_GSM, PRESSURE, upstream
+
+_DP, _BZ = 2.0, 0.0   # nominal solar wind: Dp in nPa, IMF Bz in nT
+
+
+def _shue(theta, dp, bz):
+    r0 = (10.22 + 1.29 * np.tanh(0.184 * (bz + 8.14))) * dp ** (-1 / 6.6)
+    alpha = (0.58 - 0.007 * bz) * (1 + 0.024 * np.log(dp))
+    with np.errstate(divide="ignore"):   # diverges at theta = 180 deg, cut by theta_max anyway
+        return r0 * (2 / (1 + np.cos(theta))) ** alpha
+
+
+def _jelinek(theta, dp):
+    r0 = 2 * 15.02 * dp ** (-1 / 6.55)
+    with np.errstate(divide="ignore"):   # diverges at theta = 180 deg, cut by theta_max anyway
+        return r0 / (np.cos(theta) + np.sqrt(np.cos(theta) ** 2 + 1.17 ** 2 * np.sin(theta) ** 2))
 
 
 class Shue1998(RadialBoundary):
@@ -14,10 +27,16 @@ class Shue1998(RadialBoundary):
     reference = "doi:10.1029/98JA01103"
 
     def radius(self, theta, phi, times):
-        r0 = (10.22 + 1.29 * np.tanh(0.184 * (_BZ + 8.14))) * _DP ** (-1 / 6.6)
-        alpha = (0.58 - 0.007 * _BZ) * (1 + 0.024 * np.log(_DP))
-        with np.errstate(divide="ignore"):   # diverges at theta = 180 deg, cut by theta_max anyway
-            return r0 * (2 / (1 + np.cos(theta))) ** alpha
+        return _shue(theta, _DP, _BZ)
+
+
+class Shue1998Omni(Shue1998):
+    name, label = "shue1998_omni", "Shue 1998 (OMNI)"
+    description = ("Earth magnetopause, empirical, driven by OMNI 1-min pressure and IMF Bz (GSM); a time without "
+                   "OMNI data has no section. Fitted in an aberrated frame (~4 deg), aberration ignored.")
+
+    def radius(self, theta, phi, times):
+        return _shue(theta, upstream(PRESSURE, times), upstream(BZ_GSM, times))
 
 
 class Jelinek2012BowShock(RadialBoundary):
@@ -27,9 +46,16 @@ class Jelinek2012BowShock(RadialBoundary):
     reference = "doi:10.1029/2011JA017252"
 
     def radius(self, theta, phi, times):
-        r0 = 2 * 15.02 * _DP ** (-1 / 6.55)
-        with np.errstate(divide="ignore"):   # diverges at theta = 180 deg, cut by theta_max anyway
-            return r0 / (np.cos(theta) + np.sqrt(np.cos(theta) ** 2 + 1.17 ** 2 * np.sin(theta) ** 2))
+        return _jelinek(theta, _DP)
+
+
+class Jelinek2012BowShockOmni(Jelinek2012BowShock):
+    name, label = "jelinek2012_omni", "Jelínek 2012 (OMNI)"
+    description = ("Earth bow shock, THEMIS-based, driven by OMNI 1-min pressure; a time without OMNI data has "
+                   "no section. Solar-wind aberration ignored.")
+
+    def radius(self, theta, phi, times):
+        return _jelinek(theta, upstream(PRESSURE, times))
 
 
 class _Conic(RadialBoundary):

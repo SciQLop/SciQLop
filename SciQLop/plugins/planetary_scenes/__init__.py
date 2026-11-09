@@ -1,18 +1,18 @@
-"""Built-in planetary scenes: Earth, Mars and Mercury boundary models. `activate` contributes them through the scenes extension points."""
+"""Built-in planetary scenes: Earth, Mars and Mercury boundary models (Earth ones also OMNI-driven). `activate` contributes them through the scenes extension points."""
 import astropy.units as u
 
 from SciQLop.components.scenes.model import Body, Scene
 from SciQLop.components.scenes.registry import BODIES, BOUNDARIES, SCENES
 
-from .models import (Jelinek2012BowShock, Shue1998, Vignes2000BowShock, Vignes2000MPB,
-                     Winslow2013BowShock, Winslow2013Magnetopause)
+from .models import (Jelinek2012BowShock, Jelinek2012BowShockOmni, Shue1998, Shue1998Omni, Vignes2000BowShock,
+                     Vignes2000MPB, Winslow2013BowShock, Winslow2013Magnetopause)
 
 BODIES_DATA = (
     Body("earth", 6371.2 * u.km, "Earth", "R_E"),
     Body("mars", 3389.5 * u.km, "Mars", "R_M"),
     Body("mercury", 2440.0 * u.km, "Mercury", "R_M"),
 )
-MODELS = (Shue1998(), Jelinek2012BowShock(), Vignes2000BowShock(), Vignes2000MPB(),
+MODELS = (Shue1998(), Shue1998Omni(), Jelinek2012BowShock(), Jelinek2012BowShockOmni(), Vignes2000BowShock(), Vignes2000MPB(),
           Winslow2013Magnetopause(), Winslow2013BowShock())
 SCENES_DATA = (
     Scene("Earth environment", "earth", "GSM", {"magnetopause": "shue1998", "bow_shock": "jelinek2012"},

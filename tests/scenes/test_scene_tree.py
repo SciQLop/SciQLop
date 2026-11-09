@@ -85,7 +85,8 @@ def test_registering_twice_keeps_one_node_per_item(main_window, registered):
     from SciQLop.plugins.planetary_scenes import activate
     activate(PluginContext("planetary_scenes", "1.0.0", main_window, frozenset()))
     assert ProductsModel.node(["Scenes"]).children_count() == len(registry.SCENES.list())
-    assert ProductsModel.node(SHUE[:-1]).children_count() == 1
+    earth_magnetopauses = [m for m in registry.BOUNDARIES.list() if (m.body, m.kind) == ("earth", "magnetopause")]
+    assert ProductsModel.node(SHUE[:-1]).children_count() == len(earth_magnetopauses)
 
 
 def test_smart_search_corpus_sees_the_model_description(registered):
