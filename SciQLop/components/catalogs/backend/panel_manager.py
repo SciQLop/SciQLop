@@ -61,6 +61,11 @@ class PanelCatalogManager(QObject):
 
     def _bind_provider(self, provider) -> None:
         provider.catalog_removed.connect(self.remove_catalog)
+        provider.capabilities_changed.connect(self._on_capabilities_changed)
+
+    def _on_capabilities_changed(self, catalog) -> None:
+        """Re-applying the mode re-reads every overlay's EDIT_EVENTS and the creation targets."""
+        self.mode = self._mode
 
     def _on_catalog_color_changed(self, uuid: str) -> None:
         overlay = self._overlays.get(uuid)

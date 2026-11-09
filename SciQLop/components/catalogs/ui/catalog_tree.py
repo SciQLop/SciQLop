@@ -55,6 +55,9 @@ class _Node:
         return 0
 
 
+_STATE_ROLES = [int(Qt.ItemDataRole.DisplayRole), int(Qt.ItemDataRole.DecorationRole)]
+
+
 class CatalogTreeModel(QAbstractItemModel):
     """Qt item model: root -> provider -> catalog."""
 
@@ -152,6 +155,7 @@ class CatalogTreeModel(QAbstractItemModel):
         on_folder_added = lambda path, p=provider, n=node: self._on_folder_added(p, n, path)
         on_folder_removed = lambda path, p=provider, n=node: self._on_folder_removed(p, n, path)
         on_status = lambda p=provider, n=node: self._on_provider_status_changed(n)
+        on_caps = lambda cat, p=provider, n=node: self._on_capabilities_changed(n)
         on_load_start = lambda cat, p=provider, n=node: self._on_loading_changed(p, n, cat, True)
         on_load_end = lambda cat, p=provider, n=node: self._on_loading_changed(p, n, cat, False)
         provider.catalog_added.connect(on_added)
@@ -162,6 +166,7 @@ class CatalogTreeModel(QAbstractItemModel):
         provider.folder_added.connect(on_folder_added)
         provider.folder_removed.connect(on_folder_removed)
         provider.status_changed.connect(on_status)
+        provider.capabilities_changed.connect(on_caps)
         provider.loading_started.connect(on_load_start)
         provider.loading_finished.connect(on_load_end)
         self._provider_connections[id(provider)] = [
@@ -173,6 +178,7 @@ class CatalogTreeModel(QAbstractItemModel):
             (provider.folder_added, on_folder_added),
             (provider.folder_removed, on_folder_removed),
             (provider.status_changed, on_status),
+            (provider.capabilities_changed, on_caps),
             (provider.loading_started, on_load_start),
             (provider.loading_finished, on_load_end),
         ]
@@ -341,8 +347,38 @@ class CatalogTreeModel(QAbstractItemModel):
             self.dataChanged.emit(idx, idx, [LOADING_ROLE])
 
     def _on_provider_status_changed(self, pnode: _Node) -> None:
+        """Repaint every row of the provider: folder and catalog rows may show its state too."""
         idx = self.createIndex(pnode.row(), 0, pnode)
-        self.dataChanged.emit(idx, idx, [int(Qt.ItemDataRole.DisplayRole), int(Qt.ItemDataRole.DecorationRole)])
+        self.dataChanged.emit(idx, idx, _STATE_ROLES)
+        self._repaint_children(pnode)
+
+    def _repaint_children(self, node: _Node) -> None:
+        if not node.children:
+            return
+        parent = self.createIndex(node.row(), 0, node)
+        self.dataChanged.emit(self.index(0, 0, parent), self.index(len(node.children) - 1, 0, parent), _STATE_ROLES)
+        for child in node.children:
+            self._repaint_children(child)
+
+    def _on_capabilities_changed(self, pnode: _Node) -> None:
+        self._sync_placeholders(pnode)
+        self._on_provider_status_changed(pnode)
+
+    def _sync_placeholders(self, node: _Node) -> None:
+        """Creation rows follow the provider's CREATE_CATALOGS, in this folder and every folder below."""
+        for child in [c for c in node.children if c.catalog is None and not c.is_placeholder]:
+            self._sync_placeholders(child)
+        idx = self.createIndex(node.row(), 0, node)
+        if self._supports_create(node.provider):
+            self._ensure_placeholders(node, idx)
+        else:
+            self._drop_placeholders(node, idx)
+
+    def _drop_placeholders(self, node: _Node, node_index: QModelIndex) -> None:
+        for i in reversed([i for i, c in enumerate(node.children) if c.is_placeholder]):
+            self.beginRemoveRows(node_index, i, i)
+            node.children.pop(i)
+            self.endRemoveRows()
 
     def _remove_catalog_recursive(self, node: _Node, catalog: object) -> bool:
         """Find and remove catalog node, then prune empty folders. Returns True if found."""
@@ -433,6 +469,17 @@ class CatalogTreeModel(QAbstractItemModel):
             return NodeType.PROVIDER
         return NodeType.FOLDER
 
+    def _tooltip(self, node: _Node) -> str | None:
+        from ..backend.provider import NodeType
+        if node.provider is None or node.is_placeholder:
+            return None
+        node_type = self._node_type(node)
+        custom = node.provider.node_tooltip(
+            node_type, path=self._folder_path(node) if node_type == NodeType.FOLDER else None, catalog=node.catalog)
+        if custom is not None:
+            return custom
+        return (node.provider.description or None) if node_type == NodeType.PROVIDER else None
+
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():
             return None
@@ -489,10 +536,7 @@ class CatalogTreeModel(QAbstractItemModel):
             icon_name = icon_map.get(node_type)
             return get_icon(icon_name) if icon_name else None
         if role == Qt.ItemDataRole.ToolTipRole:
-            node = index.internalPointer()
-            if node.provider is not None and node.parent is self._root:
-                return node.provider.description or None
-            return None
+            return self._tooltip(index.internalPointer())
         if role == DIRTY_PROVIDER_ROLE:
             node = index.internalPointer()
             if node.provider is not None and node.parent is self._root:

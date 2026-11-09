@@ -106,6 +106,7 @@ class ProviderAction:
     name: str
     callback: Callable[[Catalog], None]
     icon: QIcon | None = None
+    tooltip: str | None = None
 
 
 class CatalogProvider(QObject):
@@ -125,6 +126,8 @@ class CatalogProvider(QObject):
     folder_removed = Signal(list)  # path segments for an explicit folder
     status_changed = Signal()      # provider-level state changed (e.g. connection)
     attribute_spec_changed = Signal(object, str)  # (catalog, key)
+    capabilities_changed = Signal(object)  # a catalog, or None for all of this provider's (and the provider itself)
+    notice = Signal(str)  # information for the user that is not an error
 
     def __init__(self, name: str, parent: QObject | None = None, description: str = ""):
         super().__init__(parent)
@@ -306,6 +309,12 @@ class CatalogProvider(QObject):
 
     def node_icon(self, node_type: NodeType, path: list[str] | None = None) -> QIcon | None:
         """Return a custom icon for a node type, or None for default."""
+        return None
+
+    def node_tooltip(self, node_type: NodeType, path: list[str] | None = None,
+                     catalog: Catalog | None = None) -> str | None:
+        """Tooltip for a tree node: *path* is given for a folder, *catalog* for a catalog.
+        None keeps the default (the provider's description on its own row, nothing elsewhere)."""
         return None
 
     @contextmanager

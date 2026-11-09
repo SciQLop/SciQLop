@@ -105,6 +105,10 @@
 
 ### Catalogs
 
+- Catalog providers can give a tooltip on every row of the catalog tree (`node_tooltip(node_type, path=None, catalog=None)`), not only on their own row, and on their context-menu actions (`ProviderAction(..., tooltip=...)`).
+- A provider's `status_changed` now repaints its project and folder rows too, so badges and "(read-only)" labels update right away.
+- A provider can say its permissions changed (`capabilities_changed.emit(catalog)`, or `None` for all of its catalogs): open event tables, plot overlays and the tree follow without closing anything or losing the selection.
+- A provider can send information that is not an error (`notice.emit("...")`); it shows in the status bar but isn't reported as a failure.
 - Quitting SciQLop while a catalog operation was still running (opening the catalog database at startup, a save) made it crash on exit. It now waits for that operation to finish.
 - A local catalog operation that failed in the background was never reported, and it blocked catalog refreshes until restart. It only showed up later, as a "Timeout loading events" message. The failure now shows right away, and the catalogs keep refreshing.
 

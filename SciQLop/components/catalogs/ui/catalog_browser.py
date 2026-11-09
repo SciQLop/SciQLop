@@ -148,11 +148,21 @@ class _SaveButtonDelegate(QStyledItemDelegate):
         return super().editorEvent(event, model, option, index)
 
 
+def _add_provider_action(menu, action, trigger) -> None:
+    a = menu.addAction(action.name)
+    if action.icon is not None:
+        a.setIcon(action.icon)
+    if action.tooltip:
+        a.setToolTip(action.tooltip)
+    a.triggered.connect(trigger)
+
+
 class CatalogBrowser(QWidget):
     """Dock-ready widget: tree of providers/catalogs + event table."""
 
     event_selected = Signal(object)
     provider_error = Signal(str)
+    provider_notice = Signal(str)   # information from a provider, not an error
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -179,7 +189,7 @@ class CatalogBrowser(QWidget):
         # --- tree view (left) ---
         self._tree_model = CatalogTreeModel()
         self._tree_model.operation_failed.connect(self.provider_error)
-        self._wire_provider_error_reporting()
+        self._wire_provider_signals()
         self._proxy_model = _CatalogFilterProxy()
         self._proxy_model.setSourceModel(self._tree_model)
         self._catalog_tree = QTreeView()
@@ -328,9 +338,10 @@ class CatalogBrowser(QWidget):
 
     # ---- error reporting ----
 
-    def _wire_provider_error_reporting(self) -> None:
-        """Forward every provider's error_occurred to provider_error, for
-        providers registered before and after this browser is constructed.
+    def _wire_provider_signals(self) -> None:
+        """Forward every provider's error_occurred and notice, and follow its
+        capabilities_changed, for providers registered before and after this
+        browser is constructed.
 
         Connects a bound method, not a lambda closing over self, to the
         process-lifetime CatalogRegistry singleton — per
@@ -342,11 +353,20 @@ class CatalogBrowser(QWidget):
         from ..backend.registry import CatalogRegistry
         registry = CatalogRegistry.instance()
         for provider in registry.providers():
-            provider.error_occurred.connect(self.provider_error)
-        registry.provider_registered.connect(self._on_future_provider_registered)
+            self._connect_provider(provider)
+        registry.provider_registered.connect(self._connect_provider)
 
-    def _on_future_provider_registered(self, provider) -> None:
+    def _connect_provider(self, provider) -> None:
         provider.error_occurred.connect(self.provider_error)
+        provider.notice.connect(self.provider_notice)
+        provider.capabilities_changed.connect(self._on_capabilities_changed)
+
+    def _on_capabilities_changed(self, catalog) -> None:
+        """The open table and the toolbar re-read capabilities; the table keeps its rows and selection."""
+        if self._current_catalog is None or (catalog is not None and catalog.uuid != self._current_catalog.uuid):
+            return
+        self._event_model.refresh_editable()
+        self._update_toolbar()
 
     def _report_failure(self, description: str, exc: Exception) -> None:
         from SciQLop.components.sciqlop_logging import getLogger
@@ -1077,29 +1097,20 @@ class CatalogBrowser(QWidget):
         # Provider-level actions (provider node = parent is root)
         if node.parent is self._tree_model._root:
             for action in node.provider.actions(None) or ():
-                a = menu.addAction(action.name)
-                if action.icon is not None:
-                    a.setIcon(action.icon)
-                a.triggered.connect(lambda checked, cb=action.callback: cb(None))
+                _add_provider_action(menu, action, lambda checked, cb=action.callback: cb(None))
 
         # Catalog-scoped actions (own place for a provider to expose
         # per-catalog custom operations; the tree is the single surface for
         # every provider action, provider- or catalog-level)
         if node.catalog is not None:
             for action in node.provider.actions(node.catalog) or ():
-                a = menu.addAction(action.name)
-                if action.icon is not None:
-                    a.setIcon(action.icon)
-                a.triggered.connect(lambda checked, cb=action.callback, c=node.catalog: cb(c))
+                _add_provider_action(menu, action, lambda checked, cb=action.callback, c=node.catalog: cb(c))
 
         # Explicit folder actions (room nodes)
         if node.is_explicit_folder:
             path = self._folder_path(node)
             for action in node.provider.folder_actions(path):
-                a = menu.addAction(action.name)
-                if action.icon is not None:
-                    a.setIcon(action.icon)
-                a.triggered.connect(lambda checked, cb=action.callback, p=path: cb(p))
+                _add_provider_action(menu, action, lambda checked, cb=action.callback, p=path: cb(p))
 
         # Creation actions (folder or provider node, gated on CREATE_CATALOGS)
         if node.catalog is None and not node.is_placeholder:

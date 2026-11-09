@@ -61,10 +61,20 @@ class EventTableModel(QAbstractTableModel):
         self.beginResetModel()
         self._provider = provider
         self._catalog = catalog
-        self._editable = (provider is not None and catalog is not None
-                          and Capability.EDIT_EVENTS in provider.capabilities(catalog))
+        self._editable = self._can_edit()
         self._connect_provider_meta_signal()
         self.endResetModel()
+
+    def _can_edit(self) -> bool:
+        return (self._provider is not None and self._catalog is not None
+                and Capability.EDIT_EVENTS in self._provider.capabilities(self._catalog))
+
+    def refresh_editable(self) -> None:
+        """Re-read EDIT_EVENTS without a reset, so the view keeps its rows and selection."""
+        editable = self._can_edit()
+        changed, self._editable = editable != self._editable, editable
+        if changed and self.rowCount() and self.columnCount():
+            self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, self.columnCount() - 1))
 
     def set_events(self, events: list[CatalogEvent]) -> None:
         self.beginResetModel()

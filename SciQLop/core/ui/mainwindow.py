@@ -599,6 +599,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         self.catalogs_browser.provider_error.connect(
             lambda msg: self._statusbar.showMessage(msg, 8000))
+        self.catalogs_browser.provider_notice.connect(
+            lambda msg: self._statusbar.showMessage(msg, 8000))
 
         self._refresh_mem_timer = QtCore.QTimer(self)
         self._refresh_mem_timer.timeout.connect(self._update_usage)
