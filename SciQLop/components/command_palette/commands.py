@@ -180,5 +180,7 @@ def register_builtin_commands(registry):
 
     from SciQLop.components.plotting.ui.proxy_share import register_proxy_share
     register_proxy_share(registry)
-    from SciQLop.components.comparison.ui.commands import register_comparison_commands
-    register_comparison_commands(registry)
+    from SciQLop.components import comparison
+    if comparison.ENABLED:
+        from SciQLop.components.comparison.ui.commands import register_comparison_commands
+        register_comparison_commands(registry)

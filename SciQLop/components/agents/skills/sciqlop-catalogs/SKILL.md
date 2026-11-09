@@ -70,26 +70,6 @@ and Ctrl+Shift+M:
 - `"edit"`: the user draws new events with Shift+click and moves the spans of
   editable catalogs.
 
-## Comparing events
-
-To show a panel next to itself at other events, open a Comparison panel with
-`sciqlop_compare` (`over: "time"`, `variants`: `[start, stop]` ISO pairs), or
-from a cell:
-
-```python
-from SciQLop.user_api.comparison import compare
-h = compare("Panel0", over="time", variants=list(cat)[1:])   # speasy events, TimeRanges or (start, stop)
-h.show("difference", operation="ratio")                      # two sides only; raises with the reason otherwise
-```
-
-Side A is the event the base panel is showing: inside the window and across
-its centre (otherwise, the window itself); every other event is drawn
-shifted onto it, lined up on the event start, with a dotted line marking where. `over` can also be `"product"` (another
-product in place of one graph) or `"settings"` (other knob values).
-`sciqlop_set_comparison_view` switches an open Comparison panel between
-`overlay` and `difference`. The panel is a snapshot of the base panel; keep it
-with its menu's "Save as template".
-
 ## Workflow for "find and label events"
 
 0. Settle the criterion, the target catalog and whether to save before

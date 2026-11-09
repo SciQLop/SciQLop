@@ -2,13 +2,6 @@
 
 ## Unreleased
 
-### Comparison
-
-- Compare panels: overlay or difference of two events, products or settings. "Compare…" in the Tools menu, "Compare with…" on a panel and "Compare" on two or more selected catalog events open the Compare dialog. It opens a Comparison panel that shows the base panel next to its variants, as an overlay or, for two sides, as their difference, ratio or log ratio. The panel is a snapshot: closing the base panel leaves it unchanged. Keep it with "Save as template…" in its menu; it is not yet saved with the workspace.
-- From Python, `compare(panel, over="time", variants=[...])` (in `SciQLop.user_api.comparison`) opens a Comparison panel and returns a handle. Time variants can be speasy events, catalog events, `TimeRange`s or `(start, stop)` pairs; product variants are product paths or virtual products; settings variants are dicts of knob values. `handle.view = "difference"` switches the view, and raises with the reason when it cannot show these sides. `handle.set_options("difference", operation="ratio")` sets view options.
-- Agents get `sciqlop_compare` and `sciqlop_set_comparison_view` to do the same.
-- `panel.plot_product(product, time_offset=seconds)` draws a product shifted in time: data is fetched `time_offset` later and drawn at the panel's time, e.g. 27 days to overlay the next solar rotation. The legend says it is shifted (`B (+27 days, 0:00:00)`), and panel templates keep the shift.
-
 ### Batch mode
 
 - `sciqlop --batch script.py [args...]` runs a Python script inside SciQLop with no window, then exits with the script's exit code. The script uses the usual API: build panels, set the time range, `panel.save("ql.png")`, in a loop if needed. Relative paths are relative to the folder you ran the command from. It needs no display: Qt renders offscreen unless `QT_QPA_PLATFORM` says otherwise, so it runs in a container or a cron job. Arguments after the script name are passed to it in `sys.argv`; `-w` picks the workspace as usual.
@@ -27,6 +20,7 @@
 
 ### Plotting
 
+- `panel.plot_product(product, time_offset=seconds)` draws a product shifted in time: data is fetched `time_offset` later and drawn at the panel's time, e.g. 27 days to overlay the next solar rotation. The legend says it is shifted (`B (+27 days, 0:00:00)`), and panel templates keep the shift.
 - Everything the Properties panel edits can now be set from Python, so notebooks and the agent can do what a user does by clicking. `graph.lines` gives each line of a graph, with its colour, width, dash style, marker, marker size and colour, and visibility; the same settings on the graph apply to all its lines. `plot.axis("y")` styles an axis label, its tick labels and its autoscaling. Plots gain `name`, `crosshair`, `equal_aspect_ratio`, `scroll_factor`, `auto_scale` and the legend font and colour. Colormaps gain their gradient, log colour scale, contours and y autoscale; 2D histograms their bins and normalisation. A panel can be renamed with `panel.name = ...`.
 - An XY curve plotted without `labels=` now takes `line_style=` and other styling straight away. Its lines only appeared once its data had been processed, so styling applied right after plotting was silently lost.
 - An axis label or log scale you set now stays. When a product's data arrived, its metadata overwrote them. The plot-templates tutorial lost its log scales this way, and a label set right after `plot()` was replaced by the product's own label. Labels and scales you never touched still follow the metadata.
