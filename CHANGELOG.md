@@ -106,6 +106,7 @@
 
 ### Catalogs
 
+- Right-click a catalog event on a plot: the panel menu starts with that event. Edit attributes… opens a small editor next to the plot, which edits like the catalog browser's event table (read-only where the table is); Show in catalog browser, Zoom to event, Copy start and stop (UTC, two spreadsheet cells), and Delete (in edit mode, when the catalog allows it). Plugins' event menu entries show there too. With the current plotting library this needs the crosshair on (the default), to know which event is under the mouse.
 - Catalog providers can give a tooltip on every row of the catalog tree (`node_tooltip(node_type, path=None, catalog=None)`), not only on their own row, and on their context-menu actions (`ProviderAction(..., tooltip=...)`).
 - A provider's `status_changed` now repaints its project and folder rows too, so badges and "(read-only)" labels update right away.
 - A provider can say its permissions changed (`capabilities_changed.emit(catalog)`, or `None` for all of its catalogs): open event tables, plot overlays and the tree follow without closing anything or losing the selection.

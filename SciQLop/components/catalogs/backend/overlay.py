@@ -17,6 +17,26 @@ from speasy.core import make_utc_datetime
 
 log = getLogger(__name__)
 
+_HIT_TOLERANCE_PX = 3  # a zero-length event is still a target
+
+
+def _covers_pixel(span, x: int) -> bool:
+    r = span.pixel_key_range()
+    return r.start() - _HIT_TOLERANCE_PX <= x <= r.stop() + _HIT_TOLERANCE_PX
+
+
+def _events_at_cursor_time(plot, events) -> list[CatalogEvent]:
+    """simplify: SciQLopPlots 0.52 can't map a pixel to a time, so this reads the crosshair's time
+    under the mouse, which is only known while the crosshair is on. Drop with 0.52: later versions
+    give each span's pixel_key_range, used above."""
+    key = getattr(plot, "crosshair_key", None)
+    t = key() if callable(key) else key
+    if t is None or t != t:
+        return []
+    r = plot.time_axis().range()
+    tolerance = _HIT_TOLERANCE_PX * (r.stop() - r.start()) / max(plot.width(), 1)
+    return [e for e in events if e.start.timestamp() - tolerance <= t <= e.stop.timestamp() + tolerance]
+
 
 def _format_tooltip(event: CatalogEvent, catalog_name: str) -> str:
     lines = [
@@ -224,7 +244,7 @@ class CatalogOverlay(QObject):
         span.range_changed.connect(_on_span_changed)
         _on_selection = lambda selected, e=event: self._on_span_selected(selected, e)
         span.selection_changed.connect(_on_selection)
-        _on_delete = lambda e=event: self._on_span_delete_requested(e)
+        _on_delete = lambda e=event: self.delete_event(e)
         span.delete_requested.connect(_on_delete)
         self._event_connections[event.uuid] = [
             (event.range_changed, _on_event_changed),
@@ -301,13 +321,24 @@ class CatalogOverlay(QObject):
             if event.uuid not in current_uuids:
                 self._add_span(event)
 
-    def _on_span_delete_requested(self, event: CatalogEvent) -> None:
-        if self._read_only:
-            return
-        provider = self._catalog.provider
-        if Capability.DELETE_EVENTS not in provider.capabilities(self._catalog):
-            return
-        provider.remove_event(self._catalog, event)
+    @property
+    def can_delete_events(self) -> bool:
+        """Spans are editable (the panel is in edit mode) and the catalog allows deleting."""
+        return not self._read_only and Capability.DELETE_EVENTS in self._catalog.provider.capabilities(self._catalog)
+
+    def delete_event(self, event: CatalogEvent) -> None:
+        if self.can_delete_events:
+            self._catalog.provider.remove_event(self._catalog, event)
+
+    def events_at(self, plot, x: int) -> list[CatalogEvent]:
+        """Events whose span covers pixel column *x* (plot coordinates) of *plot*."""
+        if not self._spans_visible:
+            return []
+        spans = self._span_collection.spans()
+        if spans and hasattr(spans[0], "pixel_key_range"):
+            return [self._event_by_span_id[s.id] for s in spans
+                    if s.id in self._event_by_span_id and _covers_pixel(s, x)]
+        return _events_at_cursor_time(plot, self._event_by_span_id.values())
 
     def _on_span_selected(self, selected: bool, event: CatalogEvent) -> None:
         if selected:

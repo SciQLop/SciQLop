@@ -1411,12 +1411,13 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self._show_context_menu(event.globalPos(), source)
 
     def _show_context_menu(self, global_pos, source=None):
-        self._build_context_menu(source).exec(global_pos)
+        self._build_context_menu(source, global_pos).exec(global_pos)
 
-    def _build_context_menu(self, source=None):
+    def _build_context_menu(self, source=None, global_pos=None):
         from PySide6.QtWidgets import QMenu
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
+        self._add_event_section(menu, source, global_pos)
         self._catalog_manager.build_catalogs_menu(menu)
         self._add_crosshair_action(menu)
         self._add_layout_actions(menu, source)
@@ -1433,6 +1434,16 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
     def _menu_context(self) -> dict:
         return {"panel": self.objectName()}
+
+    def _add_event_section(self, menu, source, global_pos):
+        """A right-click over a catalog event's span: that event's entries first."""
+        plot = self._plot_containing(source)
+        if plot is None or global_pos is None:
+            return
+        hit = self._catalog_manager.event_at(plot, plot.mapFromGlobal(global_pos).x())
+        if hit is not None:
+            from SciQLop.components.catalogs.ui.event_menu import add_event_section
+            add_event_section(menu, self, *hit)
 
     def _add_plugin_menus(self, menu):
         from SciQLop.components.plotting.backend.panel_menus import add_plugin_menus

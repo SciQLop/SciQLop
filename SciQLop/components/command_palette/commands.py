@@ -51,12 +51,8 @@ def _do_switch_workspace(workspace: str = ""):
 
 
 def _reveal_catalogs_browser(win):
-    browser = win.catalogs_browser
-    dw = win.dock_manager.findDockWidget(browser.windowTitle())
-    if dw is not None:
-        dw.toggleView(True)
-        dw.raise_()
-    return browser
+    win.reveal(win.catalogs_browser)
+    return win.catalogs_browser
 
 
 def _do_create_catalog(provider: str = ""):

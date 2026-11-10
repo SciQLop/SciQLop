@@ -127,6 +127,12 @@ class PanelCatalogManager(QObject):
     def overlay(self, catalog_uuid: str) -> CatalogOverlay | None:
         return self._overlays.get(catalog_uuid)
 
+    def event_at(self, plot, x: int) -> tuple[CatalogOverlay, CatalogEvent] | None:
+        """The event whose span is under pixel column *x* of *plot*, with its overlay; the
+        narrowest one when spans overlap, as it is the hardest to reach any other way."""
+        hits = [(overlay, event) for overlay in self._overlays.values() for event in overlay.events_at(plot, x)]
+        return min(hits, key=lambda hit: hit[1].stop - hit[1].start, default=None)
+
     @property
     def jump_zoom_out_factor(self) -> float:
         """Visible range around a picked event as a multiple of its duration."""

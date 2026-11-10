@@ -633,6 +633,13 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         bind_tooltip(self.commandPaletteAction, "app.command_palette",
                      "Command palette", "Search and run any command, product, panel or catalog.")
 
+    def reveal(self, widget) -> None:
+        """Show and raise the dock holding *widget* (a side pane, a panel)."""
+        dw = self.dock_manager.findDockWidget(widget.windowTitle())
+        if dw is not None:
+            dw.toggleView(True)
+            dw.raise_()
+
     def _show_logs(self):
         dw = self.dock_manager.findDockWidget(self.logs.windowTitle())
         if dw is None:
