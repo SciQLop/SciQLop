@@ -82,7 +82,7 @@ _HOST_PROVIDED_PACKAGES = frozenset({"sciqlop"})
 _PKG_NAME_RE = re.compile(r"^([A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?)")
 _URL_RE = re.compile(r"^(https?://|git\+https?://)")
 _GITHUB_REPO_RE = re.compile(r"github\.com/[^/]+/([^/]+)")
-_RELEASE_VERSION_RE = re.compile(r"^\d+(\.\d+){0,3}$")
+_RELEASE_VERSION_RE = re.compile(r"^\d+(\.\d+){0,3}((a|b|rc)\d+)?$")  # a release or a pre-release
 
 
 def _canonical(name: str) -> str:
@@ -379,32 +379,46 @@ package = false
         write_text_atomic(output, content)
 
 
-def fetch_available_versions(*, timeout: float = 5.0) -> List[str]:
-    """Recent installable SciQLop releases from PyPI, newest first.
+def installable_versions(releases: dict, release_candidates: bool) -> List[str]:
+    """The PyPI *releases* a workspace may pin, newest first.
 
-    Excludes yanked and prerelease/dev releases: a workspace's
-    ``sciqlop_version`` must be exact-pinnable and reproducible, and neither
-    kind of release satisfies that. Returns an empty list on any
-    network/parsing failure -- callers decide the UI fallback.
+    Never yanked or ``.dev`` releases: a ``.dev`` version is a build of main, not a
+    release, and pinning it means following main (``is_dev_build_version``).
+    Pre-releases (``a``/``b``/``rc``) only with *release_candidates*, and only those
+    newer than the latest release: once ``0.15.0`` is out, ``0.15.0rc2`` is noise.
+    Both kinds are immutable on PyPI, so either pins as reproducibly.
     """
+    versions = []
+    for raw, files in releases.items():
+        if not files or all(f.get("yanked", False) for f in files):
+            continue
+        try:
+            parsed = packaging.version.Version(raw)
+        except packaging.version.InvalidVersion:
+            continue
+        if not parsed.is_devrelease:
+            versions.append(parsed)
+    finals = [v for v in versions if v.pre is None]
+    newest_final = max(finals, default=None)
+    candidates = [v for v in versions if v.pre is not None and (newest_final is None or v > newest_final)]
+    listed = sorted(finals + (candidates if release_candidates else []), reverse=True)
+    return [str(v) for v in listed[:_MAX_LISTED_VERSIONS]]
+
+
+def fetch_available_versions(*, timeout: float = 5.0, release_candidates: Optional[bool] = None) -> List[str]:
+    """Recent installable SciQLop releases from PyPI, newest first (see ``installable_versions``).
+
+    *release_candidates* defaults to the "SciQLop version" setting. Returns an
+    empty list on any network/parsing failure -- callers decide the UI fallback.
+    """
+    if release_candidates is None:
+        from .settings import follows_release_candidates
+        release_candidates = follows_release_candidates()
     req = urllib.request.Request(_PYPI_JSON_URL, headers={"Accept": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read())
-        releases = data.get("releases", {})
-        versions: List[packaging.version.Version] = []
-        for raw, files in releases.items():
-            if not files or all(f.get("yanked", False) for f in files):
-                continue
-            try:
-                parsed = packaging.version.Version(raw)
-            except packaging.version.InvalidVersion:
-                continue
-            if parsed.is_prerelease:
-                continue
-            versions.append(parsed)
-        versions.sort(reverse=True)
-        return [str(v) for v in versions[:_MAX_LISTED_VERSIONS]]
+        return installable_versions(data.get("releases", {}), release_candidates)
     except Exception as exc:
         log.debug("Could not fetch PyPI release list: %s", exc)
         return []
@@ -446,7 +460,7 @@ def validate_core_version(version: str, available: Sequence[str]) -> bool:
     Accepts the empty string (no pin: follow the launcher's version),
     ``MAIN_PIN`` (install from ``git+...@main``), an exact match against *available* (which
     should come from ``fetch_available_versions()``), or any string shaped
-    like a bare release version (digits and dots only) even when it isn't
+    like a bare release version (digits and dots, optionally a/b/rc and digits) even when it isn't
     in *available* -- covers a workspace whose pin is older than the
     recent-N window, or a PyPI fetch that failed entirely. This is the real
     security boundary: the dropdown a user picks from in the UI is not one,

@@ -96,8 +96,9 @@ def runs_here(version: str, launcher: Optional[str] = None) -> Optional[bool]:
 
 def follows_latest_release() -> bool:
     """The "SciQLop version" setting: the latest release, or the installer's own."""
-    from .settings import LATEST_RELEASE, SciQLopWorkspacesSettings
-    return SciQLopWorkspacesSettings().sciqlop_version == LATEST_RELEASE
+    from . import settings
+    return settings.SciQLopWorkspacesSettings().sciqlop_version in (
+        settings.LATEST_RELEASE, settings.LATEST_RELEASE_CANDIDATE)
 
 
 def preferred_release(launcher: str) -> str:

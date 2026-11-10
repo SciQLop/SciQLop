@@ -187,38 +187,37 @@ allow_dirty = false
 message = "Bump version: {current_version} → {new_version}"
 tag_name = "v{new_version}"
 tag_message = "Release v{new_version}"
-# PEP 440 dev-release scheme. The optional `.dev<N>` suffix marks unreleased
-# development builds; bumping the `release` part to its optional value drops
-# the suffix and produces a final release.
+# PEP 440 scheme: X.Y.Z.devN (development) -> X.Y.ZrcN (release candidate) -> X.Y.Z.
+# The stage part carries its own separator, so versions are written in PEP 440's
+# normal form ("0.15.0rc1", never "0.15.0.rc1"): the welcome page looks tags up as
+# v<version as PyPI lists it>. See docs/releasing.md for the whole routine.
 parse = """(?x)
     (?P<major>\\d+)\\.
     (?P<minor>\\d+)\\.
     (?P<patch>\\d+)
     (?:
-        \\.(?P<release>dev)
+        (?P<release>\\.dev|rc)
         (?P<build>\\d+)
     )?
 """
 serialize = [
-    "{major}.{minor}.{patch}.{release}{build}",
+    "{major}.{minor}.{patch}{release}{build}",
     "{major}.{minor}.{patch}",
 ]
 
-# Workflow:
-#   - Right after releasing 0.11.2, run:
-#       bump-my-version bump minor   # → 0.12.0.dev0 (commit, no tag)
-#   - Iterate during development:
-#       bump-my-version bump build   # → 0.12.0.dev1, .dev2, ...
-#   - At release time:
-#       bump-my-version bump release          # → 0.12.0 (commit)
-#       git tag -a v0.12.0 -m "Release v0.12.0"
-#       git push jeandet main v0.12.0
-#   `tag = false` globally so iterative dev bumps don't accidentally create
-#   throwaway tags; release tags are created manually (one extra command, but
-#   unambiguous).
+# Workflow (docs/releasing.md):
+#   - Development:          bump-my-version bump build                  # 0.15.0.dev0 -> .dev1
+#   - First candidate:      bump-my-version bump --new-version 0.15.0rc1
+#   - Next candidate:       bump-my-version bump build                  # rc1 -> rc2
+#   - Release:              bump-my-version bump release                # rc2 -> 0.15.0
+#   - Release, no candidate: bump-my-version bump --new-version 0.15.0
+#   - Next cycle:           bump-my-version bump patch (or minor)       # -> 0.15.1.dev0
+#   `bump release` straight from .devN gives rc0, hence --new-version above.
+#   `tag = false` globally so iterative bumps don't create throwaway tags;
+#   release and candidate tags are created by hand.
 
 [tool.bumpversion.parts.release]
-values = ["dev", "final"]
+values = [".dev", "rc", "final"]
 optional_value = "final"
 
 [tool.bumpversion.parts.build]

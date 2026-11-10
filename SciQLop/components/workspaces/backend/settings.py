@@ -10,6 +10,7 @@ DEFAULT_WORKSPACE_DIR = str(
 
 
 LATEST_RELEASE = "Latest release"
+LATEST_RELEASE_CANDIDATE = "Latest release candidate"
 INSTALLERS_VERSION = "Installer's version"
 
 
@@ -23,10 +24,17 @@ class SciQLopWorkspacesSettings(ConfigEntry):
     reopen_last_workspace: bool = Field(
         default=True,
         description="Start SciQLop in the workspace you used last.")
-    sciqlop_version: Literal["Latest release", "Installer's version"] = Field(
+    sciqlop_version: Literal["Latest release", "Latest release candidate", "Installer's version"] = Field(
         default=LATEST_RELEASE,
         description="SciQLop version for workspaces. \"Latest release\": new workspaces start "
                     "on the newest release your installer can run, and the welcome page offers "
-                    "to update a workspace when a newer one is out. \"Installer's version\": "
-                    "workspaces use the version that came with your installer, and updates come "
-                    "with a new installer.")
+                    "to update a workspace when a newer one is out. \"Latest release candidate\": "
+                    "the same, but also with release candidates, the test versions published "
+                    "before a release; you get the release itself once it is out. "
+                    "\"Installer's version\": workspaces use the version that came with your "
+                    "installer, and updates come with a new installer.")
+
+
+def follows_release_candidates() -> bool:
+    """The "SciQLop version" setting asks for release candidates too."""
+    return SciQLopWorkspacesSettings().sciqlop_version == LATEST_RELEASE_CANDIDATE

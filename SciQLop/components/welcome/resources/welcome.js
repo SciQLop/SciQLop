@@ -287,7 +287,7 @@ function showLatestRelease(json_str) {
                 '<span class="release-version">' + escapeHtml(currentVersion) + '</span>';
         } else if (release.route === "workspace") {
             container.innerHTML =
-                '<span class="release-label">\u2B06\uFE0F SciQLop ' + escapeHtml(release.version) + ' is available</span>' +
+                '<span class="release-label">\u2B06\uFE0F SciQLop ' + escapeHtml(withCandidateNote(release.version)) + ' is available</span>' +
                 '<button id="release-update-workspace" title="Install SciQLop ' + escapeHtmlAttr(release.version) +
                     ' and its dependencies in this workspace; the current version keeps running until you restart">' +
                     'Update this workspace</button>' +
@@ -300,7 +300,7 @@ function showLatestRelease(json_str) {
             });
         } else {
             container.innerHTML =
-                '<span class="release-label">\u2B06\uFE0F SciQLop ' + escapeHtml(release.version) + ' is available</span>' +
+                '<span class="release-label">\u2B06\uFE0F SciQLop ' + escapeHtml(withCandidateNote(release.version)) + ' is available</span>' +
                 '<a class="release-link" href="' + escapeHtmlAttr(release.url) + '">Download the new installer</a>' +
                 '<span class="release-current-version">Current: ' + escapeHtml(currentVersion) + '</span>';
             container.querySelector(".release-link").addEventListener("click", function(e) {
@@ -605,9 +605,17 @@ function onCoreBadgesReady(badgesJson) {
     });
 }
 
+function isReleaseCandidate(version) {
+    return /^\d+(\.\d+)*(a|b|rc)\d+$/.test(version || "");
+}
+
+function withCandidateNote(version) {
+    return isReleaseCandidate(version) ? version + " (release candidate)" : version;
+}
+
 function coreVersionLabel(version) {
     if (version === CORE_MAIN_PIN) return "main (development)";
-    return version || "same as SciQLop";
+    return withCandidateNote(version) || "same as SciQLop";
 }
 
 function buildCoreVersionSection(ws) {
@@ -655,7 +663,7 @@ function populateCoreVersionSelect(result) {
     options.forEach(function(v) {
         var opt = document.createElement("option");
         opt.value = v;
-        opt.textContent = v;
+        opt.textContent = withCandidateNote(v);
         select.appendChild(opt);
     });
     var mainOpt = document.createElement("option");
