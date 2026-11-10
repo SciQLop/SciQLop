@@ -10,6 +10,7 @@ from SciQLop.core.product_kinds import BOUNDARY, LAYER, SCALAR, SCENE
 
 from ..fixtures import *  # noqa: F401, F403
 from .helpers import overlay_text, proj_of
+from SciQLop.components.plotting.panel_introspection import ordered_panel_plots
 
 SHUE = ["Models", "Earth", "magnetopause", "Shue 1998 (Dp=2 nPa, Bz=0)"]
 EARTH_SCENE = ["Scenes", "Earth environment"]
@@ -59,7 +60,7 @@ def _drop_as_new_plot(panel, index, path):
 
 def _plot_with_data(panel):
     panel.plot_data(np.arange(3.0), np.arange(3.0))
-    return panel._impl.plots()[-1].data()
+    return ordered_panel_plots(panel._impl)[-1]
 
 
 def _scene_plots(panel):
@@ -122,7 +123,7 @@ def test_a_scene_dropped_between_plots_takes_the_drop_place(plot_panel, register
     first, last = _plot_with_data(plot_panel), _plot_with_data(plot_panel)
     _drop_as_new_plot(plot_panel, 1, EARTH_SCENE)
     qtbot.waitUntil(lambda: len(_scene_plots(plot_panel)) == 3, timeout=5000)
-    plots = [p.data() for p in plot_panel._impl.plots()]
+    plots = ordered_panel_plots(plot_panel._impl)
     assert plots[0] is first and plots[2] is last and _scene_plots(plot_panel)[1] is not None
 
 

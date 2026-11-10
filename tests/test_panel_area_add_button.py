@@ -23,7 +23,7 @@ def _welcome_area(main_window):
 
 
 def _area_for(main_window, panel):
-    dw = main_window.dock_manager.findDockWidget(panel.name)
+    dw = main_window.dock_manager.findDockWidget(panel.objectName())
     return dw.dockAreaWidget()
 
 

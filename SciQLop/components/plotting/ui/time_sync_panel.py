@@ -1432,7 +1432,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         return menu
 
     def _menu_context(self) -> dict:
-        return {"panel": self.name}
+        return {"panel": self.objectName()}
 
     def _add_plugin_menus(self, menu):
         from SciQLop.components.plotting.backend.panel_menus import add_plugin_menus
@@ -1606,7 +1606,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         from SciQLop.components.plotting.export import export_panel
         from SciQLop.user_api.plot import PlotPanel
         path, _ = QFileDialog.getSaveFileName(
-            self, f"Export as {target.label}", f"{self.name}{target.suffixes[0]}",
+            self, f"Export as {target.label}", f"{self.objectName()}{target.suffixes[0]}",
             f"{target.label} ({' '.join('*' + s for s in target.suffixes)})")
         if not path:
             return
@@ -1661,7 +1661,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self.set_time_axis_range(time_range)
 
     def __repr__(self):
-        return f"TimeSyncPanel: {self.name}"
+        return f"TimeSyncPanel: {self.objectName()}"
 
     @SciQLopProperty(str)
     def icon(self) -> str:

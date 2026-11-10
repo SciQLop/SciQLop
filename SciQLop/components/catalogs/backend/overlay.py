@@ -141,7 +141,7 @@ class CatalogOverlay(QObject):
         for uuid in list(self._event_connections):
             self._disconnect_event(uuid)
         for span in self._span_collection.spans():
-            self._span_collection.delete_span(span)
+            self._span_collection.delete_span(span.id)
         self._event_by_span_id.clear()
 
     @property
@@ -269,9 +269,8 @@ class CatalogOverlay(QObject):
         # Remove out-of-range spans
         for uuid in current_uuids - new_uuids:
             self._disconnect_event(uuid)
-            span = self._span_collection.span(uuid)
-            if span is not None:
-                self._span_collection.delete_span(span)
+            if self._span_collection.span(uuid) is not None:
+                self._span_collection.delete_span(uuid)
             self._event_by_span_id.pop(uuid, None)
 
         # Add new visible spans
@@ -293,9 +292,8 @@ class CatalogOverlay(QObject):
         # Remove stale spans
         for uuid in current_uuids - new_uuids:
             self._disconnect_event(uuid)
-            span = self._span_collection.span(uuid)
-            if span is not None:
-                self._span_collection.delete_span(span)
+            if self._span_collection.span(uuid) is not None:
+                self._span_collection.delete_span(uuid)
             self._event_by_span_id.pop(uuid, None)
 
         # Add new spans

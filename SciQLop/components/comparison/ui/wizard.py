@@ -22,7 +22,7 @@ def panel_name(panel) -> Optional[str]:
         return panel or None
     if hasattr(panel, "_get_impl_or_raise"):
         panel = panel._get_impl_or_raise()
-    return panel.name
+    return panel.objectName()
 
 
 class CompareDialog(QDialog):

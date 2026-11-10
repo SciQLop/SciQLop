@@ -188,7 +188,7 @@ class PlotPanel(GuardedImpl):
     def name(self) -> str:
         """The panel's unique name. Renaming to a name already taken adds a
         number to keep it unique."""
-        return self._get_impl_or_raise().name
+        return self._get_impl_or_raise().objectName()
 
     @name.setter
     @on_main_thread
@@ -218,7 +218,7 @@ class PlotPanel(GuardedImpl):
         destroyed-signal handlers.
         """
         impl = self._get_impl_or_raise()
-        name = impl.name
+        name = impl.objectName()
         _get_main_window().remove_panel(name)
 
     @experimental_api()

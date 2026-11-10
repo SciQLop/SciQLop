@@ -487,7 +487,7 @@ def test_inspector_tree_tooltip_renders_on_graph_row(qtbot):
     # Display names are unique-suffixed process-wide ("Line", "Line2", …):
     # under full-suite ordering this graph is NOT named 'Line'. Match the
     # actual name instead of hardcoding the first-in-process one.
-    graph_name = graph.name
+    graph_name = graph.objectName()
     prop = PropertiesPanel(); qtbot.addWidget(prop); prop.show()
     install_inspector_tree_tooltips(prop)
     tree = prop.findChild(PlotsTreeView)

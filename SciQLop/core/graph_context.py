@@ -84,6 +84,17 @@ def _is_importable(module_name: str, qualname: str, obj: object) -> bool:
         return False
 
 
+def _write_slot(graph, data: dict) -> None:
+    """The graph's metadata slot: ``set_meta_data`` up to SciQLopPlots 0.52, ``set_metadata`` after."""
+    setter = getattr(graph, "set_metadata", None) or graph.set_meta_data
+    setter(data)
+
+
+def _read_slot(graph) -> dict:
+    getter = getattr(graph, "metadata", None) or graph.meta_data
+    return getter() or {}
+
+
 def attach_context(graph, ctx: GraphContext,
                    rich: Optional[GraphRichRefs] = None) -> None:
     """Write the lean envelope to the C++ meta_data slot and stash rich refs.
@@ -92,7 +103,7 @@ def attach_context(graph, ctx: GraphContext,
     is gone.
     """
     try:
-        graph.set_meta_data(ctx.to_meta_data())
+        _write_slot(graph, ctx.to_meta_data())
     except Exception:
         log.debug("set_meta_data failed for %s", ctx.graph_id, exc_info=True)
     if rich is not None:
@@ -110,7 +121,7 @@ def context_of(graph) -> Optional[GraphContext]:
     so a newer SciQLop's extra fields don't blow up older readers.
     """
     try:
-        raw = graph.meta_data() or {}
+        raw = _read_slot(graph)
     except AttributeError:
         return None
     if not raw or "kind" not in raw:
@@ -167,7 +178,7 @@ def update_knobs(graph, knobs: dict) -> None:
         return
     ctx.knobs = dict(knobs)
     try:
-        graph.set_meta_data(ctx.to_meta_data())
+        _write_slot(graph, ctx.to_meta_data())
     except Exception:
         log.debug("update_knobs set_meta_data failed", exc_info=True)
 
@@ -185,7 +196,7 @@ def attach_data_meta(graph, data_meta: dict) -> None:
         return
     ctx.data_meta = dict(data_meta)
     try:
-        graph.set_meta_data(ctx.to_meta_data())
+        _write_slot(graph, ctx.to_meta_data())
     except Exception:
         log.debug("attach_data_meta set_meta_data failed", exc_info=True)
 
@@ -272,9 +283,9 @@ def build_static_ctx(graph, *, panel_name: str, plot_index: int,
 
 
 def graph_name(graph) -> str:
-    """Display name for a graph. Real SciQLopPlots graphs expose ``name`` as a
-    string property; legacy/test stand-ins expose it as a method. Falls back to
-    ``objectName()`` when neither yields anything usable.
+    """Display name for a graph. SciQLopPlots <= 0.52 exposes ``name`` as a string
+    property, later versions as a method. Falls back to ``objectName()`` when
+    neither yields anything usable.
     """
     n = getattr(graph, "name", None)
     if callable(n):

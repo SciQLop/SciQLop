@@ -46,9 +46,10 @@ def _items_per_plot(panel, item_type):
     (_windowed, "SciQLopVerticalSpan", [1, 1]),
     (_windowed_on_own_plot, "SciQLopVerticalSpan", [0, 1]),
     (_cursor, "SciQLopVerticalLine", [1, 1]),
-    # A plot-scoped line is created from Python and Python owns it, so it is no
-    # Qt child of its plot: this only shows it did not spread (see test_cursor_knob).
-    (_cursor_on_own_plot, "SciQLopVerticalLine", [0, 0]),
+    # A plot-scoped line is created from Python. Up to SciQLopPlots 0.52 Python owns it, so it is
+    # no Qt child of its plot ([0, 0]); later versions parent it to its plot ([0, 1]). Either
+    # way it did not spread to the first plot (see test_cursor_knob).
+    (_cursor_on_own_plot, "SciQLopVerticalLine", ([0, 0], [0, 1])),
 ])
 def test_scope_across_panel(qtbot, main_window, callback, item, expected):
     import SciQLopPlots
@@ -65,4 +66,5 @@ def test_scope_across_panel(qtbot, main_window, callback, item, expected):
     panel.plot(raw)
     panel.plot(windowed)
     item_type = getattr(SciQLopPlots, item)
-    qtbot.waitUntil(lambda: _items_per_plot(panel, item_type) == expected, timeout=3000)
+    accepted = expected if isinstance(expected, tuple) else (expected,)
+    qtbot.waitUntil(lambda: _items_per_plot(panel, item_type) in accepted, timeout=3000)

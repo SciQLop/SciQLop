@@ -9,6 +9,7 @@ from SciQLop.components.comparison.backend.model import Comparison, Variant
 from SciQLop.components.plotting.panel_template import PanelTemplate, PlotModel, ProductModel, TimeRangeModel
 from SciQLop.core.plot_hints import AxisHints, PlotHints
 from SciQLop.core.graph_context import graph_name
+from SciQLop.components.plotting.panel_introspection import ordered_panel_plots
 
 BASE_RANGE = (1_000.0, 1_100.0)
 
@@ -257,7 +258,7 @@ def test_inner_panel_is_read_only(main_window, qtbot):
     qtbot.addWidget(panel)
     assert not panel.acceptDrops()
     assert not panel.findChildren(ProductSearchOverlay)
-    assert plots == [panel.plots()[0].data()]
+    assert plots == [ordered_panel_plots(panel)[0]]
 
 
 def test_inner_panel_uses_the_given_time_range(main_window, qtbot):
@@ -316,7 +317,7 @@ def test_read_only_panel_menu_has_no_export_or_input_reset(main_window, qtbot, r
     editable = not read_only
     assert ("Export" in texts) == editable
     assert any(t.startswith("Reset inputs:") for t in texts) == editable
-    graph = _graphs(panel.plots()[0].data())[0]
+    graph = _graphs(ordered_panel_plots(panel)[0])[0]
     assert (getattr(graph, "_knob_inspector_ext", None) is not None) == editable
 
 

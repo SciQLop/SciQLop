@@ -162,8 +162,8 @@ def test_vp_debug_panel_attaches_on_open_and_cleans_on_force_close(main_window, 
     from SciQLop.user_api.virtual_products.debug import _create_debug_panel
     _extend("px_demo.ext", _recorder("px_demo.ext", events), kinds=(TIME_PANEL,))
     panel = _create_debug_panel("px_debug")
-    assert _mine(events) == [("attach", "px_demo.ext", panel.name)]
-    main_window.dock_manager.findDockWidget(panel.name).closeDockWidget()
+    assert _mine(events) == [("attach", "px_demo.ext", panel.objectName())]
+    main_window.dock_manager.findDockWidget(panel.objectName()).closeDockWidget()
     qtbot.waitUntil(lambda: _mine(events)[-1:] == [("clean", "px_demo.ext", "VP Debug: px_debug")])
     assert main_window._panel_extensions._cleanups == {}
 

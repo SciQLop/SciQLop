@@ -71,7 +71,8 @@ def test_release_covers_a_parented_python_subclass_widget(qtbot, qapp):
     container = QWidget()
     panel = TimeSyncPanel(parent=container, name="parented_panel")
     assert panel.parent() is container
-    assert _has_ownership(panel), "expected a parented Python-subclass widget to be owned"
+    # Up to SciQLopPlots 0.52 the panel stays Python-owned here; later versions hand it to its
+    # C++ parent already. Either way it must end up valid and not Python-owned.
 
     _release_leftover_widget_ownership([container, panel])
 

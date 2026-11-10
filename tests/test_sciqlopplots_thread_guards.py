@@ -14,7 +14,7 @@ from tests.test_panel_close_busy import _plot_a_blocked_callback
 def test_destroying_a_graph_does_not_wait_for_its_running_callback(qtbot, qapp, main_window):
     """Bypasses remove_panel's deferral: the container is deleted while the callback runs."""
     panel, release, returned = _plot_a_blocked_callback(qtbot)
-    dock_widget = main_window.dock_manager.findDockWidget(panel._get_impl_or_raise().name)
+    dock_widget = main_window.dock_manager.findDockWidget(panel._get_impl_or_raise().objectName())
     container = dock_widget.takeWidget()
     dock_widget.closeDockWidget()
 

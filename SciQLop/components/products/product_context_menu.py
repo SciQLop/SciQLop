@@ -5,6 +5,7 @@ from SciQLopPlots import ProductsModel, ProductsModelNodeType, PlotType
 
 from SciQLop.components.plotting.ui.time_sync_panel import plot_product
 from SciQLop.components.command_palette.menu_entries import add_menu_entries
+from SciQLop.core.graph_context import graph_name
 from SciQLop.core.menus import PRODUCT_TREE
 from SciQLop.core.mime import decode_mime
 from SciQLop.core.ui.tooltips import rich_tooltip
@@ -55,7 +56,7 @@ def _build_plot_target_menu(menu: QMenu, product_path: list[str], main_window):
             panel_name, "Choose a plot in this panel."))
         plots = panel.plots()
         for i, plot_widget in enumerate(plots):
-            graph_names = [g.name for g in plot_widget.plottables()]
+            graph_names = [graph_name(g) for g in plot_widget.plottables()]
             label = ", ".join(graph_names) if graph_names else f"Plot {i + 1}"
             plot_action = panel_menu.addAction(
                 label, lambda p=plot_widget, pp=product_path: plot_product(p, pp))

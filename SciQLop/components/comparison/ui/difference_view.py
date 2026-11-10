@@ -214,9 +214,10 @@ def _add_relation(panel, specs: tuple[GraphSpec, GraphSpec], base_graph, op: Ope
 
 
 def _plot_position(panel, plot) -> int:
+    from SciQLop.components.plotting.panel_introspection import ordered_panel_plots
     from SciQLop.components.plotting.ui.time_sync_panel import _plot_key
     key = _plot_key(plot)
-    return next(i for i, ptr in enumerate(panel.plots()) if _plot_key(ptr.data()) == key)
+    return next(i for i, p in enumerate(ordered_panel_plots(panel)) if _plot_key(p) == key)
 
 
 def build_difference(comparison: Comparison, sides: list[Side], options: dict,

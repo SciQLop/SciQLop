@@ -66,7 +66,7 @@ def test_repro(main_window, qapp, qtbot, test_plugin):
     # this fires CDockWidgetTab.closeRequested which is wired internally
     # to the dock-area close machinery; goes through queued
     # QAction.trigger() rather than the direct programmatic close API.
-    panel_name = p._impl.name
+    panel_name = p._impl.objectName()
     dw = main_window.dock_manager.findDockWidget(panel_name)
     assert dw is not None
     plots = p._impl.plots()

@@ -71,11 +71,11 @@ def test_plot_function_name_hint_from_function_name(plot_panel):
         return x, np.sin(x)
 
     _, graph = plot_panel.plot_function(my_signal)
-    assert graph._get_impl_or_raise().name == "my_signal"  # base name hint applied
+    assert graph._get_impl_or_raise().objectName() == "my_signal"  # base name hint applied
 
     _, graph2 = plot_panel.plot_function(
         lambda s, e: (np.array([s, e]), np.array([0.0, 1.0])))
-    assert graph2._get_impl_or_raise().name != "my_signal"  # <lambda> is skipped
+    assert graph2._get_impl_or_raise().objectName() != "my_signal"  # <lambda> is skipped
 
 
 def test_plot_data_forwards_set_params_only(plot_panel, monkeypatch):
@@ -118,7 +118,7 @@ def test_plot_data_name_applied_without_forwarding(plot_panel, monkeypatch):
     y = np.sin(x)
     _, graph = plot_panel.plot_data(x, y, name="my_line")
     assert "name" not in captured
-    assert graph._get_impl_or_raise().name == "my_line"
+    assert graph._get_impl_or_raise().objectName() == "my_line"
 
 
 def test_plot_product_keyword_only_and_backward_compatible(plot_panel):
@@ -232,7 +232,7 @@ def test_plot_level_name_is_observable(plot_panel):
     y = np.sin(x)
     plot, _g = plot_panel.plot_data(x, y)      # a TimeSeriesPlot
     graph = plot.plot(x, np.cos(x), name="second")
-    assert graph._impl.name == "second"
+    assert graph._impl.objectName() == "second"
 
 
 def test_plot_level_name_is_observable_on_xy_plot(plot_panel):
@@ -247,7 +247,7 @@ def test_plot_level_name_is_observable_on_xy_plot(plot_panel):
     y = np.sin(x)
     plot, _g = plot_panel.plot_data(x, y, plot_type=PlotType.XY)
     graph = plot.plot(x, np.cos(x), name="xy_second")
-    assert graph._impl.name == "xy_second"
+    assert graph._impl.objectName() == "xy_second"
 
 
 def test_plot_level_name_is_observable_on_colormap(plot_panel):
@@ -265,7 +265,7 @@ def test_plot_level_name_is_observable_on_colormap(plot_panel):
     # a plot can host only one (see _reject_if_colormap_already_present).
     plot, _g = plot_panel.plot_data(x, x, plot_type=PlotType.XY)
     colormap = plot.plot(x, y, z, name="my_colormap")
-    assert colormap._impl.name == "my_colormap"
+    assert colormap._impl.objectName() == "my_colormap"
 
 
 def test_plot_level_colors_and_labels_still_forward(plot_panel):
@@ -299,7 +299,7 @@ def test_plot_level_name_not_forwarded_via_kwargs(plot_panel, monkeypatch):
     monkeypatch.setattr(type(impl), "plot", spy)
     graph = plot.plot(x, np.cos(x), name="not_forwarded")
     assert "name" not in captured
-    assert graph._impl.name == "not_forwarded"
+    assert graph._impl.objectName() == "not_forwarded"
 
 
 def test_plot_level_name_is_observable_on_product(plot_panel, simple_vp_callback):
@@ -321,7 +321,7 @@ def test_plot_level_name_is_observable_on_product(plot_panel, simple_vp_callback
         "test_plot_level_name_kwargs/vp1", simple_vp_callback,
         VirtualProductType.Scalar, labels=["y"])
     graph = plot.plot(vp, name="product_name")
-    assert graph._impl.name == "product_name"
+    assert graph._impl.objectName() == "product_name"
 
 
 def test_scatter_labels_observable(plot_panel):
@@ -364,7 +364,7 @@ def test_scatter_name_applied_without_forwarding(plot_panel, monkeypatch):
     monkeypatch.setattr(type(impl), "scatter", spy)
     graph = plot.scatter(x, np.cos(x), name="my_scatter")
     assert "name" not in captured
-    assert graph._impl.name == "my_scatter"
+    assert graph._impl.objectName() == "my_scatter"
 
 
 def test_plot_data_xy_honours_an_explicit_graph_type(plot_panel):

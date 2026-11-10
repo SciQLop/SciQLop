@@ -36,7 +36,7 @@ def test_add_event_targets_the_focused_panel(qtbot, qapp, monkeypatch):
         browser._event_model.set_context(provider, cat)
         browser._event_model.set_events(provider.events(cat))
 
-        dock2 = win.dock_manager.findDockWidget(panel2.name)
+        dock2 = win.dock_manager.findDockWidget(panel2.objectName())
         assert dock2 is not None
         win.dock_manager.setDockWidgetFocused(dock2)
 

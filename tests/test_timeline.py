@@ -138,6 +138,13 @@ def test_style_defaults_to_wave_and_switches_to_bars(timeline):
         timeline.style = "gantt"
 
 
+def _sciqlopplots_member(enum, member):
+    """The enum member SciQLopPlots > 0.52 takes, or None with 0.52 (which takes the string)."""
+    import SciQLopPlots
+    cls = getattr(SciQLopPlots, enum, None)
+    return getattr(cls, member) if cls is not None else None
+
+
 class _RecordingTimeline:
     """Stands in for SciQLopTimeline to see what the wrapper hands to SciQLopPlots."""
     snap_to = None
@@ -166,7 +173,8 @@ def test_stacking_and_overlap_rules_pass_through(timeline):
     timeline.category_order = ("BASE", "HKM", "LM")
     timeline.forbid_overlap = 1
     impl = timeline._impl
-    assert (impl.stack, impl.category_order, impl.forbid_overlap) == ("category", ["BASE", "HKM", "LM"], True)
+    assert impl.stack in ("category", _sciqlopplots_member("TimelineStack", "Category"))
+    assert (impl.category_order, impl.forbid_overlap) == (["BASE", "HKM", "LM"], True)
     assert not {"stack", "category_order", "forbid_overlap"} & set(vars(timeline))
 
 

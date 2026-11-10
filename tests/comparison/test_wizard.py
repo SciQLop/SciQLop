@@ -101,7 +101,7 @@ def test_dialog_builds_time_comparison(main_window, qtbot, opened):
     from SciQLop.components.comparison.ui.panel import ComparisonPanel
     _, catalog = _catalog_with("CmpWizProv", *(_event(f"e{i}", i * 5) for i in range(3)))
     base = _base_panel(main_window, qtbot, "vp_dialog")
-    dialog = _dialog(qtbot, main_window, base_panel=base.name)
+    dialog = _dialog(qtbot, main_window, base_panel=base.objectName())
     dialog.dimension_buttons["time"].click()
     _check_events(dialog.picker, catalog, 2)
     assert dialog.compare_button.isEnabled()
@@ -228,7 +228,7 @@ def test_open_compare_events_presets_the_dialog(main_window, qtbot, opened):
     base.catalog_manager.add_catalog(catalog)
     dialog = open_compare_events(catalog_arg_value(provider.name, catalog.uuid), "o1,o3,o2")
     qtbot.addWidget(dialog)
-    assert dialog.base_combo.currentText() == base.name
+    assert dialog.base_combo.currentText() == base.objectName()
     assert dialog.dimension_buttons["time"].isChecked()
     assert [v.label for v in dialog.picker.variants()] == ["2020-01-01T03:00:00+00:00", "2020-01-01T06:00:00+00:00"]
     dialog.compare_button.click()
@@ -270,7 +270,7 @@ def test_dialog_accepts_user_api_panel(main_window, qtbot, opened):
     from SciQLop.user_api.plot._panel import PlotPanel
     base = _base_panel(main_window, qtbot, "vp_wrapper")
     dialog = _dialog(qtbot, main_window, base_panel=PlotPanel(base))
-    assert dialog.base_combo.currentText() == base.name
+    assert dialog.base_combo.currentText() == base.objectName()
     dialog.dimension_buttons["settings"].click()
     assert dialog.picker is not None
 
@@ -325,7 +325,7 @@ def test_panel_menu_opens_the_dialog_on_that_panel(main_window, qtbot, opened):
     action.trigger()
     [dialog] = [d for d in main_window.findChildren(CompareDialog) if d.isVisible()]
     qtbot.addWidget(dialog)
-    assert dialog.base_combo.currentText() == base.name
+    assert dialog.base_combo.currentText() == base.objectName()
 
 
 def _product_mime(path):
@@ -368,7 +368,7 @@ def test_product_drop_fills_the_path(main_window, qtbot):
 def test_compare_disabled_once_the_base_panel_is_closed(main_window, qtbot, opened):
     _, catalog = _catalog_with("CmpWizClosed", _event("c1", 0))
     base = _base_panel(main_window, qtbot, "vp_closed")
-    dialog = _dialog(qtbot, main_window, base_panel=base.name)
+    dialog = _dialog(qtbot, main_window, base_panel=base.objectName())
     _check_events(dialog.picker, catalog, 1)
     assert dialog.compare_button.isEnabled()
     main_window.remove_panel(base)

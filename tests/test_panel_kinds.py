@@ -48,8 +48,8 @@ def test_the_time_panel_is_a_core_kind(main_window, demo_kinds):
     panel = main_window.new_plot_panel()
     assert isinstance(panel, TimeSyncPanel)
     assert panel_kind_of(panel) == TIME_PANEL
-    assert panel.name.startswith("Panel")
-    assert panel.name in main_window.plot_panels()
+    assert panel.objectName().startswith("Panel")
+    assert panel.objectName() in main_window.plot_panels()
 
 
 def test_open_panel_docks_a_plugin_widget(main_window, demo_kinds, qtbot):

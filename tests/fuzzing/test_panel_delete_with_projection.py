@@ -46,7 +46,7 @@ def test_repro(main_window, qapp, qtbot, test_plugin):
 
     # Dock-close path: click the (X) on the tab, same as the user closing
     # the panel. Fires CDockWidgetTab.closeRequested → queued teardown.
-    panel_name = p._impl.name
+    panel_name = p._impl.objectName()
     dw = main_window.dock_manager.findDockWidget(panel_name)
     assert dw is not None
     plots = p._impl.plots()

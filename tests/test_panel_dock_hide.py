@@ -20,7 +20,7 @@ def _flush():
 
 def test_hiding_a_panel_dock_keeps_the_panel(qtbot, qapp, main_window):
     panel = main_window.new_native_plot_panel()
-    dock_widget = main_window.dock_manager.findDockWidget(panel.name)
+    dock_widget = main_window.dock_manager.findDockWidget(panel.objectName())
 
     dock_widget.toggleView(False)
     _flush()
@@ -29,14 +29,14 @@ def test_hiding_a_panel_dock_keeps_the_panel(qtbot, qapp, main_window):
     dock_widget.toggleView(True)
     _flush()
     assert shiboken6.isValid(panel)
-    assert main_window.plot_panel(panel.name) is not None
+    assert main_window.plot_panel(panel.objectName()) is not None
     main_window.remove_panel(panel)
     _flush()
 
 
 def test_force_closing_a_panel_dock_still_destroys_the_panel(qtbot, qapp, main_window):
     panel = main_window.new_native_plot_panel()
-    dock_widget = main_window.dock_manager.findDockWidget(panel.name)
+    dock_widget = main_window.dock_manager.findDockWidget(panel.objectName())
 
     dock_widget.closeDockWidget()
     _flush()

@@ -107,10 +107,10 @@ def test_reopened_debug_panel_reuses_its_name(qtbot, qapp, main_window):
     from SciQLop.user_api.virtual_products.debug import _create_debug_panel
 
     first = _create_debug_panel("reopen_me")
-    main_window.dock_manager.findDockWidget(first.name).requestCloseDockWidget()
+    main_window.dock_manager.findDockWidget(first.objectName()).requestCloseDockWidget()
 
     second = _create_debug_panel("reopen_me")
-    assert second.name == "VP Debug: reopen_me"
+    assert second.objectName() == "VP Debug: reopen_me"
     main_window.remove_panel(second)
 
 
@@ -118,7 +118,7 @@ def test_renamed_debug_panel_updates_its_tab_and_lookups(qtbot, qapp, main_windo
     from SciQLop.user_api.virtual_products.debug import _create_debug_panel, _find_existing_debug_dock
 
     panel = _create_debug_panel("rename_me")
-    dock_widget = main_window.dock_manager.findDockWidget(panel.name)
+    dock_widget = main_window.dock_manager.findDockWidget(panel.objectName())
 
     panel.setObjectName("Renamed debug")
 

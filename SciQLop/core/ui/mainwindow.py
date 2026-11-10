@@ -1017,10 +1017,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         return [p for p in self.panels() if isinstance(p, TimeSyncPanel)]
 
     def plot_panels(self) -> List[str]:
-        return [p.name for p in self._time_panels()]
+        return [p.objectName() for p in self._time_panels()]
 
     def plot_panel(self, name: str) -> Union[TimeSyncPanel, None]:
-        return next((p for p in self._time_panels() if p.name == name), None)
+        return next((p for p in self._time_panels() if p.objectName() == name), None)
 
     def _set_full_screen(self, full: bool) -> None:
         self.showFullScreen() if full else self.showNormal()

@@ -68,7 +68,7 @@ def test_closing_a_panel_does_not_wait_for_its_running_callback(qtbot, qapp, mai
     """Timing-free: destroying the graph used to join the callback's thread, so the
     callback had already returned by the time the deferred delete was flushed."""
     panel, release, returned = _plot_a_blocked_callback(qtbot)
-    panel_name = panel._get_impl_or_raise().name
+    panel_name = panel._get_impl_or_raise().objectName()
     dock_widget = main_window.dock_manager.findDockWidget(panel_name)
     container = dock_widget.widget()
 

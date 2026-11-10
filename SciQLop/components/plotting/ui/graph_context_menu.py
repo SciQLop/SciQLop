@@ -67,7 +67,7 @@ def _add_graph_entries_menu(menu, panel) -> None:
     for plot in ordered_plots(panel):
         for g in plot_graphs(plot):
             sub = graphs.addMenu(graph_name(g))
-            if not add_menu_entries(sub, GRAPH, {"panel": panel.name, "graph": graph_name(g)}):
+            if not add_menu_entries(sub, GRAPH, {"panel": panel.objectName(), "graph": graph_name(g)}):
                 graphs.removeAction(sub.menuAction())
     if graphs.actions():
         menu.addSeparator()

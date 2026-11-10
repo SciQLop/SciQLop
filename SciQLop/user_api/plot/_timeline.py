@@ -11,6 +11,44 @@ from ._graphs import _wire_destroyed
 from ._thread_safety import on_main_thread, GuardedImpl
 
 
+def _read(impl, attr: str):
+    """A timeline setting: a property up to SciQLopPlots 0.52, a method after."""
+    value = getattr(impl, attr)
+    return value() if callable(value) else value
+
+
+def _write(impl, attr: str, value) -> None:
+    """Up to 0.52 the property is what validates and converts; after it, ``set_<attr>``."""
+    setter = getattr(impl, f"set_{attr}", None)
+    if isinstance(getattr(type(impl), attr, None), property) or setter is None:
+        setattr(impl, attr, value)
+    else:
+        setter(value)
+
+
+def _members(enum: str, names: dict) -> dict:
+    """{member: the string this API uses}. SciQLopPlots > 0.52 takes and returns these enum
+    members where 0.52 used the strings; empty before, so strings pass through unchanged."""
+    import SciQLopPlots
+    cls = getattr(SciQLopPlots, enum, None)
+    return {getattr(cls, member): name for member, name in names.items()} if cls is not None else {}
+
+
+_STYLES = _members("TimelineStyle", {"Wave": "wave", "Bars": "bars"})
+_STACKS = _members("TimelineStack", {"Off": None, "Time": "time", "Category": "category"})
+_EDIT_MODES = _members("TimelineEditMode", {"Move": "move", "Resize": "resize", "ChangeLane": "change_lane",
+                                            "Create": "create", "Delete": "delete"})
+
+
+def _to_member(table: dict, what: str, name):
+    if not table:
+        return name
+    by_name = {v: k for k, v in table.items()}
+    if name not in by_name:
+        raise ValueError(f"{what} must be one of {sorted(map(str, by_name))}, not {name!r}")
+    return by_name[name]
+
+
 class Interval(NamedTuple):
     """One interval as last given to :meth:`Timeline.set_intervals`. Times are epoch seconds."""
     id: Hashable
@@ -131,12 +169,12 @@ class Timeline(GuardedImpl):
     @on_main_thread
     def lanes(self) -> List[str]:
         """Displayed lanes, top to bottom. Assign a list to reorder them or hide the others."""
-        return list(self._get_impl_or_raise().lanes)
+        return list(_read(self._get_impl_or_raise(), "lanes"))
 
     @lanes.setter
     @on_main_thread
     def lanes(self, names: Sequence[str]):
-        self._get_impl_or_raise().lanes = list(names)
+        _write(self._get_impl_or_raise(), "lanes", list(names))
 
     @on_main_thread
     def rename_lane(self, old: str, new: str):
@@ -148,12 +186,13 @@ class Timeline(GuardedImpl):
     def style(self) -> str:
         """``"wave"`` (bus-shaped bars and an idle line per lane, like a logic analyzer;
         the default) or ``"bars"`` (plain bars)."""
-        return self._get_impl_or_raise().style
+        value = _read(self._get_impl_or_raise(), "style")
+        return _STYLES.get(value, value)
 
     @style.setter
     @on_main_thread
     def style(self, name: str):
-        self._get_impl_or_raise().style = name
+        _write(self._get_impl_or_raise(), "style", _to_member(_STYLES, "style", name))
 
     @property
     @on_main_thread
@@ -188,37 +227,38 @@ class Timeline(GuardedImpl):
     @on_main_thread
     def editable(self) -> bool:
         """Let the user edit intervals with the mouse and keyboard (see ``edit_modes``)."""
-        return self._get_impl_or_raise().editable
+        return _read(self._get_impl_or_raise(), "editable")
 
     @editable.setter
     @on_main_thread
     def editable(self, value: bool):
-        self._get_impl_or_raise().editable = bool(value)
+        _write(self._get_impl_or_raise(), "editable", bool(value))
 
     @property
     @on_main_thread
     def edit_modes(self) -> set:
         """Allowed gestures among ``{"move", "resize", "change_lane", "create", "delete"}``."""
-        return self._get_impl_or_raise().edit_modes
+        return {_EDIT_MODES.get(m, m) for m in _read(self._get_impl_or_raise(), "edit_modes")}
 
     @edit_modes.setter
     @on_main_thread
     def edit_modes(self, modes):
-        self._get_impl_or_raise().edit_modes = set(modes)
+        modes = [_to_member(_EDIT_MODES, "edit_modes", m) for m in set(modes)] if _EDIT_MODES else set(modes)
+        _write(self._get_impl_or_raise(), "edit_modes", modes)
 
     @property
     @on_main_thread
     def snap_to(self):
         """``"edges"``, a step in seconds, a list of times to snap to (epoch seconds,
         ``datetime64``, datetimes or date strings), or ``None``."""
-        return self._get_impl_or_raise().snap_to
+        return _read(self._get_impl_or_raise(), "snap_to")
 
     @snap_to.setter
     @on_main_thread
     def snap_to(self, value):
         if not (value is None or isinstance(value, (str, int, float))):
             value = _epoch_seconds(value)
-        self._get_impl_or_raise().snap_to = value
+        _write(self._get_impl_or_raise(), "snap_to", value)
 
     @property
     @on_main_thread
@@ -226,35 +266,36 @@ class Timeline(GuardedImpl):
         """How overlapping intervals of one lane are laid out: ``None`` (drawn on top of
         each other), ``"time"`` (into sub-rows as needed) or ``"category"`` (one fixed
         sub-row per category, in ``category_order``)."""
-        return self._get_impl_or_raise().stack
+        value = _read(self._get_impl_or_raise(), "stack")
+        return _STACKS.get(value, value)
 
     @stack.setter
     @on_main_thread
     def stack(self, mode: Optional[str]):
-        self._get_impl_or_raise().stack = mode
+        _write(self._get_impl_or_raise(), "stack", _to_member(_STACKS, "stack", mode))
 
     @property
     @on_main_thread
     def category_order(self) -> List[str]:
         """Sub-row order for ``stack="category"``; defaults to first-seen."""
-        return list(self._get_impl_or_raise().category_order)
+        return list(_read(self._get_impl_or_raise(), "category_order"))
 
     @category_order.setter
     @on_main_thread
     def category_order(self, names: Sequence[str]):
-        self._get_impl_or_raise().category_order = list(names)
+        _write(self._get_impl_or_raise(), "category_order", list(names))
 
     @property
     @on_main_thread
     def forbid_overlap(self) -> bool:
         """Stop drags at the neighbouring block of the same row (same lane, and same
         category with ``stack="category"``)."""
-        return self._get_impl_or_raise().forbid_overlap
+        return _read(self._get_impl_or_raise(), "forbid_overlap")
 
     @forbid_overlap.setter
     @on_main_thread
     def forbid_overlap(self, value: bool):
-        self._get_impl_or_raise().forbid_overlap = bool(value)
+        _write(self._get_impl_or_raise(), "forbid_overlap", bool(value))
 
     @on_main_thread
     def on_edit(self, callback: Callable[[List[IntervalEdit]], None]):

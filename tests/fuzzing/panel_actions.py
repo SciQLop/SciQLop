@@ -19,8 +19,8 @@ def create_panel(main_window, model):
     from SciQLop.user_api.plot import create_plot_panel
 
     panel = create_plot_panel()
-    # Use ._impl.name to match what main_window.plot_panels() returns
-    return panel._impl.name
+    # Use ._impl.objectName() to match what main_window.plot_panels() returns
+    return panel._impl.objectName()
 
 
 @registry.register

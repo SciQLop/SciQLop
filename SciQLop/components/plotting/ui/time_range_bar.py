@@ -192,7 +192,7 @@ class TimeRangeBar(QWidget):
     def set_range(self, tr: TimeRange):
         self._suppressing = True
         try:
-            self._start_picker.setDateTime(tr.datetime_start())
+            self._start_picker.setDateTime(QDateTime.fromMSecsSinceEpoch(int(tr.start() * 1000), QTimeZone.UTC))
             dt = tr.stop() - tr.start()
             self._duration_combo.setCurrentIndex(_closest_duration_index(dt))
         finally:

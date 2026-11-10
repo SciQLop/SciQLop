@@ -45,7 +45,7 @@ def open_compare_events(catalog: str = "", events: str = ""):
         log.warning("select at least two events to compare")
         return None
     win = _main_window()
-    showing = [p.name for p in panels_showing(win, resolved.provider.name, resolved.uuid)]
+    showing = [p.objectName() for p in panels_showing(win, resolved.provider.name, resolved.uuid)]
     first = picked[0]
     dialog = CompareDialog(win, preset=("time", [time_variant(e) for e in picked[1:]]),
                            base_range=(first.start.timestamp(), first.stop.timestamp()), **_base_of(showing))

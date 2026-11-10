@@ -122,7 +122,8 @@ def test_colormap_properties(plot_panel):
 
 
 def test_histogram2d_properties(plot_panel):
-    plot, _ = _two_line_graph(plot_panel)
+    # An x-y plot: log bins on a time axis are refused (SciQLopPlots > 0.52).
+    plot, _ = plot_panel.plot_data(X, np.sin(X), plot_type=PlotType.XY)
     hist = plot.histogram2d(np.random.rand(500), np.random.rand(500))
     hist.bins = (20, 30)
     hist.x_bins_log = True
