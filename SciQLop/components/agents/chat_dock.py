@@ -423,9 +423,10 @@ class AgentChatDock(QWidget):
             session = self._sessions.get(name) or self._create_session(name)
         except ToolMissing as missing:
             self._show_backend_failure(name, missing)
-            tool = missing.tool   # `missing` is unbound once the except block ends
+            # `missing` is unbound once the except block ends.
+            tool, installed = missing.tool, getattr(missing, "installed", None)
             # Deferred: this also runs while the dock is first built, which must not block on a dialog.
-            QTimer.singleShot(0, lambda: self._install_then_retry(name, tool))
+            QTimer.singleShot(0, lambda: self._install_then_retry(name, tool, installed))
             return
         except Exception as error:
             self._show_backend_failure(name, error)
@@ -439,9 +440,10 @@ class AgentChatDock(QWidget):
         self._set_enabled()
         self._bind_to_session(session)
 
-    def _install_then_retry(self, name: str, tool) -> None:
-        """A backend whose plugin-declared tool is missing: offer to install it, then start it again."""
-        if offer_tool_install(self, tool) and self._backend_combo.currentData() == name:
+    def _install_then_retry(self, name: str, tool, installed=None) -> None:
+        """A backend whose plugin-declared tool is missing or outdated: offer to install or update it, then
+        start the backend again."""
+        if offer_tool_install(self, tool, installed) and self._backend_combo.currentData() == name:
             self._on_backend_changed(self._backend_combo.currentIndex())
 
     def _show_backend_failure(self, name: str, error: Exception) -> None:

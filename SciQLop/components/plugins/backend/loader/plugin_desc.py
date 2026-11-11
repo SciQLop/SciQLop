@@ -23,10 +23,11 @@ class ToolSpec(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     package: str
-    version: str = Field(default="", description="PEP 440 specifier appended to the package, e.g. '>=3.1,<4'")
+    version: str = Field(default="", description="Version range in the kind's syntax: PEP 440 for uv ('>=3.1,<4'), "
+                                                 "npm semver for npm ('>=2 <3')")
     commands: tuple[str, ...] = Field(default=(), description="Executables the package installs that the plugin runs")
     python: str = Field(default="", description="Python the tool needs, e.g. '>=3.12'; default: SciQLop's own")
-    kind: Literal["uv"] = "uv"
+    kind: Literal["uv", "npm"] = Field(default="uv", description="uv: a Python package; npm: an npm package")
 
 
 class PluginDesc(BaseModel):

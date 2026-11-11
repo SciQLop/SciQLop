@@ -99,7 +99,19 @@ def _do_open_catalog(catalog: str = ""):
     browser._catalog_tree.scrollTo(proxy_index)
 
 
+def _remove_unused_tools():
+    from SciQLop.components.workspaces.ui.tool_install import remove_unused_tools
+    remove_unused_tools(_get_win())
+
+
 def register_builtin_commands(registry):
+    registry.register(PaletteCommand(
+        id="workspace.remove_unused_tools",
+        name="Remove unused workspace tools",
+        description="Remove the command-line tools installed in this workspace that no active plugin uses anymore",
+        callback=_remove_unused_tools,
+        keywords=["tools", "uv", "npm", "clean", "disk"],
+    ))
     registry.register(PaletteCommand(
         id="plot.new_panel",
         name="New plot panel",

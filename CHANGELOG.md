@@ -103,7 +103,7 @@
 - `%install gh:owner/repo@tag` installs a package straight from GitHub. A GitHub URL works too. The package name is taken from the repo name.
 - `%install name @ git+https://...` works without quotes. Before, the spaces split it into three separate arguments.
 - `%restart` restarts SciQLop into the same workspace, like the Restart button in the settings. `%install` now points at it when an upgraded package needs a restart.
-- Plugins can declare command-line tools in `plugin.json` (`"tools"`). SciQLop installs each one with uv, in its own environment inside the workspace's `.tools` folder, when it is first needed, so a tool whose dependencies clash with SciQLop's (Mistral Vibe) still runs. An agent backend whose tool is missing offers to install it. Exported workspaces leave `.tools` out.
+- Plugins can declare command-line tools in `plugin.json` (`"tools"`). SciQLop installs each one with uv, in its own environment inside the workspace's `.tools` folder, when it is first needed, so a tool whose dependencies clash with SciQLop's (Mistral Vibe) still runs. An agent backend whose tool is missing offers to install it, and to update it when its plugin needs a newer version. Tools can be Python packages (installed with uv) or npm packages (with npm, for Node.js CLIs like opencode). "Remove unused workspace tools" in the command palette removes those no plugin uses anymore. Exported workspaces leave `.tools` out.
 
 ### Catalogs
 
