@@ -17,7 +17,7 @@ from SciQLop.components.workspaces.backend.example import Example
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest, edit_manifest
 from SciQLop.components.workspaces.backend.workspace_project import (
-    core_version_badge, installed_sciqlop_version, running_sciqlop_version,
+    _deduplicate_requirements, core_version_badge, installed_sciqlop_version, running_sciqlop_version,
 )
 from SciQLop.components.workspaces.backend.workspaces_manager import workspaces_manager_instance, WorkspaceManager
 from SciQLop.components.sciqlop_logging import getLogger
@@ -472,7 +472,8 @@ class WelcomeBackend(QObject):
                     json.dumps({"ok": False, "deps": new_deps, "dir": workspace_dir, "error": str(e)}))
                 return
             with edit_manifest(manifest_path) as current:
-                current.requires.extend(d for d in new_deps if d not in current.requires)
+                # Same rule as Workspace.add_packages: a newer spec of a package replaces the older one.
+                current.requires[:] = _deduplicate_requirements(current.requires + new_deps)
             self._emit_from_worker("dependency_install_finished",
                 json.dumps({"ok": True, "deps": new_deps, "dir": workspace_dir}))
 

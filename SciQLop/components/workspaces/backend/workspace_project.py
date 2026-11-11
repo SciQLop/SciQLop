@@ -224,8 +224,8 @@ def _project_slug(name: str) -> str:
 
 
 def _name_from_wheel_url(url: str) -> str | None:
-    """Extract the package name from a wheel filename in a URL."""
-    filename = url.split("?")[0].split("#")[0].rsplit("/", 1)[-1]
+    """Extract the package name from a wheel filename at the end of a URL or a path (/ or \\)."""
+    filename = re.split(r"[/\\]", url.split("?")[0].split("#")[0])[-1]
     if filename.endswith(".whl"):
         return filename.split("-")[0].replace("_", "-").lower()
     return None
@@ -254,8 +254,13 @@ def _normalize_url_requirement(req: str) -> str:
 
 
 def _extract_package_name(req: str) -> str:
-    """Return the normalised base package name from a PEP 508 requirement string."""
-    m = _PKG_NAME_RE.match(req.strip())
+    """Return the normalised base package name of a requirement: PEP 508 (``name>=1``, ``name @ url``), a
+    wheel given by path or URL (named by its file), or a GitHub URL (named by its repository). Otherwise
+    the regex below would name a local wheel by its whole path, a wheel URL "https" and a git URL "git"."""
+    wheel = _name_from_wheel_url(req.strip())
+    if wheel:
+        return wheel
+    m = _PKG_NAME_RE.match(_normalize_url_requirement(req))
     if m is None:
         return req.strip().lower()
     return m.group(1).lower().replace("_", "-").replace(".", "-")

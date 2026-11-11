@@ -593,3 +593,34 @@ class TestPyprojectEscaping:
         output = tmp_path / "pyproject.toml"
         generate_pyproject_toml(WorkspaceManifest(name="W", requires=["scipy>=1.11"]), [], output)
         assert '    "scipy>=1.11",' in output.read_text()
+
+
+class TestRequirementNamesOfPathsAndUrls:
+    """A workspace's requires list kept every wheel ever installed (sciqlop_cocat 0.1.0 ... 0.7.0 at once):
+    a local wheel path was 'named' by its whole path, a wheel URL 'https' and a bare git URL 'git'."""
+
+    @pytest.mark.parametrize("req, name", [
+        ("/Users/me/Downloads/sciqlop_cocat-0.7.0-py3-none-any.whl", "sciqlop-cocat"),
+        (r"C:\Users\me\Downloads\sciqlop_vibe-0.1.2-py3-none-any.whl", "sciqlop-vibe"),
+        ("https://github.com/SciQLop/sciqlop-plugins/releases/download/cdf_workbench/v0.7.0/"
+         "sciqlop_cdf_workbench-0.7.0-py3-none-any.whl", "sciqlop-cdf-workbench"),
+        ("git+https://github.com/LaboratoryOfPlasmaPhysics/spok", "spok"),
+        ("sciqlop_tohban @ git+https://github.com/jeandet/sciqlop_tohban@7b603ac", "sciqlop-tohban"),
+        ("cocat-rs>=0.1.3,<0.2", "cocat-rs"),
+        ("ipympl", "ipympl"),
+    ])
+    def test_name(self, req, name):
+        assert _extract_package_name(req) == name
+
+    def test_a_newer_wheel_replaces_the_older_one(self):
+        reqs = ["ipympl", "/d/sciqlop_cocat-0.1.0-py3-none-any.whl", "cocat-rs>=0.1.3,<0.2",
+                "/d/sciqlop_cocat-0.2.0-py3-none-any.whl", "/d/sciqlop_vibe-0.1.0-py3-none-any.whl",
+                "/d/sciqlop_cocat-0.7.0-py3-none-any.whl", "/d/sciqlop_vibe-0.1.2-py3-none-any.whl"]
+        assert _deduplicate_requirements(reqs) == [
+            "ipympl", "cocat-rs>=0.1.3,<0.2", "/d/sciqlop_cocat-0.7.0-py3-none-any.whl",
+            "/d/sciqlop_vibe-0.1.2-py3-none-any.whl"]
+
+    def test_two_different_urls_are_two_packages(self):
+        reqs = ["git+https://github.com/LaboratoryOfPlasmaPhysics/spok",
+                "https://example.org/x/other_pkg-1.0-py3-none-any.whl"]
+        assert _deduplicate_requirements(reqs) == reqs

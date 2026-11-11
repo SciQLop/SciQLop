@@ -237,3 +237,24 @@ def test_example_dependencies_install_like_every_other_live_install(qtbot, tmp_p
     assert installed == [["spok"]]
     assert json.loads(blocker.args[0])["ok"] is True
     assert WorkspaceManifest.load(tmp_path / "workspace.sciqlop").requires == ["spok"]
+
+
+def test_adding_a_newer_wheel_replaces_the_older_one(qtbot, tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+    from PySide6.QtCore import QObject
+    from SciQLop.components.welcome import backend as wb
+    from SciQLop.components.workspaces.backend import live_install
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+
+    old, new = "/d/sciqlop_cocat-0.6.3-py3-none-any.whl", "/d/sciqlop_cocat-0.7.0-py3-none-any.whl"
+    WorkspaceManifest(name="W", requires=["ipympl", old]).save(tmp_path / "workspace.sciqlop")
+    monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(tmp_path))
+    monkeypatch.setattr(live_install, "guarded_install", lambda specs: SimpleNamespace(returncode=0, stderr=""))
+    backend = wb.WelcomeBackend.__new__(wb.WelcomeBackend)
+    QObject.__init__(backend)
+
+    with qtbot.waitSignal(backend.dependency_install_finished, timeout=5000):
+        backend.add_dependencies_to_workspace(str(tmp_path), json.dumps([new]))
+
+    assert WorkspaceManifest.load(tmp_path / "workspace.sciqlop").requires == ["ipympl", new]
