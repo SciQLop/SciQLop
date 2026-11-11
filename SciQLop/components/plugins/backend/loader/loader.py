@@ -306,7 +306,8 @@ def _activate_one(entry: _Entry, main_window, declared, ep_plugins) -> PluginSta
         return PluginState("failed", version, reason=f"{type(e).__name__}: {e}")
     if api is not None:
         loaded_plugins.__dict__[entry.name] = api
-    return PluginState("active", version, api=api, module=mod, context=ctx)
+    return PluginState("active", version, api=api, module=mod, context=ctx,
+                       tools=tuple(entry.desc.tools) if entry.desc is not None else ())
 
 
 def _ready(name: str) -> None:

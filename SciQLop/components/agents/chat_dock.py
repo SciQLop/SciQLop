@@ -53,6 +53,8 @@ from .settings import AgentChatSettings, AgentSessionMeta, AgentWriteMode
 from .skills import AGENT_SKILLS, sync_skills
 from .tools import AGENT_TOOLS, build_sciqlop_tools
 from .workspace import current_workspace_dir
+from SciQLop.components.workspaces.backend.tools import ToolMissing
+from SciQLop.components.workspaces.ui.tool_install import offer_tool_install
 
 log = getLogger(__name__)
 
@@ -419,6 +421,12 @@ class AgentChatDock(QWidget):
             return
         try:
             session = self._sessions.get(name) or self._create_session(name)
+        except ToolMissing as missing:
+            self._show_backend_failure(name, missing)
+            tool = missing.tool   # `missing` is unbound once the except block ends
+            # Deferred: this also runs while the dock is first built, which must not block on a dialog.
+            QTimer.singleShot(0, lambda: self._install_then_retry(name, tool))
+            return
         except Exception as error:
             self._show_backend_failure(name, error)
             return
@@ -430,6 +438,11 @@ class AgentChatDock(QWidget):
         self._sessions[name] = session
         self._set_enabled()
         self._bind_to_session(session)
+
+    def _install_then_retry(self, name: str, tool) -> None:
+        """A backend whose plugin-declared tool is missing: offer to install it, then start it again."""
+        if offer_tool_install(self, tool) and self._backend_combo.currentData() == name:
+            self._on_backend_changed(self._backend_combo.currentIndex())
 
     def _show_backend_failure(self, name: str, error: Exception) -> None:
         """A plugin's backend raising in __init__ must not escape: this runs

@@ -23,6 +23,7 @@ class PluginState:
     api: object = None
     module: object = None
     context: object = None
+    tools: tuple = ()        # the ToolSpecs its plugin.json declares
 
 
 STATES: dict[str, PluginState] = {}

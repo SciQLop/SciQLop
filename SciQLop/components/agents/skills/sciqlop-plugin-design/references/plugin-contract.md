@@ -20,6 +20,7 @@
 | `optional_dependencies` | plugins you use when present; they load before you when they can. Inside a mutual pair (each optional to the other, or optional one way and required the other) one of you loads first, so `ctx.has(other)` is reliable only in `ready()` |
 | `provides` | `{extension point id: [contribution ids]}` plus `"extension_points": [ids you declare]`; shown by the app store |
 | `python_dependencies` | pip packages (numpy…); never other plugins |
+| `tools` | command-line tools you run that can't share SciQLop's venv (their pins clash): `[{"package": "mistral-vibe", "version": ">=3.1,<4", "commands": ["vibe-acp"], "python": ">=3.12"}]` (`version`, `python` optional). Each is installed with uv, in its own environment, in the workspace's `.tools` folder, only when needed. Get the path with `tool_command("vibe-acp")` (`SciQLop.components.workspaces.backend.tools`): it raises `ToolMissing` until installed, and the agent dock turns that into an install offer when your backend's `acp_command()` raises it. Never looked up on PATH |
 
 A packaged plugin ships `plugin.json` next to the module its `sciqlop.plugins` entry point names, and lists it in package data.
 Editable installs often list no files, so their `plugin.json` is not found and the plugin loads without dependencies.
