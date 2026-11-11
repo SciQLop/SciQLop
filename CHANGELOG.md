@@ -55,6 +55,7 @@
 
 ### Dependencies
 
+- agent-client-protocol is capped below 1.0. Version 1.0 changed its Python API, and the agent panel could not connect to any agent with it.
 - SciQLopPlots 0.52.0:
   - A curve plotted without labels can be styled right after `plot()` (line style, colour, width, markers). Before, the style was silently lost until the data came back.
   - A projection plot in a panel that syncs its time axis no longer crashes SciQLop.

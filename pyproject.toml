@@ -111,7 +111,7 @@ dev = [
     # runtime deps of the ACP layer (SciQLop/components/agents/acp), declared
     # for end users by the plugins that consume the layer; needed here so its
     # tests can run.
-    "agent-client-protocol>=0.12.0",
+    "agent-client-protocol>=0.12.0,<1",
     # >=1.19.0: earlier versions have no branch for a `CallToolResult` returned
     # by a low-level call_tool handler (the shape claude-agent-sdk's in-process
     # server produces). Being a pydantic model it satisfies `hasattr(__iter__)`,
