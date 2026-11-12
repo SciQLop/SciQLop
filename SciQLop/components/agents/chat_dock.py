@@ -85,6 +85,23 @@ class _AgentSession:
     stale: bool = False
 
 
+NO_ASSISTANT_NOTICE = "No AI assistant is installed yet. The Plugin Store has several."
+_PREVIEW_LIMIT = 2000
+
+
+def tool_call_question(assistant: str, tool_name: str, tool_input: dict) -> tuple[str, str]:
+    """What the approval dialog asks, and what it shows under Details: the code as code when the tool
+    runs code, the arguments as JSON otherwise."""
+    code = tool_input.get("code") if isinstance(tool_input, dict) else None
+    if isinstance(code, str):
+        text = f"{assistant} wants to run code in your session with <b>{tool_name}</b>. Allow?"
+        preview = code
+    else:
+        text = f"{assistant} wants to use <b>{tool_name}</b>. Allow?"
+        preview = json.dumps(tool_input, indent=2, default=str)
+    return text, preview if len(preview) <= _PREVIEW_LIMIT else preview[:_PREVIEW_LIMIT] + "…"
+
+
 class AgentChatDock(QWidget):
     def __init__(self, main_window, parent=None):
         super().__init__(parent)
@@ -212,7 +229,7 @@ class AgentChatDock(QWidget):
         self._writes_badge.setFlat(True)
         self._writes_badge.setCursor(Qt.CursorShape.PointingHandCursor)
         self._writes_badge.setToolTip(
-            "Current write-permission mode. Click to open settings.")
+            "What the assistant may change without asking. Click to open settings.")
         self._writes_badge.clicked.connect(self._show_settings_popup)
         header.addWidget(self._writes_badge)
 
@@ -220,6 +237,19 @@ class AgentChatDock(QWidget):
         self._status_label.setStyleSheet("color: gray;")
         header.addWidget(self._status_label, 1)
         layout.addLayout(header)
+
+        self._notice = QWidget(self)
+        notice_row = QHBoxLayout(self._notice)
+        notice_row.setContentsMargins(0, 0, 0, 0)
+        self._notice_label = QLabel(self._notice)
+        self._notice_label.setWordWrap(True)
+        notice_row.addWidget(self._notice_label, 1)
+        self._notice_button = QPushButton(self._notice)
+        self._notice_button.clicked.connect(self._on_notice_button)
+        notice_row.addWidget(self._notice_button)
+        self._notice_action = None
+        self._notice.hide()
+        layout.addWidget(self._notice)
 
         self._splitter = QSplitter(Qt.Orientation.Vertical, self)
         self._splitter.setChildrenCollapsible(False)
@@ -338,10 +368,8 @@ class AgentChatDock(QWidget):
             self._backend_combo.setCurrentIndex(names.index(self._preferred_backend(names)))
         self._backend_combo.blockSignals(False)
         if not names:
-            self._set_empty(
-                "No agent backends registered. Install sciqlop_claude or a "
-                "similar plugin to enable the chat."
-            )
+            self._set_empty()
+            self._show_notice(NO_ASSISTANT_NOTICE, "Open the Plugin Store", self._open_plugin_store)
             return names
         self._set_enabled()
         return names
@@ -354,16 +382,34 @@ class AgentChatDock(QWidget):
         remembered = AgentChatSettings().last_backend
         return next((n for n in (self._current, remembered) if n in names), names[0])
 
-    def _set_empty(self, reason: str) -> None:
+    def _set_empty(self, reason: str = "") -> None:
+        """Nothing to talk to: the inputs are disabled. *reason* is an error; a plain notice goes in the
+        notice row instead."""
         self._transcript.render_messages(
-            [ChatMessage(role="error", blocks=[TextBlock(text=reason)], done=True)]
-        )
+            [ChatMessage(role="error", blocks=[TextBlock(text=reason)], done=True)] if reason else [])
         for w in self._interactive:
             w.setEnabled(False)
 
     def _set_enabled(self) -> None:
+        self._notice.hide()
         for w in self._interactive:
             w.setEnabled(True)
+
+    def _show_notice(self, text: str, button: str, action) -> None:
+        """One line above the transcript with the one thing to do about it."""
+        self._notice_label.setText(text)
+        self._notice_button.setText(button)
+        self._notice_action = action
+        self._notice.show()
+
+    def _on_notice_button(self) -> None:
+        if self._notice_action is not None:
+            self._notice_action()
+
+    def _open_plugin_store(self) -> None:
+        show_store = getattr(self._main_window, "_show_appstore", None)
+        if show_store is not None:
+            show_store()
 
     def _set_status(self, text: str) -> None:
         self._status_label.setText(text)
@@ -422,9 +468,12 @@ class AgentChatDock(QWidget):
         try:
             session = self._sessions.get(name) or self._create_session(name)
         except ToolMissing as missing:
-            self._show_backend_failure(name, missing)
             # `missing` is unbound once the except block ends.
             tool, installed = missing.tool, getattr(missing, "installed", None)
+            self._show_backend_failure(name, missing)
+            # Declining the offer below leaves this button as the way back to it.
+            self._show_notice(f"{name} needs {tool.package} in this workspace.", "Install…",
+                              lambda: self._install_then_retry(name, tool, installed))
             # Deferred: this also runs while the dock is first built, which must not block on a dialog.
             QTimer.singleShot(0, lambda: self._install_then_retry(name, tool, installed))
             return
@@ -452,9 +501,10 @@ class AgentChatDock(QWidget):
         after it. The dropdown stays usable to pick another backend."""
         log.error("Agent backend %s failed to start", name, exc_info=error)
         self._current = None
-        message = f"{name} could not start: {type(error).__name__}: {error}"
+        message = f"{name} could not start: {error}" if str(error) else f"{name} could not start ({type(error).__name__})"
         self._set_empty(message)
         self._set_status(message)
+        self._show_notice("", "Try again", lambda: self._on_backend_changed(self._backend_combo.currentIndex()))
 
     def _create_session(self, name: str) -> _AgentSession:
         be_tempdir = self._tempdir / name / "tool_images"
@@ -588,16 +638,16 @@ class AgentChatDock(QWidget):
             cfg.write_mode = mode
 
         badge_texts = {
-            AgentWriteMode.NONE: "Writes disabled",
-            AgentWriteMode.CONFIRM: "Writes: confirm",
-            AgentWriteMode.YOLO: "Yolo",
+            AgentWriteMode.NONE: "Read-only",
+            AgentWriteMode.CONFIRM: "Asks before changes",
+            AgentWriteMode.YOLO: "Auto-approve",
         }
         badge_styles = {
             AgentWriteMode.NONE: "color: #7f8c8d; border: 1px solid #7f8c8d; border-radius: 4px; padding: 2px 8px;",
             AgentWriteMode.CONFIRM: "color: #f39c12; border: 1px solid #f39c12; border-radius: 4px; padding: 2px 8px;",
             AgentWriteMode.YOLO: "color: #e74c3c; border: 1px solid #e74c3c; border-radius: 4px; padding: 2px 8px;",
         }
-        self._writes_badge.setText(badge_texts.get(mode, f"Writes: {mode}"))
+        self._writes_badge.setText(badge_texts.get(mode, f"Changes: {mode}"))
         self._writes_badge.setStyleSheet(badge_styles.get(mode, ""))
 
     def _on_reset(self) -> None:
@@ -1060,10 +1110,8 @@ class AgentChatDock(QWidget):
         box = QMessageBox(self)
         box.setWindowTitle(f"{self._current}: tool call")
         box.setIcon(QMessageBox.Icon.Question)
-        box.setText(f"Allow <b>{tool_name}</b>?")
-        preview = json.dumps(tool_input, indent=2, default=str)
-        if len(preview) > 2000:
-            preview = preview[:2000] + "…"
+        text, preview = tool_call_question(self._current, tool_name, tool_input)
+        box.setText(text)
         box.setDetailedText(preview)
         box.setStandardButtons(
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No

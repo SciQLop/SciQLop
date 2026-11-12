@@ -57,15 +57,15 @@ class AgentSettingsPopup(QWidget):
         form.addRow("Activity", self.verbosity_combo)
 
         self.writes_combo = QComboBox(self)
-        self.writes_combo.addItem("No writes", "none")
-        self.writes_combo.addItem("Confirm writes", "confirm")
-        self.writes_combo.addItem("Yolo (auto-approve)", "yolo")
+        self.writes_combo.addItem("Read-only", "none")
+        self.writes_combo.addItem("Ask before changes", "confirm")
+        self.writes_combo.addItem("Auto-approve", "yolo")
         fit_combo_to_content(self.writes_combo)
         self.writes_combo.setToolTip(
-            "No writes: gated tools are denied. "
-            "Confirm writes: ask before each gated tool. "
-            "Yolo: run gated tools without asking.")
-        form.addRow("Writes", self.writes_combo)
+            "Read-only: the assistant cannot change anything. "
+            "Ask before changes: it asks before each action that changes something. "
+            "Auto-approve: it acts without asking.")
+        form.addRow("Changes", self.writes_combo)
 
         separator = QFrame(self)
         separator.setFrameShape(QFrame.Shape.HLine)

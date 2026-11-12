@@ -157,6 +157,9 @@
 
 ### Agents
 
+- With no assistant installed, the Agents panel says so in plain words and offers "Open the Plugin Store". It showed a red error.
+- An assistant that fails to start can be retried with a "Try again" button, and one that needs a tool keeps an "Install…" button after you decline the offer. The message no longer starts with the error's class name.
+- The permission modes are "Read-only", "Ask before changes" and "Auto-approve" (they were "No writes", "Confirm writes" and "Yolo"). The approval question says what the assistant wants to do and shows code as code.
 - An agent plugin that failed to start, for example Albert without an API key, made every agent plugin loaded after it fail too. Now the chat panel shows the error, and you can pick another agent from the list.
 - In the chat, `$...$` inside an indented code block was rendered as math. It now stays code, like in fenced code blocks.
 - While an answer streamed in, the chat rebuilt its thinking parts on every update, even when they hadn't changed. It now rebuilds only the parts that changed.

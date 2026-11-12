@@ -152,7 +152,7 @@ def test_writes_badge_is_initialized_even_when_saved_mode_is_none(
     try:
         dock = AgentChatDock(main_window=None)
         qtbot.addWidget(dock)
-        assert dock._writes_badge.text() == "Writes disabled"
+        assert dock._writes_badge.text() == "Read-only"
         assert "#7f8c8d" in dock._writes_badge.styleSheet()
     finally:
         unregister_agent_backend(_FAKE)
@@ -195,7 +195,7 @@ def test_write_mode_combo_reaches_the_backend_and_persists(dock):
     assert dock._write_mode == AgentWriteMode.YOLO
     assert backend.write_mode == AgentWriteMode.YOLO
     assert AgentChatSettings().write_mode == AgentWriteMode.YOLO
-    assert "Yolo" in dock._writes_badge.text()
+    assert "Auto-approve" in dock._writes_badge.text()
     assert "#e74c3c" in dock._writes_badge.styleSheet()
 
     # switch to none
@@ -203,7 +203,7 @@ def test_write_mode_combo_reaches_the_backend_and_persists(dock):
     assert dock._write_mode == AgentWriteMode.NONE
     assert backend.write_mode == AgentWriteMode.NONE
     assert AgentChatSettings().write_mode == AgentWriteMode.NONE
-    assert "disabled" in dock._writes_badge.text().lower()
+    assert dock._writes_badge.text() == "Read-only"
     assert "#7f8c8d" in dock._writes_badge.styleSheet()
 
     # switch back to confirm
@@ -211,7 +211,7 @@ def test_write_mode_combo_reaches_the_backend_and_persists(dock):
     assert dock._write_mode == AgentWriteMode.CONFIRM
     assert backend.write_mode == AgentWriteMode.CONFIRM
     assert AgentChatSettings().write_mode == AgentWriteMode.CONFIRM
-    assert "confirm" in dock._writes_badge.text().lower()
+    assert dock._writes_badge.text() == "Asks before changes"
     assert "#f39c12" in dock._writes_badge.styleSheet()
 
 
@@ -943,3 +943,57 @@ def test_completions_refresh_after_a_turn(dock, qtbot):
     backend.ask = ask
     dock._spawn(dock._run_turn(dock._sessions[dock._current], "hello", []))
     qtbot.waitUntil(lambda: "/review" in dock._input._completer_model.stringList(), timeout=5000)
+
+
+def test_no_assistant_installed_is_a_notice_with_a_way_out_not_an_error(dock, monkeypatch):
+    from SciQLop.components.agents import chat_dock
+    opened = []
+    dock._main_window = type("W", (), {"_show_appstore": lambda self: opened.append(True)})()
+    monkeypatch.setattr(chat_dock, "available_backends", lambda: [])
+    rendered = []
+    monkeypatch.setattr(dock._transcript, "render_messages", rendered.append)
+    dock._rebuild_backend_combo()
+    assert not dock._notice.isHidden()
+    assert dock._notice_label.text() == chat_dock.NO_ASSISTANT_NOTICE
+    assert dock._notice_button.text() == "Open the Plugin Store"
+    assert rendered == [[]]   # nothing red in the transcript
+    dock._notice_button.click()
+    assert opened == [True]
+
+
+def test_a_backend_that_fails_to_start_can_be_tried_again(dock, monkeypatch):
+    attempts = []
+
+    def failing(name):
+        attempts.append(name)
+        raise RuntimeError("the agent binary crashed")
+
+    dock._sessions.clear()
+    monkeypatch.setattr(dock, "_create_session", failing)
+    dock._on_backend_changed(dock._backend_combo.currentIndex())
+    assert "could not start: the agent binary crashed" in dock._status_label.text()
+    assert "RuntimeError" not in dock._status_label.text()
+    assert not dock._notice.isHidden() and dock._notice_button.text() == "Try again"
+    dock._notice_button.click()
+    assert len(attempts) == 2
+
+
+def test_the_notice_goes_away_once_a_backend_runs(dock):
+    dock._show_notice("x", "y", lambda: None)
+    dock._set_enabled()
+    assert dock._notice.isHidden()
+
+
+def test_permission_modes_are_named_for_users(dock):
+    combo = dock._writes_combo
+    assert [combo.itemText(i) for i in range(combo.count())] == ["Read-only", "Ask before changes", "Auto-approve"]
+
+
+def test_the_approval_question_shows_code_as_code():
+    from SciQLop.components.agents.chat_dock import tool_call_question
+    text, details = tool_call_question("Claude", "sciqlop_exec_python", {"code": "print(1)\nprint(2)"})
+    assert text == "Claude wants to run code in your session with <b>sciqlop_exec_python</b>. Allow?"
+    assert details == "print(1)\nprint(2)"
+    text, details = tool_call_question("Claude", "sciqlop_set_time_range", {"start": 1, "stop": 2})
+    assert text == "Claude wants to use <b>sciqlop_set_time_range</b>. Allow?"
+    assert '"start": 1' in details
