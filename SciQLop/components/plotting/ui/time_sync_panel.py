@@ -23,6 +23,8 @@ from SciQLop.components import sciqlop_logging
 from SciQLop.components.plotting.backend.data_provider import providers, DataProvider
 from SciQLop.components.plotting.backend.color_axis import apply_color_axis
 from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+from SciQLop.components.plotting.backend.fetch_messages import describe_fetch_error, no_data_message
+from SciQLop.components.settings.backend.plot_backend_settings import PlotBackendSettings
 from SciQLop.core.graph_context import (
     attach_context, attach_data_meta, build_speasy_ctx, build_provider_ctx, build_vp_ctx,
     build_static_ctx, build_function_ctx, GraphRichRefs,
@@ -288,14 +290,18 @@ class _ProductCallbackBase:
     def _record_error(self, exc: Exception) -> None:
         # Runs on the fetch worker thread: a plain attribute, never a Qt call
         # (e.g. setProperty) on the graph.
-        self.last_error = str(exc)
-        self.error_reporter.report(str(exc))
+        self.last_error = describe_fetch_error(exc)
+        self.error_reporter.report(self.last_error)
         backtrace = "".join(traceback.format_exception(exc))
         log.error(f"Error getting data for {self.node}: {exc}\n\n{backtrace}")
 
     def _record_success(self) -> None:
         self.last_error = None
         self.error_reporter.clear()
+
+    def _record_no_data(self) -> None:
+        self.last_error = None
+        self.error_reporter.report_no_data()
 
     def _knob_values(self):
         return self.knob_state.values if self.knob_state is not None else None
@@ -321,7 +327,10 @@ class _plot_product_callback(_ProductCallbackBase):
         except Exception as e:
             self._record_error(e)
             return []
-        self._record_success()
+        if result:
+            self._record_success()
+        else:
+            self._record_no_data()
         if self.on_data_fetched is not None:
             try:
                 self.on_data_fetched(result, _time.monotonic() - t0, start, stop)
@@ -440,12 +449,12 @@ class _specgram_callback(_ProductCallbackBase):
             return empty, empty, empty
         if not result:
             # No data in the requested range — a routine outcome, not an error.
-            self._record_success()
+            self._record_no_data()
             return empty, empty, empty
         try:
             x, y, z = _with_y_axis(result)
             if len(x) == 0:
-                self._record_success()
+                self._record_no_data()
                 return empty, empty, empty
             if self._y_is_descending(y):
                 if len(y.shape) == 1:
@@ -775,7 +784,7 @@ def _attach_error_reporter(callback, r, target) -> None:
     reporter = getattr(getattr(callback, "_inner", callback), "error_reporter", None)
     plot = _plot_from_result(r, target)
     if reporter is not None and plot is not None:
-        reporter.attach(plot)
+        reporter.attach(plot, _graph_from_result(r))
 
 
 def _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
@@ -1043,6 +1052,42 @@ def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProje
     return r
 
 
+class _PlotMessages(QObject):
+    """What each product of one plot currently has to say, shown together on the plot's single
+    overlay: one line per product, at the level of the most serious one."""
+
+    def __init__(self, plot):
+        super().__init__(plot)
+        self._plot = plot
+        self._messages: dict = {}
+
+    @staticmethod
+    def of(plot) -> "_PlotMessages":
+        return plot.findChild(_PlotMessages) or _PlotMessages(plot)
+
+    def say(self, source, text: str, level) -> None:
+        self._messages[source] = (text, level)
+        self._render()
+
+    def withdraw(self, source) -> None:
+        if self._messages.pop(source, None) is not None:
+            self._render()
+
+    def _render(self) -> None:
+        overlay = overlay_of(self._plot)
+        if not self._messages:
+            overlay.clear_message()
+            return
+        texts, levels = zip(*self._messages.values())
+        overlay.show_message("\n".join(texts), max(levels, key=_SERIOUSNESS.index),
+                             OverlaySizeMode.FitContent, OverlayPosition.Top)
+
+
+_SERIOUSNESS = [OverlayLevel.Info, OverlayLevel.Warning, OverlayLevel.Error]
+_NO_DATA_LEVEL = OverlayLevel.Warning
+_NO_DATA_NOTE_MS = 6000
+
+
 class _PlotErrorReporter(QObject):
     """Shows a data callback's errors on its plot's in-canvas overlay. Without
     it an error is only a console traceback, and the plot stays empty with no
@@ -1052,11 +1097,10 @@ class _PlotErrorReporter(QObject):
     touched on the main thread, through queued signals. An error raised before
     the plot exists is held until attach().
 
-    simplify: one overlay per plot, so with several failing graphs on one plot
-    the last one shown wins, and its recovery clears the others' message too.
+    Several products on one plot share its overlay through _PlotMessages.
     """
 
-    _error = Signal(str)
+    _error = Signal(str, object)
     _success = Signal()
 
     def __init__(self, name: str):
@@ -1064,46 +1108,78 @@ class _PlotErrorReporter(QObject):
         self.name = name
         self._lock = threading.Lock()
         self._plot = None
-        self._pending: Optional[str] = None
+        self._pending: Optional[tuple] = None
         self._shown = False
+        self._no_data_note_done = False
+        self._hide_timer = QTimer(self, singleShot=True, interval=_NO_DATA_NOTE_MS)
+        self._hide_timer.timeout.connect(self._hide_no_data_note)
         self._error.connect(self._show)
-        self._success.connect(self._clear)
+        self._success.connect(self._data_came)
 
-    def attach(self, plot) -> None:
+    def attach(self, plot, graph=None) -> None:
         self.setParent(plot)
+        if graph is not None:
+            graph.destroyed.connect(self._graph_removed)
         with self._lock:
             self._plot = plot
             pending = self._pending
         if pending is not None:
-            self._show(pending)
+            self._show(*pending)
 
-    def report(self, message: str) -> None:
+    def report(self, message: str, level=OverlayLevel.Error) -> None:
         with self._lock:
             held = self._plot is None
             if held:
-                self._pending = message
+                self._pending = (message, level)
         if not held and shiboken6.isValid(self):  # a fetch can finish after its plot closed
-            self._error.emit(message)
+            self._error.emit(message, level)
+
+    def report_no_data(self) -> None:
+        self.report(no_data_message(self.name), _NO_DATA_LEVEL)
 
     def clear(self) -> None:
         with self._lock:
-            had_message = self._shown or self._pending is not None
             self._pending = None
-        if had_message and shiboken6.isValid(self):
+        if shiboken6.isValid(self):  # also when nothing is shown: it re-arms the no-data note
             self._success.emit()
 
-    def _show(self, message: str) -> None:
+    def _show(self, message: str, level=OverlayLevel.Error) -> None:
         self._pending = None
+        if level == _NO_DATA_LEVEL and not self._wants_no_data_note():
+            self._clear()
+            return
         self._shown = True
         if self._plot is not None:
-            overlay_of(self._plot).show_message(
-                f"{self.name}: {message}", OverlayLevel.Error,
-                OverlaySizeMode.FitContent, OverlayPosition.Top)
+            text = f"{self.name}: {message}" if level == OverlayLevel.Error else message
+            _PlotMessages.of(self._plot).say(self, text, level)
+
+    def _wants_no_data_note(self) -> bool:
+        """The note is shown once per gap: after it hid itself it stays away until data came back."""
+        how_long = PlotBackendSettings().no_data_notice
+        if how_long == "Off" or self._no_data_note_done:
+            return False
+        if how_long == "A few seconds" and not self._hide_timer.isActive():
+            self._hide_timer.start()
+        return True
+
+    def _hide_no_data_note(self) -> None:
+        self._no_data_note_done = True
+        self._clear()
+
+    def _graph_removed(self) -> None:
+        # Never touch the plot from a child's destroyed signal (docs/qt-lifetime-patterns.md): if the
+        # plot itself is going, this reporter goes with it and the timer never fires.
+        QTimer.singleShot(0, self, self._clear)
+
+    def _data_came(self) -> None:
+        self._no_data_note_done = False
+        self._hide_timer.stop()
+        self._clear()
 
     def _clear(self) -> None:
         if self._shown and self._plot is not None:
             self._shown = False
-            overlay_of(self._plot).clear_message()
+            _PlotMessages.of(self._plot).withdraw(self)
 
 
 class _CallbackErrorOverlay(_PlotErrorReporter):

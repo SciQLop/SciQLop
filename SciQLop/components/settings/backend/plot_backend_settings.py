@@ -16,6 +16,11 @@ class PlotBackendSettings(ConfigEntry):
         default="1d",
         description="How far new panels let you zoom out on the time axis.")
 
+    no_data_notice: Literal["Off", "A few seconds", "Until data comes"] = Field(
+        default="A few seconds",
+        description="How long a plot says that a product has no data in the "
+                    "visible time range.")
+
     graph_autoscale_percentile_low: float = Field(
         json_schema_extra={"advanced": True},
         default=0.0, ge=0.0, le=100.0,
