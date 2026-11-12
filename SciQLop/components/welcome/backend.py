@@ -163,6 +163,25 @@ _MOCK_NEWS = [
 _APPSTORE_URL = "https://sciqlop.github.io/sciqlop-appstore/index.json"
 
 
+def _workspace_deletion_question(name: str):
+    from PySide6.QtWidgets import QApplication, QMessageBox
+    box = QMessageBox(QMessageBox.Icon.Warning, "Delete workspace",
+                      f"Delete workspace '{name}' permanently?",
+                      parent=QApplication.activeWindow())
+    box.setInformativeText("Its folder, including notebooks and files you saved in it, "
+                           "is erased. This cannot be undone.")
+    box.addButton("Delete", QMessageBox.ButtonRole.DestructiveRole)
+    box.setDefaultButton(box.addButton("Cancel", QMessageBox.ButtonRole.RejectRole))
+    return box
+
+
+def _confirm_workspace_deletion(name: str) -> bool:
+    from PySide6.QtWidgets import QMessageBox
+    box = _workspace_deletion_question(name)
+    box.exec()
+    return box.buttonRole(box.clickedButton()) == QMessageBox.ButtonRole.DestructiveRole
+
+
 class WelcomeBackend(QObject):
     """Python backend exposed to the welcome page via QWebChannel."""
 
@@ -406,10 +425,14 @@ class WelcomeBackend(QObject):
             raise ValueError("workspace name must not be blank")
         workspaces_manager_instance().create_workspace(name)
 
-    @Slot(str)
-    def delete_workspace(self, directory: str) -> None:
+    @Slot(str, str, result=bool)
+    def delete_workspace(self, directory: str, name: str) -> bool:
+        """Ask, then erase the workspace folder. True when it was deleted."""
+        if not _confirm_workspace_deletion(name):
+            return False
         workspaces_manager_instance().delete_workspace(directory)
         self.workspace_list_changed.emit()
+        return True
 
     @Slot(str)
     def duplicate_workspace(self, directory: str) -> None:

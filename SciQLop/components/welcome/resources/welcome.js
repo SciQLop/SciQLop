@@ -864,10 +864,9 @@ function hideDetails() {
 }
 
 function confirmDelete(directory, name) {
-    if (confirm("Delete workspace '" + name + "'?")) {
-        backend.delete_workspace(directory);
-        hideDetails();
-    }
+    backend.delete_workspace(directory, name, function(deleted) {
+        if (deleted) hideDetails();
+    });
 }
 
 // --- Selection ---
