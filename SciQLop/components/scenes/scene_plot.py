@@ -165,7 +165,8 @@ def _fetch(source: str, frame: str, start: float, stop: float):
     if v is None:
         return None, None
     if "COORDINATE_SYSTEM" not in v.meta:
-        raise FrameError(f"{source!r} has no COORDINATE_SYSTEM: its frame is unknown")
+        raise FrameError(f"{source!r} does not say which coordinate frame it is in (no COORDINATE_SYSTEM), "
+                         "so it cannot be placed in a scene. Drop a spacecraft position instead")
     return v, normalise_frame(v.meta["COORDINATE_SYSTEM"])
 
 

@@ -50,7 +50,8 @@ def _check_frame(frame: str, body: Body) -> None:
 
 def _check_body(model: Boundary, body: Body) -> None:
     if model.body != body.name:
-        raise ValueError(f"{model.name!r} is a {model.body} model; this is a {body.name} scene")
+        raise ValueError(f"{getattr(model, 'label', '') or model.name} is a {model.body.capitalize()} model: "
+                         f"drop it on a {model.body.capitalize()} scene. This scene is for {body.name.capitalize()}")
 
 
 def resolve(scene: Union[Scene, str]) -> ResolvedScene:

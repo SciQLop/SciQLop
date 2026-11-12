@@ -1182,6 +1182,11 @@ class _PlotErrorReporter(QObject):
             _PlotMessages.of(self._plot).withdraw(self)
 
 
+def _said_for_the_user(e: Exception) -> str:
+    """A ValueError's message is written for whoever caused it; any other error needs its type to be understood."""
+    return str(e) if isinstance(e, ValueError) and str(e) else f"{type(e).__name__}: {e}"
+
+
 class _CallbackErrorOverlay(_PlotErrorReporter):
     """A plot-function callback that reports its exceptions on its plot."""
 
@@ -1195,7 +1200,7 @@ class _CallbackErrorOverlay(_PlotErrorReporter):
             result = self._f(*args, **kwargs)
         except Exception as e:
             log.error("plot function %r failed", self.__name__, exc_info=True)
-            self.report(f"{type(e).__name__}: {e}")
+            self.report(_said_for_the_user(e))
             return None
         self.clear()
         return result

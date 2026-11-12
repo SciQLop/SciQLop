@@ -151,7 +151,7 @@ def test_a_boundary_of_another_body_is_refused_on_the_scene(plot_panel, register
     sp = plot_panel.plot_scene("Earth environment")
     pane = proj_of(sp).subplot(0)
     _drop(plot_panel, pane, ["Models", "Mars", "mpb", "Vignes 2000 MPB"])
-    qtbot.waitUntil(lambda: "mars model" in overlay_text(pane), timeout=5000)
+    qtbot.waitUntil(lambda: "is a Mars model: drop it on a Mars scene" in overlay_text(pane), timeout=5000)
     assert set(sp._boundary_graphs) == {"magnetopause", "bow_shock"}
 
 

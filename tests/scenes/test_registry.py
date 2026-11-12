@@ -45,8 +45,8 @@ def test_a_resolved_scene_holds_objects(registries):
 
 
 def test_a_model_of_another_body_is_refused(registries):
-    martian = type("M", (Ball,), {"name": "m", "body": "mars"})()
-    with pytest.raises(ValueError, match="'m' is a mars model.*earth scene"):
+    martian = type("M", (Ball,), {"name": "m", "label": "Martian ball", "body": "mars"})()
+    with pytest.raises(ValueError, match="Martian ball is a Mars model: drop it on a Mars scene. This scene is for Earth"):
         resolve(Scene("Earth", "earth", "GSM", {"magnetopause": martian}))
 
 
