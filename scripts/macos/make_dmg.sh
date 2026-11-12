@@ -406,16 +406,17 @@ notary_log() {
     --team-id "$APPLE_TEAM_ID" 2>&1 || true
 }
 
-# Apple can answer "Accepted" a few seconds before the ticket is downloadable;
-# stapling right away then fails with exit code 68. Retry, and show the tool's
-# own message (through redact) when an attempt fails.
-staple() {
-  local target="$1" attempt out
+# stapler talks to Apple's CloudKit servers, for `staple` and for `validate`.
+# Exit code 68 is EX_NOHOST: the server could not be reached, which happens now
+# and then on CI runners (https://developer.apple.com/forums/thread/824494).
+# Retry, and show the tool's verbose message (through redact) on each failure.
+stapler_retry() {
+  local action="$1" target="$2" attempt out
   for attempt in 1 2 3 4 5 6; do
-    if out=$(xcrun stapler staple "$target" 2>&1); then
+    if out=$(xcrun stapler "$action" -v "$target" 2>&1); then
       return 0
     fi
-    echo "Stapling attempt $attempt failed: $(redact "$out")"
+    echo "stapler $action, attempt $attempt failed: $(redact "$out")"
     sleep 20
   done
   return 1
@@ -449,8 +450,8 @@ if [[ -n "$APPLE_ID" && -n "$APPLE_ID_PWD" && -n "$APPLE_TEAM_ID" ]]; then
   rm -f "$APP_ZIP" "$NOTARY_OUT"
 
   echo "Stapling notarization ticket to .app..."
-  staple "$APP"
-  xcrun stapler validate "$APP" >/dev/null
+  stapler_retry staple "$APP"
+  stapler_retry validate "$APP"
   echo "Stapled and validated."
 fi
 
@@ -513,7 +514,7 @@ if [[ -n "$APPLE_ID" && -n "$APPLE_ID_PWD" && -n "$APPLE_TEAM_ID" ]]; then
   fi
   echo "DMG notarization Accepted."
   rm -f "$DMG_NOTARY_OUT"
-  staple SciQLop-$ARCH.dmg
+  stapler_retry staple SciQLop-$ARCH.dmg
   echo "DMG stapled."
 fi
 
