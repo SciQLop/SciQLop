@@ -1,6 +1,4 @@
 """A setting marked restart_required offers a restart once it is changed."""
-from types import SimpleNamespace
-
 from pydantic import BaseModel, Field
 
 
@@ -8,10 +6,13 @@ class _Model(BaseModel):
     needs_restart: str = Field("", json_schema_extra={"restart_required": True})
     live: str = ""
 
+    def save(self):
+        pass
+
 
 def _row(field_name):
     from SciQLop.components.settings.ui.setting_panel import SettingRow
-    instance = SimpleNamespace(needs_restart="", live="", save=lambda: None)
+    instance = _Model()
     return SettingRow(field_name, _Model.model_fields[field_name], instance)
 
 

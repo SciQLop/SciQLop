@@ -44,7 +44,7 @@ class PlotBackendSettings(ConfigEntry):
     @model_validator(mode="after")
     def _percentile_low_below_high(self) -> "PlotBackendSettings":
         if self.graph_autoscale_percentile_low >= self.graph_autoscale_percentile_high:
-            raise ValueError("graph_autoscale_percentile_low must be < high")
+            raise ValueError("The low percentile for curves must be below the high one.")
         if self.colormap_autoscale_percentile_low >= self.colormap_autoscale_percentile_high:
-            raise ValueError("colormap_autoscale_percentile_low must be < high")
+            raise ValueError("The low percentile for spectrograms must be below the high one.")
         return self

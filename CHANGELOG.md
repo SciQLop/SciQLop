@@ -13,6 +13,9 @@
 - Edit mode on a panel with no catalog that accepts events is no longer a dead end. The "Add to:" box stays, greyed out, reading "No editable catalog on this panel", and a "New catalog…" button creates one, shows it on the panel and selects it, so Shift+click works right after.
 - The catalogs tutorial has two new sections: downloading data for each event with Speasy (`spz.get_data(product, catalog)`), and computing a quantity per event (mean field strength and magnetic shear) that is stored back in the catalog as columns.
 - The catalog functions `save`, `create`, `add_events` and `remove_events` say in their documentation that the change stays in memory until `catalogs.persist(path)`. The README example and the catalogs tutorial now show `persist`.
+- The start date box of a panel applies a typed date when you press Enter or leave the box. Each digit used to move the panel and start a download. The box now shows "UTC", and the flash that points at it on a new panel uses the theme's highlight colour, not red.
+- A settings file with a value that cannot be read keeps its other values: only the bad ones go back to their defaults. The original file is kept next to it with a `.bad` extension, and SciQLop says once at start which settings were reset. The whole file used to be replaced by defaults, silently.
+- The settings window refuses a value that breaks a rule, such as a low percentile above the high one, and says why under the field. It used to save it, and the next start reset the file.
 
 ### Batch mode
 

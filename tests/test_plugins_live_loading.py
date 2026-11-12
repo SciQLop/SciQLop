@@ -88,10 +88,13 @@ def test_a_failed_dependency_install_does_not_load_the_plugin(tmp_config_dir, tm
 class _Model(BaseModel):
     folders: list[str] = Field([], json_schema_extra={"restart_required": "on_removal"})
 
+    def save(self):
+        pass
+
 
 def _folders_row(start):
     from SciQLop.components.settings.ui.setting_panel import SettingRow
-    instance = SimpleNamespace(folders=list(start), save=lambda: None)
+    instance = _Model(folders=list(start))
     return SettingRow("folders", _Model.model_fields["folders"], instance)
 
 

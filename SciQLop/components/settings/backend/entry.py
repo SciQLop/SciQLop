@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ValidationError
+import shutil
 from enum import Enum
 import yaml
 from pathlib import PurePath
@@ -178,6 +179,61 @@ class _EntriesView(Mapping):
         return len(SETTINGS.keys())
 
 
+def _repair_notices_file() -> str:
+    return os.path.join(SCIQLOP_CONFIG_DIR, "repaired_settings.yaml")
+
+
+def _read_repair_notices() -> list[dict]:
+    try:
+        with open(_repair_notices_file()) as file:
+            return yaml.safe_load(file) or []
+    except (OSError, yaml.YAMLError):
+        return []
+
+
+def take_repair_notices() -> list[dict]:
+    """The settings files repaired since the last call, as ``{"file", "reset"}``;
+    an empty ``reset`` means the whole file went back to defaults. Kept on disk
+    because the launcher repairs files in a process that has no window."""
+    notices = _read_repair_notices()
+    if notices:
+        os.remove(_repair_notices_file())
+    return notices
+
+
+def _report_repair(config_file: str, reset: list[str]) -> None:
+    log.warning(f"Invalid settings in {config_file}: reset {', '.join(reset) or 'every field'} "
+                f"to defaults, original kept as {config_file}.bad")
+    try:
+        shutil.copyfile(config_file, config_file + ".bad")
+        notices = _read_repair_notices() + [{"file": config_file, "reset": reset}]
+        with open(_repair_notices_file(), "w") as file:
+            yaml.safe_dump(notices, file)
+    except OSError as e:
+        log.error(f"Cannot keep a copy of {config_file}: {e}")
+
+
+def _valid_fields(data: dict, error: ValidationError) -> dict:
+    """`data` without the fields `error` names; nothing when the failure is a
+    rule across fields, which names none."""
+    invalid = {error["loc"][0] for error in error.errors() if error["loc"]}
+    return {k: v for k, v in data.items() if k not in invalid} if invalid else {}
+
+
+def validated_value(instance: BaseModel, name: str, value):
+    """`value` as `instance` would store it. Raises ValidationError when it
+    breaks a rule of the field or a rule across fields.
+
+    Checked on a copy rather than with Pydantic's validate_assignment on every
+    entry: that re-runs the model's rules on each assignment, and a rule that
+    assigns a field (plugins may have one) then recurses without end."""
+    candidate = instance.model_copy()
+    # The copy must not announce changes as the real entry would.
+    candidate.__dict__.pop("_initialized_", None)
+    type(instance).__pydantic_validator__.validate_assignment(candidate, name, value)
+    return getattr(candidate, name)
+
+
 def is_advanced(entry_cls: type["ConfigEntry"], field_info) -> bool:
     extra = field_info.json_schema_extra
     return entry_cls.advanced or (isinstance(extra, dict) and bool(extra.get("advanced")))
@@ -258,12 +314,22 @@ class ConfigEntry(BaseModel):
         try:
             super().__init__(**data)
         except ValidationError as e:
-            log.warning(f"Invalid settings in {config_file}, falling back to defaults: {e}")
-            super().__init__()
+            kept = self._init_with_valid_fields(data, e)
+            if os.path.exists(config_file):
+                _report_repair(config_file, reset=sorted(set(data) - set(kept)) if kept else [])
             save = True
         object.__setattr__(self, "_initialized_", True)
         if save:
             self.save()
+
+    def _init_with_valid_fields(self, data: dict, error: ValidationError) -> dict:
+        kept = _valid_fields(data, error)
+        try:
+            BaseModel.__init__(self, **kept)
+            return kept
+        except ValidationError:
+            BaseModel.__init__(self)
+            return {}
 
     def save(self):
         config_file = self.config_file()

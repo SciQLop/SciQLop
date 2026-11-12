@@ -148,6 +148,33 @@ def _notify_incompatible_plugins(parent) -> None:
     box.show()
 
 
+def _repaired_settings_line(notice: dict) -> str:
+    return f"{os.path.basename(notice['file'])}: {', '.join(notice['reset']) or 'all settings'}"
+
+
+def _notify_repaired_settings(parent) -> None:
+    """Say once which settings went back to their defaults because the saved
+    value could not be read -- without this the change is silent."""
+    from SciQLop.components.settings.backend.entry import take_repair_notices
+    notices = take_repair_notices()
+    if not notices:
+        return
+
+    from PySide6.QtWidgets import QMessageBox
+    box = QMessageBox(
+        QMessageBox.Icon.Warning,
+        "Some settings were reset",
+        "Some saved settings could not be read and are back to their defaults.",
+        parent=parent,
+    )
+    box.setInformativeText(
+        "\n".join(map(_repaired_settings_line, notices))
+        + f"\n\nThe original files are kept next to them, with a .bad extension, in "
+          f"{os.path.dirname(notices[0]['file'])}.")
+    box.setModal(False)
+    box.show()
+
+
 def start_sciqlop():
     from PySide6.QtWidgets import QApplication
     main_windows = build_sciqlop()
@@ -157,6 +184,7 @@ def start_sciqlop():
     app.processEvents()
     _notify_dropped_dependencies(main_windows)
     _notify_incompatible_plugins(main_windows)
+    _notify_repaired_settings(main_windows)
     from SciQLop.components.crash_report.offer import offer_crash_report
     offer_crash_report(main_windows)
     return main_windows

@@ -6,9 +6,10 @@ from PySide6.QtWidgets import (
     QStackedWidget, QPushButton, QCheckBox,
 )
 from PySide6.QtGui import QFont, QPalette, QShowEvent
+from pydantic import ValidationError
 from SciQLop.components.settings import SettingsCategory, ConfigEntry
 from SciQLop.components.settings.backend import SciQLopConfigEntry
-from SciQLop.components.settings.backend.entry import is_advanced, SETTINGS
+from SciQLop.components.settings.backend.entry import is_advanced, validated_value, SETTINGS
 from SciQLop.components.sciqlop_logging import getLogger
 from ..backend.model import SettingsFilterProxyModel
 from .settings_delegates import get_delegate_for_field, is_field_editable
@@ -94,6 +95,12 @@ class RestartNotice(QFrame):
         restart_sciqlop()
 
 
+def _refusal_reason(error: Exception) -> str:
+    if not isinstance(error, ValidationError):
+        return f"This value could not be saved: {error}"
+    return error.errors()[0]["msg"].removeprefix("Value error, ")
+
+
 class SettingRow(QFrame):
     def __init__(self, field_name: str, field_info, instance, parent=None):
         super().__init__(parent)
@@ -131,6 +138,12 @@ class SettingRow(QFrame):
             self.restart_notice.hide()
             layout.addWidget(self.restart_notice)
 
+        self.error_label = QLabel()
+        self.error_label.setObjectName("SettingError")
+        self.error_label.setWordWrap(True)
+        self.error_label.hide()
+        layout.addWidget(self.error_label)
+
         current_value = getattr(instance, field_name)
         self._delegate.set_value(current_value)
         self._delegate.value_changed.connect(self._on_value_changed)
@@ -143,12 +156,16 @@ class SettingRow(QFrame):
     def _on_value_changed(self, value):
         try:
             old = getattr(self._instance, self._field_name)
+            value = validated_value(self._instance, self._field_name, value)
             setattr(self._instance, self._field_name, value)
             self._instance.save()
+            self.error_label.hide()
             if self.restart_notice is not None and needs_restart(self._restart_mode, old, value):
                 self.restart_notice.show()
         except Exception as e:
             log.error(f"Failed to save setting {self._field_name}: {e}")
+            self.error_label.setText(_refusal_reason(e))
+            self.error_label.show()
             current = getattr(self._instance, self._field_name)
             self._delegate.set_value(current)
 
