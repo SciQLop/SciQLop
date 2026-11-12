@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Fixes before the release
+
+- "Restart now", opening another workspace and the store's restart now ask about unsaved catalog changes and running jobs, like closing the window does. They used to quit directly and the edits were lost. Answering No keeps SciQLop open.
+- Muted text is readable on dark themes: "Add a product to this panel", the tour's "1 / 14" and the hints in Settings were drawn in half-transparent black. A theme that sets no `PlaceholderText` colour now gets its `UnselectedText` colour.
+- Deleting a workspace now says what is lost: its folder, notebooks and saved files included. The buttons are Delete and Cancel.
+- The time bar's duration box shows the real length of the window after a zoom (for example "3d" or "2.53h") and the step buttons move by that length. It showed the nearest preset and the next step shrank the window to it. The box can be typed into: "90m", "3d", "1.5h", "45s".
+- The palette's "Set time range" is now "Set time range for new panels", which is what it does, and confirms in the status bar.
+- A workspace that cannot be prepared at start-up says why in plain words above the traceback: no network on a first start (with the proxy setting to check), or a broken environment (with how to reset it).
+- The catalog functions `save`, `create`, `add_events` and `remove_events` say in their documentation that the change stays in memory until `catalogs.persist(path)`. The README example and the catalogs tutorial now show `persist`.
+
 ### Batch mode
 
 - `sciqlop --batch script.py [args...]` runs a Python script inside SciQLop with no window, then exits with the script's exit code. The script uses the usual API: build panels, set the time range, `panel.save("ql.png")`, in a loop if needed. Relative paths are relative to the folder you ran the command from. It needs no display: Qt renders offscreen unless `QT_QPA_PLATFORM` says otherwise, so it runs in a container or a cron job. Arguments after the script name are passed to it in `sys.argv`; `-w` picks the workspace as usual.
