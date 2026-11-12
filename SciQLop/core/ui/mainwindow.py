@@ -25,6 +25,7 @@ from SciQLop.components.workspaces import Workspace
 from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle, qtads_stylesheet
 from SciQLop.core.ui import Metrics
 from SciQLop.core.ui.tooltips import rich_tooltip
+from SciQLop.core.ui.main_menus import build_file_menu, build_help_menu
 from SciQLop.components.command_palette.menu_entries import add_menu_entries
 from SciQLop.core.menus import MAIN_TOOLS
 from SciQLop.core.docks import DOCKS, Dock, _ExistingWidget
@@ -401,15 +402,13 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._menubar.setGeometry(QtCore.QRect(0, 0, 615, 23))
         self._menubar.setDefaultUp(True)
 
+        self.addTSPanel = self._new_plot_panel_action()
+        self.fileMenu = build_file_menu(self)
+        self._menubar.addMenu(self.fileMenu)
+
         self.viewMenu = QMenu("View")
         self.viewMenu.setToolTipsVisible(True)
         self._menubar.addMenu(self.viewMenu)
-        reload_theme = self.viewMenu.addAction(
-            "Reload theme",
-            lambda: sciqlop_app().apply_theme(SciQLopStyle().color_palette))
-        reload_theme.setToolTip(rich_tooltip(
-            "Reload theme",
-            "Re-apply the current color palette and refresh all icons."))
 
         self.fullScreenAction = self.viewMenu.addAction("Full screen")
         self.fullScreenAction.setCheckable(True)
@@ -432,24 +431,28 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         from SciQLop.components.profiling import ProfilingMenu
         self._profiling_menu = ProfilingMenu(self)
-        self.toolsMenu.addMenu(self._profiling_menu.menu)
+        self.profiling_menu = self._profiling_menu.menu
 
-        take_a_tour = self.toolsMenu.addAction(
-            "Take a tour…", self._open_tour_picker)
-        take_a_tour.setToolTip(rich_tooltip(
-            "Take a tour",
-            "Pick a guided walkthrough of a SciQLop feature."))
-
-        self.helpMenu = QMenu("Help")
-        self.helpMenu.setToolTipsVisible(True)
-        self._menubar.addMenu(self.helpMenu)
         self._shortcuts_help = None
-        self.shortcutsHelpAction = self.helpMenu.addAction(
-            "Keyboard shortcuts", self.show_shortcuts_help)
-        bind_shortcut(self.shortcutsHelpAction, "app.shortcuts_help")
-        bind_tooltip(self.shortcutsHelpAction, "app.shortcuts_help",
-                     "Keyboard shortcuts", "List every keyboard shortcut.")
+        self.helpMenu = build_help_menu(self)
+        self._menubar.addMenu(self.helpMenu)
         self._create_toolbar()
+
+    def _new_plot_panel_action(self) -> QtGui.QAction:
+        action = QtGui.QAction(self)
+        action.setIcon(theme_icon("add_graph"))
+        action.setText("New plot panel")
+        action.triggered.connect(lambda: self.new_plot_panel())
+        bind_shortcut(action, "app.new_panel")
+        bind_tooltip(action, "app.new_panel", "New plot panel",
+                     "Create an empty panel to drop products onto.")
+        return action
+
+    def reload_theme(self) -> None:
+        sciqlop_app().apply_theme(SciQLopStyle().color_palette)
+
+    def show_welcome_page(self) -> None:
+        self.dock_manager.findDockWidget("Welcome").toggleView(True)
 
     def _create_toolbar(self):
         """Created with the menus, before follow_docks() replays docks that put their toggle on it."""
@@ -502,7 +505,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                                                   self.open_jupyterlab_widget)
         open_browser = QtGui.QAction("Open JupyterLab in browser", self.toolsMenu)
         open_browser.triggered.connect(wm.open_in_browser)
-        self.toolsMenu.insertAction(self._profiling_menu.menu.menuAction(), open_browser)
+        self.toolsMenu.addAction(open_browser)
         open_browser.setToolTip(rich_tooltip(
             "Open JupyterLab in browser",
             "Open the JupyterLab server in your default web browser."))
@@ -536,20 +539,13 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if toolbar_tooltip:
             toolbar_toggle.setToolTip(toolbar_tooltip)
 
-        self.addTSPanel = QtGui.QAction(self)
-        self.addTSPanel.setIcon(theme_icon("add_graph"))
-        self.addTSPanel.setText("New plot panel")
-        self.addTSPanel.setToolTip(rich_tooltip(
-            "New plot panel",
-            "Create an empty panel to drop products onto."))
-        self.addTSPanel.triggered.connect(lambda: self.new_plot_panel())
         self.toolBar.addAction(self.addTSPanel)
         with owned_by(CORE_OWNER):
             sciqlop_app().add_quickstart_shortcut(name="New plot panel", description="Add a new plot panel",
                                                   icon=theme_icon("add_graph"), callback=self.new_plot_panel)
             sciqlop_app().add_quickstart_shortcut(
                 name="Take a tour", description="Pick a guided walkthrough of a SciQLop feature",
-                icon=theme_icon("assistant"), callback=self._open_tour_picker)
+                icon=theme_icon("assistant"), callback=self.open_tour_picker)
 
     def _setup_status_bar(self):
         self._statusbar = QtWidgets.QStatusBar(self)
@@ -1166,7 +1162,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         add_menu_entries(self.toolsMenu, MAIN_TOOLS, {})
         self._tools_entry_actions = [a for a in self.toolsMenu.actions() if a not in before]
 
-    def _open_tour_picker(self) -> None:
+    def open_tour_picker(self) -> None:
         from SciQLop.components.onboarding.ui.tour_picker import TourPicker
         picker = self._tour_picker
         if picker is not None and shiboken6.isValid(picker):

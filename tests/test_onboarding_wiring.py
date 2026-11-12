@@ -2,8 +2,8 @@ from .fixtures import *
 import pytest
 
 
-def test_tools_menu_has_take_a_tour_action(main_window):
-    actions = [a.text() for a in main_window.toolsMenu.actions()]
+def test_help_menu_has_take_a_tour_action(main_window):
+    actions = [a.text() for a in main_window.helpMenu.actions()]
     assert "Take a tour…" in actions
 
 
@@ -99,17 +99,17 @@ def test_start_tour_with_unknown_id_does_not_crash(main_window):
 
 
 def test_take_a_tour_action_opens_the_picker(main_window):
-    action = next(a for a in main_window.toolsMenu.actions() if a.text() == "Take a tour…")
+    action = next(a for a in main_window.helpMenu.actions() if a.text() == "Take a tour…")
     action.trigger()
     assert main_window._tour_picker.isVisible()
     main_window._tour_picker.close()
 
 
 def test_opening_the_picker_twice_closes_the_first_one(main_window):
-    main_window._open_tour_picker()
+    main_window.open_tour_picker()
     first_picker = main_window._tour_picker
 
-    main_window._open_tour_picker()
+    main_window.open_tour_picker()
     second_picker = main_window._tour_picker
 
     assert second_picker is not first_picker

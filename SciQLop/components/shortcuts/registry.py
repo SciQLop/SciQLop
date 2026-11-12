@@ -31,6 +31,8 @@ class Shortcut:
 
 _BUILTIN = [
     Shortcut("app.command_palette", "General", "Open the command palette", "Ctrl+K"),
+    Shortcut("app.new_panel", "General", "New plot panel", "Ctrl+N"),
+    Shortcut("app.quit", "General", "Quit SciQLop", "Ctrl+Q"),
     Shortcut("app.full_screen", "General", "Toggle full screen", "F11"),
     Shortcut("app.shortcuts_help", "General", "Show keyboard shortcuts", "F1"),
     Shortcut("panel.toggle_crosshair", "Plot panel", "Toggle crosshair & hover read-out", "Ctrl+Shift+H"),

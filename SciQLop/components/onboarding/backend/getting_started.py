@@ -17,7 +17,7 @@ GETTING_STARTED = Tour(
             body=(
                 "This short tour shows how to plot real data, navigate it, "
                 "label time intervals and find the tools around them. Use "
-                "Next to move on, Escape to leave, and Tools → Take a tour "
+                "Next to move on, Escape to leave, and Help → Take a tour "
                 "to replay it later."
             ),
         ),
@@ -163,7 +163,7 @@ GETTING_STARTED = Tour(
                 "every action, searchable. Tools → Open JupyterLab lets you "
                 "drive this very session from Python, and the Plugin Store "
                 "adds data sources and tools. Replay this tour anytime from "
-                "Tools → Take a tour."
+                "Help → Take a tour."
             ),
         ),
     ],
