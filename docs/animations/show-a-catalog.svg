@@ -9,6 +9,8 @@
 .sqc .step text { font-size: 12.5px; font-weight: 600; }
 .sqc .a { animation-duration: 12s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
 .sqc .trace { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; vector-effect: non-scaling-stroke; }
+/* A curve inside a group the animation stretches: the dash trick breaks there (curves vanish at some scales). */
+.sqc .trace.solid { stroke-dasharray: none; }
 .sqc .ring { transform-box: fill-box; transform-origin: center; opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .sqc .a { animation: none; } }
 

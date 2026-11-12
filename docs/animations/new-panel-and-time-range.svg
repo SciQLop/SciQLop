@@ -1,0 +1,91 @@
+<svg class="sqn" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 430" role="img" aria-label="Click the plus button next to the panel tabs for a new, empty panel. Under it, type a start date and press Enter, then type a duration such as 3h in the box beside it.">
+<style>
+.sqn { --win:#ffffff;--bar:#ebebed;--side:#f4f4f6;--line:#d5d5da;--fg:#2f2f33;--dim:#77777f;--accent:#3584e4;--accent-soft:#3584e422;--on-accent:#ffffff;--c1:#1c71d8;--c2:#e66100;--c3:#26a269;--c4:#9141ac;--shadow:#00000022; font-family: "Adwaita Sans", Inter, Cantarell, system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { .sqn { --win:#27272b;--bar:#34343a;--side:#2e2e33;--line:#4a4a52;--fg:#f1f1f3;--dim:#a3a3ad;--accent:#78aeed;--accent-soft:#78aeed2e;--on-accent:#14141a;--c1:#78aeed;--c2:#ffa348;--c3:#57e389;--c4:#dc8add;--shadow:#00000066; } }
+.sqn text { fill: var(--fg); font-size: 12px; }
+.sqn .dim { fill: var(--dim); }
+.sqn .small { font-size: 10.5px; }
+.sqn .title { font-weight: 700; font-size: 12.5px; }
+.sqn .step text { font-size: 12.5px; font-weight: 600; }
+.sqn .a { animation-duration: 13s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
+.sqn .trace { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; vector-effect: non-scaling-stroke; }
+/* A curve inside a group the animation stretches: the dash trick breaks there (curves vanish at some scales). */
+.sqn .trace.solid { stroke-dasharray: none; }
+.sqn .ring { transform-box: fill-box; transform-origin: center; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .sqn .a { animation: none; } }
+
+/* Resting state = the result: the new empty panel, with the typed start and duration. */
+.sqn .cursor { animation-name: sqn-cursor; opacity: 0; }
+.sqn .old { animation-name: sqn-old; opacity: 0; }
+.sqn .new { animation-name: sqn-new; }
+.sqn .plus { animation-name: sqn-plus; transform: translate(58px, 0px); }
+.sqn .start0 { animation-name: sqn-start0; opacity: 0; } .sqn .start1 { animation-name: sqn-start1; }
+.sqn .dur0 { animation-name: sqn-dur0; opacity: 0; } .sqn .dur1 { animation-name: sqn-dur1; }
+.sqn .focus1 { animation-name: sqn-focus1; opacity: 0; } .sqn .focus2 { animation-name: sqn-focus2; opacity: 0; }
+.sqn .enter { animation-name: sqn-enter; opacity: 0; }
+.sqn .k0 { animation-name: sqn-k0; }
+.sqn .k1 { animation-name: sqn-k1; }
+.sqn .k2 { animation-name: sqn-k2; }
+.sqn .s1 { animation-name: sqn-s1; }
+.sqn .s2 { animation-name: sqn-s2; }
+.sqn .s3 { animation-name: sqn-s3; }
+@keyframes sqn-cursor { 0.00% { transform: translate(575px, 250px);opacity: 1; } 4.62% { transform: translate(575px, 250px);opacity: 1; } 12.31% { transform: translate(136px, 77px);opacity: 1; } 20.00% { transform: translate(136px, 77px);opacity: 1; } 29.23% { transform: translate(214px, 346px);opacity: 1; } 49.23% { transform: translate(214px, 346px);opacity: 1; } 55.38% { transform: translate(338px, 346px);opacity: 1; } 89.23% { transform: translate(338px, 346px);opacity: 1; } 100.00% { transform: translate(575px, 250px);opacity: 1; } }
+@keyframes sqn-old { 0.00% { opacity: 1; } 14.62% { opacity: 1; } 16.92% { opacity: 0; } 92.31% { opacity: 0; } 94.62% { opacity: 1; } 100.00% { opacity: 1; } }
+@keyframes sqn-new { 0.00% { opacity: 0; } 14.62% { opacity: 0; } 16.92% { opacity: 1; } 92.31% { opacity: 1; } 94.62% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqn-plus { 0.00% { transform: translate(0px, 0px); } 14.62% { transform: translate(0px, 0px); } 16.92% { transform: translate(58px, 0px); } 92.31% { transform: translate(58px, 0px); } 94.62% { transform: translate(0px, 0px); } 100.00% { transform: translate(0px, 0px); } }
+@keyframes sqn-start0 { 0.00% { opacity: 1; } 35.38% { opacity: 1; } 37.69% { opacity: 0; } 92.31% { opacity: 0; } 94.62% { opacity: 1; } 100.00% { opacity: 1; } }
+@keyframes sqn-start1 { 0.00% { opacity: 0; } 37.69% { opacity: 0; } 40.00% { opacity: 1; } 92.31% { opacity: 1; } 94.62% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqn-dur0 { 0.00% { opacity: 1; } 61.54% { opacity: 1; } 63.85% { opacity: 0; } 92.31% { opacity: 0; } 94.62% { opacity: 1; } 100.00% { opacity: 1; } }
+@keyframes sqn-dur1 { 0.00% { opacity: 0; } 63.85% { opacity: 0; } 66.15% { opacity: 1; } 92.31% { opacity: 1; } 94.62% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqn-focus1 { 0.00% { opacity: 0; } 30.77% { opacity: 0; } 31.92% { opacity: 1; } 47.69% { opacity: 1; } 48.85% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqn-focus2 { 0.00% { opacity: 0; } 56.92% { opacity: 0; } 58.08% { opacity: 1; } 72.31% { opacity: 1; } 73.46% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqn-enter { 0.00% { transform: translate(214px, 284px);opacity: 0; } 42.31% { transform: translate(214px, 284px);opacity: 0; } 43.85% { transform: translate(214px, 284px);opacity: 1; } 49.23% { transform: translate(214px, 284px);opacity: 1; } 50.77% { transform: translate(214px, 284px);opacity: 0; } 51.54% { transform: translate(338px, 284px);opacity: 0; } 66.92% { transform: translate(338px, 284px);opacity: 0; } 68.46% { transform: translate(338px, 284px);opacity: 1; } 73.85% { transform: translate(338px, 284px);opacity: 1; } 75.38% { transform: translate(338px, 284px);opacity: 0; } 100.00% { transform: translate(338px, 284px);opacity: 0; } }
+@keyframes sqn-k0 { 13.69% { transform: scale(.3); opacity: 0; } 13.85% { transform: scale(.3); opacity: .9; } 18.46% { transform: scale(1.5); opacity: 0; } 100.00% { transform: scale(1.5); opacity: 0; } }
+@keyframes sqn-k1 { 30.62% { transform: scale(.3); opacity: 0; } 30.77% { transform: scale(.3); opacity: .9; } 35.38% { transform: scale(1.5); opacity: 0; } 100.00% { transform: scale(1.5); opacity: 0; } }
+@keyframes sqn-k2 { 56.77% { transform: scale(.3); opacity: 0; } 56.92% { transform: scale(.3); opacity: .9; } 61.54% { transform: scale(1.5); opacity: 0; } 100.00% { transform: scale(1.5); opacity: 0; } }
+@keyframes sqn-s1 { 0.00% { opacity: .4; } 3.85% { opacity: .4; } 6.15% { opacity: 1; } 21.54% { opacity: 1; } 23.85% { opacity: .4; } 100.00% { opacity: .4; } }
+@keyframes sqn-s2 { 0.00% { opacity: .4; } 24.62% { opacity: .4; } 26.92% { opacity: 1; } 49.23% { opacity: 1; } 51.54% { opacity: .4; } 100.00% { opacity: .4; } }
+@keyframes sqn-s3 { 0.00% { opacity: .4; } 52.31% { opacity: .4; } 54.62% { opacity: 1; } 74.62% { opacity: 1; } 76.92% { opacity: .4; } 100.00% { opacity: .4; } }
+</style>
+<defs>
+  <clipPath id="sqn-win"><rect x="20" y="16" width="680" height="344" rx="14"/></clipPath>
+  <clipPath id="sqn-body"><path d="M49 55 H700 V346 a14 14 0 0 1 -14 14 H49 Z"/></clipPath>
+</defs>
+<rect x="20" y="19" width="680" height="344" rx="14" fill="var(--shadow)"/>
+<g clip-path="url(#sqn-win)">
+  <rect x="20" y="16" width="680" height="344" fill="var(--win)"/>
+  <rect x="20" y="16" width="680" height="38" fill="var(--bar)"/>
+  <rect x="20" y="54" width="28" height="306" fill="var(--side)"/>
+  <line x1="48" y1="54" x2="48" y2="360" stroke="var(--line)"/>
+  <line x1="20" y1="54" x2="700" y2="54" stroke="var(--line)"/>
+</g>
+<rect x="20" y="16" width="680" height="344" rx="14" fill="none" stroke="var(--line)"/>
+<text x="360" y="40" text-anchor="middle" class="title">SciQLop</text>
+<circle cx="678" cy="35" r="8" fill="var(--line)"/>
+<path d="M674.5 31.5 l7 7 M681.5 31.5 l-7 7" stroke="var(--fg)" stroke-width="1.4" stroke-linecap="round"/>
+<g transform="translate(26 65) scale(0.6667)" fill="var(--dim)"><path d="M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3z"/></g><g transform="translate(26 93) scale(0.6667)" fill="var(--dim)"><path d="M21,5c-1.11-0.35-2.33-0.5-3.5-0.5c-1.95,0-4.05,0.4-5.5,1.5c-1.45-1.1-3.55-1.5-5.5-1.5S2.45,4.9,1,6v14.65 c0,0.25,0.25,0.5,0.5,0.5c0.1,0,0.15-0.05,0.25-0.05C3.1,20.45,5.05,20,6.5,20c1.95,0,4.05,0.4,5.5,1.5c1.35-0.85,3.8-1.5,5.5-1.5 c1.65,0,3.35,0.3,4.75,1.05c0.1,0.05,0.15,0.05,0.25,0.05c0.25,0,0.5-0.25,0.5-0.5V6C22.4,5.55,21.75,5.25,21,5z M21,18.5 c-1.1-0.35-2.3-0.5-3.5-0.5c-1.7,0-4.15,0.65-5.5,1.5V8c1.35-0.85,3.8-1.5,5.5-1.5c1.2,0,2.4,0.15,3.5,0.5V18.5z"/><path d="M17.5,10.5c0.88,0,1.73,0.09,2.5,0.26V9.24C19.21,9.09,18.36,9,17.5,9c-1.7,0-3.24,0.29-4.5,0.83v1.66 C14.13,10.85,15.7,10.5,17.5,10.5z"/><path d="M13,12.49v1.66c1.13-0.64,2.7-0.99,4.5-0.99c0.88,0,1.73,0.09,2.5,0.26V11.9c-0.79-0.15-1.64-0.24-2.5-0.24 C15.8,11.66,14.26,11.96,13,12.49z"/><path d="M17.5,14.33c-1.7,0-3.24,0.29-4.5,0.83v1.66c1.13-0.64,2.7-0.99,4.5-0.99c0.88,0,1.73,0.09,2.5,0.26v-1.52 C19.21,14.41,18.36,14.33,17.5,14.33z"/></g><g transform="translate(26 121) scale(0.6667)" fill="var(--dim)"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></g><g transform="translate(26 149) scale(0.6667)" fill="var(--dim)"><path d="M14.06,9.94L12,9l2.06-0.94L15,6l0.94,2.06L18,9l-2.06,0.94L15,12L14.06,9.94z M4,14l0.94-2.06L7,11l-2.06-0.94L4,8 l-0.94,2.06L1,11l2.06,0.94L4,14z M8.5,9l1.09-2.41L12,5.5L9.59,4.41L8.5,2L7.41,4.41L5,5.5l2.41,1.09L8.5,9z M4.5,20.5l6-6.01l4,4 L23,8.93l-1.41-1.41l-7.09,7.97l-4-4L3,19L4.5,20.5z"/></g>
+<text x="66" y="78" class="title">Panel 1</text>
+<line class="old a" x1="66" y1="84" x2="112" y2="84" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+<g class="new a"><text x="124" y="78" class="title">Panel 2</text>
+  <line x1="124" y1="84" x2="170" y2="84" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/></g>
+<g class="plus a"><g transform="translate(126 66) scale(0.6667)" fill="var(--fg)"><path d="M6 9.99h2v7H6zm8 3h2v4h-2zm-4-6h2v10h-2zM20 7V4h-2v3h-3v2h3v3h2V9h3V7zm-2 12H4V5h12V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-5h-2v5z"/></g></g>
+<rect x="60" y="96" width="624" height="226" rx="10" fill="none" stroke="var(--line)"/>
+<g class="old a"><g transform="translate(76 104)"><rect width="592" height="100" rx="3" fill="none" stroke="var(--line)"/><line x1="8" y1="50.0" x2="584" y2="50.0" stroke="var(--line)" stroke-dasharray="2 4"/><polyline class="trace " pathLength="1" stroke="var(--c1)" points="8.0,79.4 17.6,78.3 27.2,78.0 36.8,78.8 46.4,80.2 56.0,81.4 65.6,82.0 75.2,81.4 84.8,80.2 94.4,78.7 104.0,77.9 113.6,78.1 123.2,79.1 132.8,80.4 142.4,81.3 152.0,81.3 161.6,80.1 171.2,78.4 180.8,76.8 190.4,75.9 200.0,75.8 209.6,76.2 219.2,76.3 228.8,75.4 238.4,73.1 248.0,69.5 257.6,65.1 267.2,60.8 276.8,56.9 286.4,53.6 296.0,50.6 305.6,47.3 315.2,43.2 324.8,38.5 334.4,33.7 344.0,29.5 353.6,26.5 363.2,25.0 372.8,24.8 382.4,24.9 392.0,24.8 401.6,23.9 411.2,22.2 420.8,20.4 430.4,19.1 440.0,18.7 449.6,19.5 459.2,20.8 468.8,21.9 478.4,22.2 488.0,21.5 497.6,20.1 507.2,18.8 516.8,18.1 526.4,18.4 536.0,19.6 545.6,21.0 555.2,21.9 564.8,21.9 574.4,20.8 584.0,19.4"/><polyline class="trace " pathLength="1" stroke="var(--c2)" points="8.0,56.2 17.6,56.2 27.2,57.7 36.8,59.4 46.4,60.0 56.0,58.9 65.6,57.1 75.2,56.0 84.8,56.6 94.4,58.3 104.0,59.8 113.6,59.7 123.2,58.2 132.8,56.4 142.4,55.7 152.0,56.5 161.6,58.0 171.2,58.6 180.8,57.4 190.4,54.7 200.0,52.0 209.6,50.4 219.2,50.0 228.8,49.6 238.4,47.8 248.0,44.3 257.6,40.2 267.2,37.0 276.8,36.0 286.4,36.7 296.0,37.8 305.6,38.1 315.2,37.7 324.8,37.6 334.4,39.1 344.0,42.5 353.6,46.7 363.2,50.1 372.8,51.7 382.4,51.9 392.0,52.0 401.6,53.2 411.2,55.6 420.8,58.0 430.4,59.1 440.0,58.4 449.6,56.8 459.2,55.8 468.8,56.5 478.4,58.3 488.0,59.8 497.6,59.8 507.2,58.3 516.8,56.6 526.4,56.0 536.0,57.1 545.6,58.9 555.2,60.0 564.8,59.4 574.4,57.7 584.0,56.2"/><polyline class="trace " pathLength="1" stroke="var(--c3)" points="8.0,20.2 17.6,21.1 27.2,22.3 36.8,23.4 46.4,24.0 56.0,23.9 65.6,23.1 75.2,21.9 84.8,20.9 94.4,20.3 104.0,20.5 113.6,21.4 123.2,22.8 132.8,24.0 142.4,24.8 152.0,24.9 161.6,24.3 171.2,23.5 180.8,22.8 190.4,22.7 200.0,23.5 209.6,25.1 219.2,27.3 228.8,29.5 238.4,31.5 248.0,33.0 257.6,34.0 267.2,34.9 276.8,36.1 286.4,38.0 296.0,40.8 305.6,44.5 315.2,48.5 324.8,52.3 334.4,55.5 344.0,57.8 353.6,59.2 363.2,59.9 372.8,60.5 382.4,61.3 392.0,62.7 401.6,64.6 411.2,66.7 420.8,68.5 430.4,69.7 440.0,70.0 449.6,69.5 459.2,68.6 468.8,67.7 478.4,67.3 488.0,67.6 497.6,68.5 507.2,69.9 516.8,71.1 526.4,71.7 536.0,71.6 545.6,70.8 555.2,69.7 564.8,68.6 574.4,68.0 584.0,68.1"/></g><g transform="translate(76 214)"><rect width="592" height="100" rx="3" fill="none" stroke="var(--line)"/><line x1="8" y1="50.0" x2="584" y2="50.0" stroke="var(--line)" stroke-dasharray="2 4"/><polyline class="trace " pathLength="1" stroke="var(--c3)" points="8.0,61.8 17.6,63.0 27.2,63.2 36.8,65.5 46.4,66.4 56.0,62.6 65.6,62.7 75.2,62.7 84.8,64.2 94.4,66.8 104.0,63.7 113.6,62.5 123.2,62.3 132.8,62.6 142.4,66.2 152.0,64.5 161.6,62.4 171.2,62.0 180.8,60.8 190.4,64.3 200.0,64.3 209.6,61.6 219.2,60.7 228.8,58.2 238.4,60.3 248.0,61.7 257.6,58.8 267.2,57.5 276.8,54.0 286.4,53.9 296.0,56.2 305.6,53.8 315.2,52.5 324.8,49.1 334.4,47.2 344.0,50.1 353.6,49.2 363.2,48.5 372.8,46.4 382.4,43.2 392.0,45.9 401.6,46.6 411.2,46.5 420.8,45.9 430.4,42.0 440.0,43.5 449.6,45.3 459.2,45.5 468.8,46.3 478.4,42.5 488.0,42.1 497.6,44.4 507.2,44.7 516.8,46.6 526.4,43.8 536.0,41.6 545.6,43.6 555.2,43.9 564.8,46.3 574.4,45.3 584.0,41.8"/></g></g>
+<g class="new a"><rect x="76" y="112" width="592" height="194" rx="8" fill="none" stroke="var(--dim)" stroke-width="1.2" stroke-dasharray="5 5"/>
+  <text x="372" y="214" text-anchor="middle" class="dim" style="font-size:13px">Add a product to this panel</text></g>
+<rect x="76" y="330" width="20" height="22" rx="6" fill="var(--win)" stroke="var(--line)"/><path d="M4 -4 v8 l-6 -4 z M-5 -4 h1.6 v8 h-1.6 z" transform="translate(86 341)" fill="var(--dim)"/><rect x="100" y="330" width="20" height="22" rx="6" fill="var(--win)" stroke="var(--line)"/><path d="M3 -4 v8 l-6 -4 z" transform="translate(110 341)" fill="var(--dim)"/>
+<rect x="126" y="330" width="172" height="22" rx="6" fill="var(--win)" stroke="var(--line)"/><rect class="focus1 a" x="126" y="330" width="172" height="22" rx="6" fill="none" stroke="var(--accent)" stroke-width="2"/>
+<text x="136" y="345" class="small start0 a">2025-11-16 15:59:00 UTC</text><text x="136" y="345" class="small start1 a">2019-03-01 12:00:00 UTC</text>
+<rect x="304" y="330" width="58" height="22" rx="6" fill="var(--win)" stroke="var(--line)"/><rect class="focus2 a" x="304" y="330" width="58" height="22" rx="6" fill="none" stroke="var(--accent)" stroke-width="2"/>
+<text x="314" y="345" class="small dur0 a">1d</text><text x="314" y="345" class="small dur1 a">3h</text>
+<path d="M343 339 l4 4 l4 -4" fill="none" stroke="var(--dim)" stroke-width="1.3"/>
+<rect x="368" y="330" width="20" height="22" rx="6" fill="var(--win)" stroke="var(--line)"/><path d="M-3 -4 v8 l6 -4 z" transform="translate(378 341)" fill="var(--dim)"/><rect x="392" y="330" width="20" height="22" rx="6" fill="var(--win)" stroke="var(--line)"/><path d="M-4 -4 v8 l6 -4 z M5 -4 h-1.6 v8 h1.6 z" transform="translate(402 341)" fill="var(--dim)"/>
+<text x="426" y="345" class="small dim">Zoom limit:</text><rect x="482" y="330" width="52" height="22" rx="6" fill="var(--win)" stroke="var(--line)"/><text x="491" y="345" class="small ">1d</text><path d="M519 339 l4 4 l4 -4" fill="none" stroke="var(--dim)" stroke-width="1.3"/>
+<text x="548" y="345" class="small dim">Catalog mode:</text><rect x="620" y="330" width="64" height="22" rx="6" fill="var(--win)" stroke="var(--line)"/><text x="629" y="345" class="small ">View</text><path d="M669 339 l4 4 l4 -4" fill="none" stroke="var(--dim)" stroke-width="1.3"/>
+<circle class="ring a k0" cx="134" cy="74" r="14" fill="none" stroke="var(--accent)" stroke-width="2"/><circle class="ring a k1" cx="212" cy="341" r="14" fill="none" stroke="var(--accent)" stroke-width="2"/><circle class="ring a k2" cx="333" cy="341" r="14" fill="none" stroke="var(--accent)" stroke-width="2"/>
+<g class="enter a"><g class=""><rect x="16" y="20" width="49" height="20" rx="5" fill="var(--win)" stroke="var(--fg)" stroke-width="1.2"/><text x="40.5" y="34" text-anchor="middle" style="font-size:11px;font-weight:600">Enter</text></g></g>
+<g class="cursor a"><path d="M0 0 L0 17 L4.6 12.8 L7.6 19.6 L10.4 18.4 L7.4 11.6 L13.4 11.6 Z" fill="var(--fg)" stroke="var(--win)" stroke-width="1.3" stroke-linejoin="round"/></g>
+<g class="step a s1"><circle cx="58" cy="398" r="10" fill="var(--accent)"/><text x="58" y="402.3" text-anchor="middle" style="fill:var(--on-accent);font-size:11.5px;font-weight:700">1</text><text x="76" y="402.3">Click + for a new panel</text></g>
+<g class="step a s2"><circle cx="252" cy="398" r="10" fill="var(--accent)"/><text x="252" y="402.3" text-anchor="middle" style="fill:var(--on-accent);font-size:11.5px;font-weight:700">2</text><text x="270" y="402.3">Type the start, press Enter</text></g>
+<g class="step a s3"><circle cx="468" cy="398" r="10" fill="var(--accent)"/><text x="468" y="402.3" text-anchor="middle" style="fill:var(--on-accent);font-size:11.5px;font-weight:700">3</text><text x="486" y="402.3">Type a duration: 3h, 90m, 2d</text></g>
+</svg>

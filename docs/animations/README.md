@@ -4,6 +4,7 @@ Short looping animations that each teach one SciQLop manipulation, drawn as a si
 
 | File | Shows |
 | --- | --- |
+| `new-panel-and-time-range.svg` | Add a plot panel with the + button, then type its start date and duration. |
 | `plot-a-product.svg` | Open the Products pane, drag a product onto a panel. |
 | `drop-on-a-panel.svg` | Where to drop on a panel that has plots: on a plot, on its top edge, on its bottom edge. |
 | `show-a-catalog.svg` | Open the Catalogs pane, drag a catalog onto a panel: its events show as spans. |
