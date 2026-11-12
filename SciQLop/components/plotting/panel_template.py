@@ -5,6 +5,7 @@ everything else maps to and from this model.
 """
 from __future__ import annotations
 
+import shutil
 import copy
 import math
 from datetime import datetime, timezone
@@ -102,7 +103,7 @@ def _graph_axis_name(plot, graph) -> str:
     return "y2" if graph.y_axis() is plot.y2_axis() else "y"
 
 
-def _restore_timeseries(panel, plot_model: PlotModel):
+def _restore_timeseries(panel, plot_model: PlotModel, not_found: list):
     from SciQLop.components.plotting.ui.time_sync_panel import plot_product, _graph_from_result
     from SciQLopPlots import PlotType as _PlotType
     subplot = None
@@ -122,6 +123,7 @@ def _restore_timeseries(panel, plot_model: PlotModel):
             r = plot_product(subplot, resolved, **inputs)
         if r is None:
             log.warning(f"Product not found, skipping: {product.path}")
+            not_found.append(product.path)
         elif subplot is not None:
             _place_on_axis(subplot, _graph_from_result(r), product.y_axis)
     if subplot is not None:
@@ -200,6 +202,12 @@ class PanelTemplate(BaseModel):
     _source_path: str | None = PrivateAttr(default=None)
     _saved_version: int = PrivateAttr(default=TEMPLATE_VERSION)
     _foreign_root: Optional[dict] = PrivateAttr(default=None)  # kept raw: only its kind can read it
+    _not_found: list = PrivateAttr(default_factory=list)
+
+    @property
+    def not_found(self) -> list[str]:
+        """The product paths the last apply() could not plot."""
+        return list(self._not_found)
 
     @staticmethod
     def _foreign(name: str, description: str, root: dict) -> PanelTemplate:
@@ -274,6 +282,8 @@ class PanelTemplate(BaseModel):
         panel = main_window.new_plot_panel()
         impl = panel._impl if hasattr(panel, '_impl') else panel
         self.apply(impl)
+        if self._not_found:
+            main_window.statusBar().showMessage(missing_products_message(self.name, self._not_found))
         impl._template_source_path = source_path or self._source_path
         impl.setProperty(DESCRIPTION_PROPERTY, self.description)
         return panel
@@ -296,7 +306,8 @@ class PanelTemplate(BaseModel):
         self._apply_zoom_limit(panel)
         if self.time_range is not None:
             panel.set_time_axis_range(self._time_range())
-        restored = [_restore_plot(panel, plot_model) for plot_model in self.plots]
+        self._not_found = []
+        restored = [_restore_plot(panel, plot_model, self._not_found) for plot_model in self.plots]
         self._apply_zoom_limit(panel)
         return restored
 
@@ -392,11 +403,11 @@ def _saved_plot(plot) -> Optional[PlotModel]:
         return None
 
 
-def _restore_plot(panel, model: PlotModel):
+def _restore_plot(panel, model: PlotModel, not_found: list):
     """A plot kind that is not registered, or whose from_config fails, leaves a placeholder that keeps the node."""
     from SciQLop.components.plotting.placeholder import add_placeholder
     if model.kind == TIMESERIES:
-        return _restore_timeseries(panel, model)
+        return _restore_timeseries(panel, model, not_found)
     kind = PLOT_KINDS.get(model.kind) if model.kind in PLOT_KINDS else None
     if kind is None or kind.from_config is None:
         return add_placeholder(panel, model)
@@ -526,6 +537,22 @@ def save_preview(widget, template_path: str) -> None:
     pixmap = widget.grab()
     if not pixmap.isNull():
         pixmap.save(str(preview_path(template_path)), "PNG")
+
+
+def missing_products_message(template_name: str, missing: list[str]) -> str:
+    one = len(missing) == 1
+    return (f'Template "{template_name}": {len(missing)} product{"" if one else "s"} '
+            f'{"was" if one else "were"} not found and {"is" if one else "are"} missing from the panel: '
+            f'{", ".join(missing)}.')
+
+
+def import_template_file(source, destination_dir) -> Path:
+    """Copies a template file into a templates folder; raises, copying nothing, when it cannot be read as one."""
+    source = Path(source)
+    PanelTemplate.from_file(str(source))
+    destination = Path(destination_dir) / source.name
+    shutil.copy2(source, destination)
+    return destination
 
 
 def resolve_product_path(path: str) -> list[str]:

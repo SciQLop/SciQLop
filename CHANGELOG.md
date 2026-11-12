@@ -68,6 +68,8 @@
 - Several products on one plot each keep their own message. The last message used to replace the others, and one product recovering erased another one's error.
 - A failed export says what failed and what to try ("You are not allowed to write there. Choose another folder."), with the full error behind "Show Details". It used to show only the system's message. The same for saving an agent transcript.
 - A catalog error stays on the status bar until the next message and is recorded in the Logs pane. It used to vanish after 8 seconds with no trace.
+- Opening a template says on the status bar which products it could not find. They used to be skipped with only a log line.
+- Saving a template under a name that already exists asks before replacing it. Importing a template checks the file first: a file that is not a panel template is refused with an explanation and nothing is copied.
 - A boundary model re-registered under another label moves in the products tree; the entry at its old label stayed behind.
 - A scene plot can switch frame: pick it in the plot's Properties panel (the frames centred on its body, e.g. GSE, GSM, SM for Earth) or call `scene_plot.set_frame("GSE")`. Boundaries and trajectories are redrawn in the new frame, and saved templates keep it.
 - A 3DView spacecraft dropped from the speasy tree (cdpp3dview/ACE) onto a scene plot was refused with "has no COORDINATE_SYSTEM". It is now fetched from 3DView in the scene's frame.

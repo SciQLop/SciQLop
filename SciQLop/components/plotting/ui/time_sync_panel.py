@@ -1725,7 +1725,10 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
             text=self.windowTitle(),
         )
         if ok and name.strip():
+            from SciQLop.core.ui.failure_dialog import confirm_replace
             path = str(templates_dir() / f"{name.strip()}.json")
+            if not confirm_replace(self, path, "template"):
+                return
             self._save_template_with_preview(path, name.strip())
             self._template_source_path = path
 

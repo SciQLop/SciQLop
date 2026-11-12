@@ -46,7 +46,7 @@ def _timeseries_plot_model(config: dict):
 def _timeseries_from_config(panel, config):
     from SciQLop.components.plotting.panel_template import _restore_timeseries
     from SciQLop.user_api.plot._plots import to_plot
-    subplot = _restore_timeseries(panel, _timeseries_plot_model(config))
+    subplot = _restore_timeseries(panel, _timeseries_plot_model(config), [])
     return to_plot(subplot) if subplot is not None else None
 
 

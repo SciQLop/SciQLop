@@ -370,18 +370,22 @@ class WelcomeBackend(QObject):
     @Slot()
     def import_template(self) -> None:
         from PySide6.QtWidgets import QFileDialog
-        from SciQLop.components.plotting.panel_template import PanelTemplate, templates_dir
+        from SciQLop.components.plotting.panel_template import import_template_file, templates_dir
         from SciQLop.components.plotting.template_formats import file_dialog_filter
+        from SciQLop.core.ui.failure_dialog import confirm_replace, show_failure
         from pathlib import Path
-        import shutil
         path, _ = QFileDialog.getOpenFileName(
             None, "Import template",
             str(Path.home()),
             file_dialog_filter(),
         )
-        if path:
-            dest = templates_dir() / Path(path).name
-            shutil.copy2(path, dest)
+        if not path or not confirm_replace(None, templates_dir() / Path(path).name, "template"):
+            return
+        try:
+            import_template_file(path, templates_dir())
+        except Exception as e:
+            show_failure(None, "Import template",
+                         f"{Path(path).name} could not be read as a SciQLop panel template.", e)
 
     featured_packages_ready = Signal(str)
 

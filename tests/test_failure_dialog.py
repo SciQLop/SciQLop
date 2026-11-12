@@ -30,3 +30,21 @@ def test_the_box_leads_with_the_sentence_and_keeps_the_error_under_details(qapp)
     assert "not allowed to write" in box.informativeText()
     assert "PermissionError" in box.detailedText() and "Traceback" in box.detailedText()
     box.deleteLater()
+
+
+def test_nothing_in_the_way_needs_no_question(tmp_path, qapp):
+    from SciQLop.core.ui.failure_dialog import confirm_replace
+    assert confirm_replace(None, tmp_path / "new.json", "template")
+
+
+@pytest.mark.parametrize("answer, expected", [("Yes", True), ("No", False)])
+def test_an_existing_file_is_replaced_only_on_yes(tmp_path, qapp, monkeypatch, answer, expected):
+    from PySide6.QtWidgets import QMessageBox
+    from SciQLop.core.ui.failure_dialog import confirm_replace
+    existing = tmp_path / "mine.json"
+    existing.write_text("{}")
+    asked = []
+    monkeypatch.setattr(QMessageBox, "question",
+                        lambda parent, title, text, *a: asked.append(text) or getattr(QMessageBox.StandardButton, answer))
+    assert confirm_replace(None, existing, "template") is expected
+    assert asked == ['A template named "mine" already exists. Replace it?']
