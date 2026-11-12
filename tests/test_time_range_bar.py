@@ -203,3 +203,36 @@ def test_text_that_is_not_a_duration_is_put_back(bar, qtbot):
     qtbot.keyClicks(bar._duration_combo.lineEdit(), "soon")
     qtbot.keyClick(bar._duration_combo.lineEdit(), Qt.Key.Key_Return)
     assert bar.duration_text == "3d" and signals == []
+
+
+# --- The start box applies a typed date once, when editing ends ---
+
+def test_typing_a_start_date_moves_the_window_once(bar, qtbot):
+    """Each digit used to move the window, so one date cost several downloads."""
+    bar.set_range(TimeRange(1_000_000.0, 1_000_000.0 + 3600))
+    moves = []
+    bar.range_changed.connect(moves.append)
+    bar.show()
+    qtbot.waitExposed(bar)
+    picker = bar._start_picker
+    picker.setFocus()
+    picker.setSelectedSection(picker.Section.YearSection)
+    qtbot.keyClicks(picker, "2019")
+    assert moves == []
+    qtbot.keyClick(picker, Qt.Key.Key_Return)
+    assert len(moves) == 1
+    assert datetime.fromtimestamp(moves[0].start(), timezone.utc).year == 2019
+
+
+def test_the_start_arrows_still_apply_at_once(bar, qtbot):
+    bar.set_range(TimeRange(1_000_000.0, 1_000_000.0 + 3600))
+    with qtbot.waitSignal(bar.range_changed, timeout=1000):
+        bar._start_picker.stepBy(1)
+
+
+def test_the_start_box_says_utc(bar):
+    assert bar._start_picker.text().endswith("UTC")
+
+
+def test_the_new_panel_pulse_is_not_error_red(bar):
+    assert "palette(highlight)" in bar._start_pulse.styleSheet()

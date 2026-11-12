@@ -15,7 +15,10 @@ ZOOM_LIMIT_PRESETS = [("1h", 3600.0), ("1d", 86400.0), ("1w", 604800.0), ("1y", 
 
 def _make_start_picker(parent):
     w = QDateTimeEdit(parent)
-    w.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
+    w.setDisplayFormat("yyyy-MM-dd HH:mm:ss 'UTC'")
+    # A typed date applies on Enter or focus-out, not on each digit: every
+    # intermediate date moved the panel and started a download.
+    w.setKeyboardTracking(False)
     w.setCalendarPopup(True)
     w.setTimeZone(QTimeZone.UTC)
     return w
@@ -150,7 +153,7 @@ class TimeRangeBar(QWidget):
         self._zoom_limit_combo.currentTextChanged.connect(self._on_zoom_limit_changed)
 
         self._start_pulse = _PulseOverlay(
-            self._start_picker, "rgb(230, 50, 50)",
+            self._start_picker, "palette(highlight)",
             [(0.0, 1.0), (0.25, 0.2), (0.5, 1.0), (0.75, 0.2), (1.0, 0.0)], 2000)
         self._limit_pulse = _PulseOverlay(
             self._zoom_limit_combo, "rgb(230, 160, 50)",
