@@ -258,3 +258,47 @@ def test_adding_a_newer_wheel_replaces_the_older_one(qtbot, tmp_path, monkeypatc
         backend.add_dependencies_to_workspace(str(tmp_path), json.dumps([new]))
 
     assert WorkspaceManifest.load(tmp_path / "workspace.sciqlop").requires == ["ipympl", new]
+
+
+def _bare_welcome_backend():
+    from PySide6.QtCore import QObject
+    from SciQLop.components.welcome import backend as wb
+    backend = wb.WelcomeBackend.__new__(wb.WelcomeBackend)
+    QObject.__init__(backend)
+    return backend
+
+
+def test_adding_a_package_that_is_already_there_still_answers(qtbot, tmp_path, monkeypatch):
+    """The page shows "Installing…" until it hears back; no answer left it stuck."""
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+    WorkspaceManifest(name="W", requires=["spok"]).save(tmp_path / "workspace.sciqlop")
+    monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(tmp_path))
+    backend = _bare_welcome_backend()
+    with qtbot.waitSignal(backend.dependency_install_finished, timeout=5000) as blocker:
+        backend.add_dependencies_to_workspace(str(tmp_path), json.dumps(["spok"]))
+    assert json.loads(blocker.args[0]) == {"ok": True, "deps": [], "already": ["spok"], "dir": str(tmp_path)}
+
+
+def test_a_failed_package_install_says_why_in_plain_words(qtbot, tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from SciQLop.components.workspaces.backend import live_install
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+    WorkspaceManifest(name="W").save(tmp_path / "workspace.sciqlop")
+    monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(tmp_path))
+    monkeypatch.setattr(live_install, "guarded_install", lambda specs: SimpleNamespace(
+        returncode=1, stderr="  × No solution found when resolving dependencies:\n  ╰─▶ Because numpy<2"))
+    backend = _bare_welcome_backend()
+    with qtbot.waitSignal(backend.dependency_install_finished, timeout=5000) as blocker:
+        backend.add_dependencies_to_workspace(str(tmp_path), json.dumps(["nope"]))
+    result = json.loads(blocker.args[0])
+    assert result["ok"] is False and result["deps"] == ["nope"]
+    assert result["error"].startswith("It does not work with the packages already in this workspace.")
+    assert WorkspaceManifest.load(tmp_path / "workspace.sciqlop").requires == []
+
+
+def test_the_page_shows_progress_and_the_failure_when_adding_a_package():
+    from pathlib import Path
+    javascript = Path("SciQLop/components/welcome/resources/welcome.js").read_text(encoding="utf-8")
+    assert javascript.count("backend.add_dependencies_to_workspace(") == 1   # only through installDependencies
+    for needle in ("Installing…", 'class="pkg-error"', "Could not install ", "Already in this workspace: "):
+        assert needle in javascript

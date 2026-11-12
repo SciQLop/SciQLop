@@ -1084,6 +1084,28 @@ h2 {
     animation: toast-in 0.3s ease, toast-out 0.3s ease 2.7s forwards;
 }
 
+.toast.toast-error {
+    border-color: #c0392b;
+    background: color-mix(in srgb, #c0392b 12%, var(--Window));
+    animation: toast-in 0.3s ease, toast-out 0.3s ease 9.7s forwards;
+}
+
+.pkg-list li.pkg-installing {
+    color: var(--UnselectedText, var(--Text));
+    font-style: italic;
+}
+
+.pkg-error {
+    margin: 6px 0;
+    padding: 8px;
+    border: 1px solid #c0392b;
+    border-radius: 4px;
+    font-size: 0.85em;
+    white-space: pre-wrap;
+    max-height: 12em;
+    overflow: auto;
+}
+
 .toast.toast-success {
     border-color: #27ae60;
     background: color-mix(in srgb, #27ae60 12%, var(--Window));

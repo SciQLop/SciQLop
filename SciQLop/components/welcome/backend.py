@@ -489,12 +489,15 @@ class WelcomeBackend(QObject):
 
     @Slot(str, str)
     def add_dependencies_to_workspace(self, workspace_dir: str, dependencies_json: str) -> None:
-        from SciQLop.components.workspaces.backend.uv import uv_command
+        from SciQLop.components.workspaces.backend.uv import error_summary, uv_command
         deps = json.loads(dependencies_json)
         manifest_path = os.path.join(workspace_dir, "workspace.sciqlop")
         manifest = WorkspaceManifest.load_or_repair(manifest_path)
         new_deps = [d for d in deps if d not in manifest.requires]
         if not new_deps:
+            # The page shows "Installing…" until it hears back: always answer.
+            self.dependency_install_finished.emit(json.dumps(
+                {"ok": True, "deps": [], "already": deps, "dir": workspace_dir}))
             return
 
         active_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR", "")
@@ -510,7 +513,7 @@ class WelcomeBackend(QObject):
             except Exception as e:
                 log.error(f"Failed to install dependencies: {e}")
                 self._emit_from_worker("dependency_install_finished",
-                    json.dumps({"ok": False, "deps": new_deps, "dir": workspace_dir, "error": str(e)}))
+                    json.dumps({"ok": False, "deps": new_deps, "dir": workspace_dir, "error": error_summary(e)}))
                 return
             with edit_manifest(manifest_path) as current:
                 # Same rule as Workspace.add_packages: a newer spec of a package replaces the older one.

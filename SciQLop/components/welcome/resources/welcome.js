@@ -508,14 +508,41 @@ function createFeaturedCard(pkg) {
 
 // --- Details panel ---
 
-function onDependencyInstallFinished(resultJson) {
-    var result = JSON.parse(resultJson);
-    if (_currentDetailsWs && _currentDetailsWs.directory === result.dir) {
-        if (result.ok) {
-            _currentDetailsWs.requires = (_currentDetailsWs.requires || []).concat(result.deps);
-        }
+var _installingDeps = {};   // workspace directory -> packages being installed
+var _depErrors = {};        // workspace directory -> why the last install failed
+
+function installDependencies(wsDir, deps) {
+    _installingDeps[wsDir] = deps;
+    delete _depErrors[wsDir];
+    showToast("Installing " + deps.join(", ") + "…");
+    refreshDetailsOf(wsDir);
+    backend.add_dependencies_to_workspace(wsDir, JSON.stringify(deps));
+}
+
+function refreshDetailsOf(wsDir) {
+    if (_currentDetailsWs && _currentDetailsWs.directory === wsDir) {
         showWorkspaceDetails(_currentDetailsWs, _currentDetailsIsActive);
     }
+}
+
+function dependencyInstallMessage(result) {
+    if (!result.ok) {
+        var reason = (result.error || "").split("\n")[0];
+        return ["Could not install " + result.deps.join(", ") + (reason ? ": " + reason : ""), "toast-error"];
+    }
+    if (result.deps.length === 0) return ["Already in this workspace: " + (result.already || []).join(", "), ""];
+    return ["Installed " + result.deps.join(", "), "toast-success"];
+}
+
+function onDependencyInstallFinished(resultJson) {
+    var result = JSON.parse(resultJson);
+    delete _installingDeps[result.dir];
+    if (!result.ok) _depErrors[result.dir] = result.error || "unknown error";
+    showToast.apply(null, dependencyInstallMessage(result));
+    if (result.ok && _currentDetailsWs && _currentDetailsWs.directory === result.dir) {
+        _currentDetailsWs.requires = (_currentDetailsWs.requires || []).concat(result.deps);
+    }
+    refreshDetailsOf(result.dir);
 }
 
 function showWorkspaceDetails(ws, isActive) {
@@ -748,14 +775,24 @@ function buildPackageList(ws, isActive, editable) {
         }
         html += '</li>';
     });
-    if (requires.length === 0) {
+    var installing = _installingDeps[ws.directory] || [];
+    installing.forEach(function(dep) {
+        html += '<li class="pkg-installing"><span class="pkg-name">' + escapeHtml(dep) +
+            '</span><span>Installing…</span></li>';
+    });
+    if (requires.length === 0 && installing.length === 0) {
         html += '<li class="pkg-empty">No packages</li>';
     }
     html += '</ul>';
+    if (_depErrors[ws.directory]) {
+        html += '<pre class="pkg-error">' + escapeHtml(_depErrors[ws.directory]) + '</pre>';
+    }
     if (editable) {
+        var busy = installing.length > 0;
         html += '<div class="pkg-add-row">' +
-            '<input id="pkg-add-input" type="text" placeholder="PyPI package name…">' +
-            '<button id="pkg-add-btn" title="Install a package from PyPI into this workspace.">Add</button></div>';
+            '<input id="pkg-add-input" type="text" placeholder="PyPI package name…"' + (busy ? ' disabled' : '') + '>' +
+            '<button id="pkg-add-btn" title="Install a package from PyPI into this workspace."' +
+            (busy ? ' disabled>Installing…' : '>Add') + '</button></div>';
     }
 
     setTimeout(function() {
@@ -774,8 +811,7 @@ function buildPackageList(ws, isActive, editable) {
             var doAdd = function() {
                 var dep = addInput.value.trim();
                 if (!dep) return;
-                backend.add_dependencies_to_workspace(
-                    ws.directory, JSON.stringify([dep]));
+                installDependencies(ws.directory, [dep]);
             };
             addBtn.addEventListener("click", doAdd);
             addInput.addEventListener("keydown", function(e) {
@@ -1028,7 +1064,8 @@ function addExampleAndPromptDeps(exampleDir, wsDir) {
     backend.add_example_to_workspace(exampleDir, wsDir, function(json_str) {
         var result = JSON.parse(json_str);
         var verb = result.is_update ? "updated" : "added";
-        showToast("Example '" + result.name + "' " + verb + " successfully", "toast-success");
+        showToast("Example '" + result.name + "' " + verb + " in the workspace folder " +
+                  wsDir.split(/[\\/]/).filter(Boolean).pop(), "toast-success");
         loadExamples();
         if (result.missing_dependencies && result.missing_dependencies.length > 0) {
             confirmDependencies(wsDir, result.missing_dependencies);
@@ -1090,8 +1127,7 @@ function confirmDependencies(wsDir, deps) {
     installBtn.className = "primary";
     installBtn.addEventListener("click", function() {
         hideModal();
-        backend.add_dependencies_to_workspace(
-            _pendingDeps.wsDir, JSON.stringify(_pendingDeps.deps));
+        installDependencies(_pendingDeps.wsDir, _pendingDeps.deps);
         _pendingDeps = null;
     });
 
@@ -1115,7 +1151,8 @@ function showToast(message, className) {
     toast.className = "toast" + (className ? " " + className : "");
     toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(function() { toast.remove(); }, 3000);
+    // An error is read, not glanced at: it stays longer (the CSS fade-out matches).
+    setTimeout(function() { toast.remove(); }, className === "toast-error" ? 10000 : 3000);
 }
 
 // --- Utilities ---
