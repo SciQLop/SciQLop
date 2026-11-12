@@ -25,7 +25,7 @@ from SciQLop.components.workspaces import Workspace
 from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle, qtads_stylesheet
 from SciQLop.core.ui import Metrics
 from SciQLop.core.ui.tooltips import rich_tooltip
-from SciQLop.core.ui.main_menus import build_file_menu, build_help_menu
+from SciQLop.core.ui.main_menus import build_file_menu, build_help_menu, show_about
 from SciQLop.components.command_palette.menu_entries import add_menu_entries
 from SciQLop.core.menus import MAIN_TOOLS
 from SciQLop.core.docks import DOCKS, Dock, _ExistingWidget
@@ -453,6 +453,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         bind_tooltip(action, "app.new_panel", "New plot panel",
                      "Create an empty panel to drop products onto.")
         return action
+
+    def quit(self) -> None:
+        self.close()
+
+    def show_about(self) -> None:
+        show_about(self)
 
     def reload_theme(self) -> None:
         sciqlop_app().apply_theme(SciQLopStyle().color_palette)

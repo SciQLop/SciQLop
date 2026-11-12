@@ -16,6 +16,11 @@
 - The start date box of a panel applies a typed date when you press Enter or leave the box. Each digit used to move the panel and start a download. The box now shows "UTC", and the flash that points at it on a new panel uses the theme's highlight colour, not red.
 - A settings file with a value that cannot be read keeps its other values: only the bad ones go back to their defaults. The original file is kept next to it with a `.bad` extension, and SciQLop says once at start which settings were reset. The whole file used to be replaced by defaults, silently.
 - The settings window refuses a value that breaks a rule, such as a low percentile above the high one, and says why under the field. It used to save it, and the next start reset the file.
+- New File menu: New plot panel (Ctrl+N), Switch workspace… (shows the welcome page) and Quit (Ctrl+Q). Both shortcuts can be changed in Settings › Keyboard Shortcuts.
+- The Help menu now has Documentation and tutorials, Take a tour… (moved from Tools), Report a problem… and About SciQLop, which shows the version. Profiling and Reload theme moved to Help › Troubleshooting.
+- The getting-started tour no longer starts by itself. At the first start SciQLop asks once, "New here? Take a short guided tour", with Start the tour and Not now. A tour left with Skip or Escape is no longer listed as completed.
+- Welcome page: with only the default workspace, Examples and Templates start open. The news banner holds five plain lines about this version and stays closed once dismissed. The quick-start row starts with New plot panel.
+- The Logs pane takes its background and text colour from the theme; it was white with yellow text. Lines no longer repeat the level, and the source file and line number show only in debug mode. The session log file is unchanged.
 
 ### Batch mode
 

@@ -34,13 +34,19 @@ def _new_menu(title: str) -> QMenu:
     return menu
 
 
+def show_about(window) -> None:
+    QMessageBox.about(window, "About SciQLop", about_text())
+
+
+# Slots are the window's own methods, never lambdas that capture it: these
+# menus have no Qt parent, so such a lambda would keep the window alive.
 def build_file_menu(window) -> QMenu:
     menu = _new_menu("File")
     menu.addAction(window.addTSPanel)
     _add(menu, "Switch workspace…", window.show_welcome_page,
          "Switch workspace", "Show the welcome page, where workspaces are opened and created.")
     menu.addSeparator()
-    quit_action = _add(menu, "Quit", lambda: window.close(), "Quit", "Close SciQLop.")
+    quit_action = _add(menu, "Quit", window.quit, "Quit", "Close SciQLop.")
     quit_action.setMenuRole(QAction.MenuRole.QuitRole)
     bind_shortcut(quit_action, "app.quit")
     bind_tooltip(quit_action, "app.quit", "Quit", "Close SciQLop.")
@@ -72,7 +78,6 @@ def build_help_menu(window) -> QMenu:
     window.troubleshootingMenu = _troubleshooting_menu(window)
     menu.addMenu(window.troubleshootingMenu)
     menu.addSeparator()
-    about = _add(menu, "About SciQLop", lambda: QMessageBox.about(window, "About SciQLop", about_text()),
-                 "About SciQLop", "Version and links.")
+    about = _add(menu, "About SciQLop", window.show_about, "About SciQLop", "Version and links.")
     about.setMenuRole(QAction.MenuRole.AboutRole)
     return menu
