@@ -583,7 +583,7 @@ class WelcomeBackend(QObject):
     @Slot(str, str)
     def apply_core_version(self, workspace_dir: str, version: str) -> None:
         from SciQLop.components.workspaces.backend import launcher_compat
-        from SciQLop.components.workspaces.backend.uv import error_detail
+        from SciQLop.components.workspaces.backend.uv import error_detail, error_summary
         from SciQLop.components.workspaces.backend.workspace_project import (
             fetch_available_versions, validate_core_version,
         )
@@ -624,10 +624,10 @@ class WelcomeBackend(QObject):
                     notice = read_dropped_dependencies(workspace_dir)
                     dropped = dropped_package_names(notice["dropped"]) if notice else []
                 except Exception as e:
-                    log.error(f"Failed to update SciQLop core version: {e}")
+                    log.error(f"Failed to update SciQLop core version: {error_detail(e)}")
                     self._emit_from_worker("core_update_finished", json.dumps({
                         "ok": False, "dir": workspace_dir, "version": version,
-                        "error": error_detail(e),
+                        "error": error_summary(e),
                     }))
                     return
                 result = {

@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import sys
 from typing import List, Optional
@@ -51,3 +52,27 @@ def error_detail(exc: Exception) -> str:
     """
     stderr = (getattr(exc, "stderr", None) or "").strip()
     return stderr or str(exc)
+
+
+_COMMAND_LINE_PREAMBLE = re.compile(r"\Auv command failed \(exit -?\d+\):\n.*\n\n", re.MULTILINE)
+
+# What uv says (lower-cased) -> what it means for the user. First match wins.
+_PLAIN_REASONS = {
+    "no solution found": "It does not work with the packages already in this workspace.",
+    "not found in the package registry": "No such package was found for this platform and Python version.",
+    "permission denied": "SciQLop is not allowed to write in this workspace's folder.",
+    "no space left on device": "The disk is full.",
+    "failed to fetch": "The package index could not be reached. Check your connection and the proxy in Settings.",
+    "error sending request": "The package index could not be reached. Check your connection and the proxy in Settings.",
+    "dns error": "The package index could not be reached. Check your connection and the proxy in Settings.",
+    "timed out": "The package index could not be reached. Check your connection and the proxy in Settings.",
+}
+
+
+def error_summary(exc: Exception) -> str:
+    """What to show for a failed install or update: a plain sentence when the cause is a known one, then
+    uv's own reason. The command line stays out; error_detail() still has everything for the log."""
+    reason = _COMMAND_LINE_PREAMBLE.sub("", error_detail(exc)).strip()
+    lowered = reason.lower()
+    headline = next((plain for said, plain in _PLAIN_REASONS.items() if said in lowered), None)
+    return f"{headline}\n\n{reason}" if headline else reason

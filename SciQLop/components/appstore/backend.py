@@ -21,7 +21,7 @@ from SciQLop.components.plugins.plugin_registry import (
 )
 from SciQLop.components.plugins.plugin_registry import is_compatible as _is_compatible  # noqa: F401  re-exported for tests
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.components.workspaces.backend.uv import error_detail, uv_command
+from SciQLop.components.workspaces.backend.uv import error_detail, error_summary, uv_command
 from SciQLop.components.workspaces.backend.live_install import guarded_install
 
 log = getLogger(__name__)
@@ -295,7 +295,7 @@ class AppStoreBackend(QObject):
         except Exception as e:
             detail = error_detail(e)
             log.error(f"Failed to install {name}: {detail}")
-            self.install_finished.emit(json.dumps({"name": name, "ok": False, "error": detail}))
+            self.install_finished.emit(json.dumps({"name": name, "ok": False, "error": error_summary(e)}))
 
     @Slot(str)
     def install_package(self, name: str) -> None:
@@ -338,6 +338,6 @@ class AppStoreBackend(QObject):
             except Exception as e:
                 detail = error_detail(e)
                 log.error(f"Failed to uninstall {name}: {detail}")
-                self.uninstall_finished.emit(json.dumps({"name": name, "ok": False, "error": detail}))
+                self.uninstall_finished.emit(json.dumps({"name": name, "ok": False, "error": error_summary(e)}))
 
         threading.Thread(target=_uninstall, daemon=True).start()
