@@ -1,11 +1,16 @@
 """Where guides are shown: the Guides window (Help > Guides, the palette's "Guide: …" commands) and
 `GuideButton`, a small "?" that opens the guide of a context."""
+import os
+
 import shiboken6
 from PySide6.QtCore import QByteArray, QEvent, QSize, Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QToolButton, QVBoxLayout, QWidget
 
+import SciQLop
 from SciQLop.components.sciqlop_logging import getLogger
+from SciQLop.components.theming import register_icon, theme_icon
 from SciQLop.core.ui import Metrics
 from SciQLop.core.ui.tooltips import rich_tooltip
 
@@ -13,6 +18,8 @@ from .qt_svg import for_qt, palette_tokens
 from .registry import GUIDES, Guide, all_guides, get_guide, guide_for
 
 log = getLogger(__name__)
+# Material icon "play_circle" (Apache 2.0), like the other theme icons.
+register_icon("guides", lambda: QIcon(os.path.join(SciQLop.sciqlop_root, "resources", "icons", "play_circle.svg")))
 _ASPECT = 430 / 720      # every guide is drawn in a 720 x 430 box
 
 
@@ -49,6 +56,7 @@ class GuidesWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Guides")
+        self.setWindowIcon(theme_icon("guides"))
         self.list = QListWidget(self)
         self.list.setFixedWidth(Metrics.em(20))
         self.title = QLabel(self)

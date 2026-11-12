@@ -115,3 +115,11 @@ def test_the_welcome_page_has_a_guides_card(main_window, qapp, guides):
     qapp.quickstart_shortcut("Watch the guides")["callback"]()
     assert main_window._guides_window.isVisible()
     main_window._guides_window.close()
+
+
+def test_the_guides_have_their_own_icon(main_window, qapp, guides):
+    from PySide6.QtCore import QSize
+    icon = qapp.quickstart_shortcut("Watch the guides")["icon"]
+    image = icon.pixmap(QSize(32, 32)).toImage()
+    assert not image.isNull()
+    assert any(image.pixelColor(x, 16).alpha() > 0 for x in range(32)), "the icon draws nothing"
