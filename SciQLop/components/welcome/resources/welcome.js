@@ -135,7 +135,7 @@ function loadWorkspaces() {
 
             if (_initialLoad) {
                 _initialLoad = false;
-                adaptLayoutToUserState(workspaces.length > 0);
+                adaptLayoutToUserState(workspaces);
             }
         });
     });
@@ -221,8 +221,7 @@ function loadNews() {
             banner.classList.add("hidden");
             return;
         }
-        summary.textContent = "📣 " + news.length +
-            (news.length === 1 ? " update" : " updates");
+        summary.textContent = "📣 What's new in this version";
         news.forEach(function(item) {
             const row = document.createElement("div");
             row.className = "news-item";
@@ -232,12 +231,8 @@ function loadNews() {
             const textSpan = document.createElement("span");
             textSpan.className = "news-text";
             textSpan.textContent = item.title;
-            const dateSpan = document.createElement("span");
-            dateSpan.className = "news-date";
-            dateSpan.textContent = item.date || "";
             row.appendChild(iconSpan);
             row.appendChild(textSpan);
-            row.appendChild(dateSpan);
             list.appendChild(row);
         });
         list.classList.add("collapsed");
@@ -249,6 +244,7 @@ function loadNews() {
         banner.classList.remove("hidden");
         document.getElementById("news-dismiss").onclick = function() {
             banner.classList.add("hidden");
+            backend.dismiss_news();
         };
     });
 }
@@ -1278,9 +1274,11 @@ function initCollapsibleSections() {
     });
 }
 
-function adaptLayoutToUserState(hasWorkspaces) {
-    if (hasWorkspaces) {
-        // Returning user: collapse secondary sections
+function adaptLayoutToUserState(workspaces) {
+    // The default workspace always exists: only a workspace the user made
+    // tells a returning user from a new one.
+    var returningUser = workspaces.some(function(ws) { return !ws.is_default; });
+    if (returningUser) {
         ["example-cards", "template-cards"].forEach(function(id) {
             var target = document.getElementById(id);
             var btn = document.querySelector('.section-toggle[data-target="' + id + '"]');
@@ -1289,8 +1287,7 @@ function adaptLayoutToUserState(hasWorkspaces) {
                 btn.setAttribute("aria-expanded", "false");
             }
         });
-    } else {
-        // New user: hide empty workspaces section
+    } else if (workspaces.length === 0) {
         document.getElementById("recent-workspaces").style.display = "none";
     }
 }

@@ -403,6 +403,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._menubar.setDefaultUp(True)
 
         self.addTSPanel = self._new_plot_panel_action()
+        # Registered before the side panels add theirs: the welcome page lists
+        # shortcuts in this order, and plotting is what SciQLop is for.
+        with owned_by(CORE_OWNER):
+            sciqlop_app().add_quickstart_shortcut(
+                name="New plot panel", description="Plot data from AMDA, CDAWeb, CSA and more",
+                icon=theme_icon("add_graph"), callback=self.new_plot_panel)
         self.fileMenu = build_file_menu(self)
         self._menubar.addMenu(self.fileMenu)
 
@@ -500,7 +506,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if wm.has_workspace:
             self._on_workspace_already_loaded(wm.workspace)
         with owned_by(CORE_OWNER):
-            sciqlop_app().add_quickstart_shortcut("JupyterLab", "Open JupyterLab",
+            sciqlop_app().add_quickstart_shortcut("JupyterLab", "Notebooks connected to this session",
                                                   Icons.get_icon("Jupyter"),
                                                   self.open_jupyterlab_widget)
         open_browser = QtGui.QAction("Open JupyterLab in browser", self.toolsMenu)
@@ -541,8 +547,6 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         self.toolBar.addAction(self.addTSPanel)
         with owned_by(CORE_OWNER):
-            sciqlop_app().add_quickstart_shortcut(name="New plot panel", description="Add a new plot panel",
-                                                  icon=theme_icon("add_graph"), callback=self.new_plot_panel)
             sciqlop_app().add_quickstart_shortcut(
                 name="Take a tour", description="Pick a guided walkthrough of a SciQLop feature",
                 icon=theme_icon("assistant"), callback=self.open_tour_picker)

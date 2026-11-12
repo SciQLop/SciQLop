@@ -69,3 +69,9 @@ def test_developer_tools_are_under_troubleshooting(main_window):
     assert _texts(troubleshooting) == ["Profiling", "Reload theme"]
     assert "Profiling" not in _texts(main_window.toolsMenu)
     assert "Reload theme" not in _texts(main_window.viewMenu)
+
+
+def test_the_welcome_page_offers_plotting_before_jupyterlab(main_window, qapp):
+    names = list(qapp.quickstart_shortcuts)
+    assert names[0] == "New plot panel"
+    assert "AMDA" in qapp.quickstart_shortcut("New plot panel")["description"]

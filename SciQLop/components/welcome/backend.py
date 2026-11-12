@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import glob
+import hashlib
 import json
 import os
 import subprocess
@@ -9,9 +10,13 @@ import threading
 import urllib.request
 
 import shiboken6
+from pydantic import Field
 from PySide6.QtCore import QBuffer, QFileSystemWatcher, QIODevice, QObject, Signal, Slot
 
+from typing import ClassVar
+
 from SciQLop.components.appstore.backend import available_updates
+from SciQLop.components.settings.backend.entry import ConfigEntry, SettingsCategory
 from SciQLop.components.plugins.plugin_registry import DEFAULT_STORE_URL, fetch_index, filter_packages
 from SciQLop.components.workspaces.backend.example import Example
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
@@ -144,21 +149,25 @@ def _discover_examples() -> list[Example]:
     return results
 
 
-_MOCK_NEWS = [
-    {"icon": "📦", "title": "Dependency refresh: SciQLopPlots 0.37.0 — a colour scale for curves coloured by a scalar, and closing a busy panel no longer freezes SciQLop", "date": "2026-09-22"},
-    {"icon": "🆕", "title": "New workspace dialog — name and confirm before SciQLop restarts into a fresh workspace", "date": "2026-09-14"},
-    {"icon": "👁️", "title": "Plot items can now be shown and hidden with item.visible", "date": "2026-09-14"},
-    {"icon": "🧲", "title": "View in Store opens the plugin's own store page", "date": "2026-09-14"},
-    {"icon": "📓", "title": "Tutorial figures now display with plt.show(); ipympl preinstalled for first sessions", "date": "2026-09-14"},
-    {"icon": "📦", "title": "Dependency refresh: SciQLopPlots 0.36.1, matplotlib 3.11.2", "date": "2026-09-14"},
-    {"icon": "\U0001f39b\ufe0f", "title": "Parameterized data products \u2014 tune virtual products and speasy templated parameters live with knobs (sliders, choices, threshold lines, time-range spans)", "date": "2026-05-17"},
-    {"icon": "\U0001f4cd", "title": "Annotation layers \u2014 draw markers / spans / hlines from a callback with the @register_layer decorator, the %%layer magic, or drag-and-drop from the product tree", "date": "2026-05-17"},
-    {"icon": "\U0001f4cb", "title": "Copy Python code \u2014 right-click any plot to grab a runnable Speasy or SciQLop snippet that reproduces its graphs", "date": "2026-05-17"},
-    {"icon": "\U0001f4ca", "title": "2D density histograms + DSP toolbox \u2014 panel.histogram2d(...) and SciQLop.user_api.dsp (filters, FFT, spectrograms, segmentation) with SpeasyVariable round-trip", "date": "2026-05-17"},
-    {"icon": "\U0001f9ed", "title": "Editable event tables \u2014 inline metadata editing with type-aware widgets, bulk edit across selected rows, custom attribute columns, and drag-and-drop events between catalogs", "date": "2026-05-17"},
-    {"icon": "\U0001f50d", "title": "Runtime profiling \u2014 Tools \u203a Profiling captures a Chrome / Perfetto trace including speasy cache / proxy / HTTP / CDF layers, viewable in ui.perfetto.dev", "date": "2026-05-17"},
-    {"icon": "\u26a1", "title": "Faster, snappier startup \u2014 the splash paints before workspace resolution, plus per-panel crosshair toggle and catalog interaction mode", "date": "2026-05-17"},
+NEWS = [
+    {"icon": "🪐", "title": "Planetary scenes: Earth, Mars or Mercury with their boundaries and spacecraft orbits. See Scenes in the products tree."},
+    {"icon": "⬆️", "title": "SciQLop updates in place: this page offers \"Update this workspace\" when a new version is out."},
+    {"icon": "🖱️", "title": "Right-click a catalog event on a plot to zoom to it or edit its attributes."},
+    {"icon": "⏱️", "title": "Draw a product shifted in time, for example 27 days to compare with the next solar rotation."},
+    {"icon": "⚙️", "title": "Batch mode: run a script with no window, to export figures from the command line."},
 ]
+
+
+def _news_id() -> str:
+    return hashlib.sha1(json.dumps(NEWS, sort_keys=True).encode()).hexdigest()
+
+
+class WelcomeSettings(ConfigEntry):
+    category: ClassVar[str] = SettingsCategory.APPLICATION
+    subcategory: ClassVar[str] = "Welcome page"
+    dismissed_news: str = Field(
+        default="", json_schema_extra={"widget": "hidden"},
+        description="Which news the user closed; a later, different list is shown again.")
 
 _APPSTORE_URL = "https://sciqlop.github.io/sciqlop-appstore/index.json"
 
@@ -313,7 +322,12 @@ class WelcomeBackend(QObject):
 
     @Slot(result=str)
     def list_news(self) -> str:
-        return json.dumps(_MOCK_NEWS)
+        return json.dumps([] if WelcomeSettings().dismissed_news == _news_id() else NEWS)
+
+    @Slot()
+    def dismiss_news(self) -> None:
+        with WelcomeSettings() as s:
+            s.dismissed_news = _news_id()
 
     @Slot(result=str)
     def list_templates(self) -> str:
