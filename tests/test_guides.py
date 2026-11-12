@@ -97,3 +97,21 @@ def test_the_catalog_mode_box_offers_the_guide_of_its_mode(guides, qtbot):
     assert chrome._guide_button.context == "catalog.mode.view"
     chrome.mode = "edit"
     assert chrome._guide_button.context == "catalog.mode.edit"
+
+
+def test_the_first_start_question_offers_the_guides(main_window, guides):
+    from PySide6.QtWidgets import QPushButton
+    main_window._onboarding_controller = None
+    offer = main_window._offer_getting_started_tour()
+    buttons = {b.text(): b for b in offer.findChildren(QPushButton)}
+    assert set(buttons) == {"Take the tour", "Watch the guides", "Not now"}
+    buttons["Watch the guides"].click()
+    assert main_window._guides_window.isVisible()
+    assert main_window._onboarding_controller is None
+    main_window._guides_window.close()
+
+
+def test_the_welcome_page_has_a_guides_card(main_window, qapp, guides):
+    qapp.quickstart_shortcut("Watch the guides")["callback"]()
+    assert main_window._guides_window.isVisible()
+    main_window._guides_window.close()

@@ -560,6 +560,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             sciqlop_app().add_quickstart_shortcut(
                 name="Take a tour", description="Pick a guided walkthrough of a SciQLop feature",
                 icon=theme_icon("assistant"), callback=self.open_tour_picker)
+            sciqlop_app().add_quickstart_shortcut(
+                name="Watch the guides", description="Short animations of the main manipulations",
+                icon=theme_icon("search"), callback=self.show_guides)
 
     def _setup_status_bar(self):
         self._statusbar = QtWidgets.QStatusBar(self)
@@ -1168,13 +1171,16 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _offer_getting_started_tour(self) -> QMessageBox:
         """Asked once, at the first start: a tour that begins by itself takes
-        the window away from someone who came to do something else."""
+        the window away from someone who came to do something else. The tour
+        is done in the real window; the guides are watched."""
         with OnboardingSettings() as s:
             s.tour_offered = True
         box = QMessageBox(QMessageBox.Icon.Question, "Welcome to SciQLop",
-                          "New here? Take a short guided tour of SciQLop.", parent=self)
-        box.setInformativeText("You can start it later from Help › Take a tour.")
-        box.addButton("Start the tour", QMessageBox.ButtonRole.AcceptRole)
+                          "New here? Take the guided tour, or watch the short guides first.", parent=self)
+        box.setInformativeText("The tour walks you through SciQLop step by step. The guides are short "
+                               "animations of the main manipulations. Both stay in the Help menu.")
+        box.addButton("Take the tour", QMessageBox.ButtonRole.AcceptRole)
+        box.addButton("Watch the guides", QMessageBox.ButtonRole.ActionRole).clicked.connect(self.show_guides)
         box.addButton("Not now", QMessageBox.ButtonRole.RejectRole)
         box.accepted.connect(lambda: self._start_tour("getting_started"))
         box.setModal(False)
