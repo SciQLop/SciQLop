@@ -27,8 +27,13 @@ def add_event_section(menu: QMenu, panel, overlay, event) -> None:
     catalog = overlay.catalog
     title = menu.addAction(f"Event: {_title(event)}")
     title.setEnabled(False)
-    _add(menu, "Edit attributes…", "Edit this event's attributes, like a row of the catalog's event table.",
-         lambda: _open_popup(panel, catalog, event))
+    editing = not overlay.read_only
+    if editing:
+        _add(menu, "Edit attributes…", "Edit this event's attributes, like a row of the catalog's event table.",
+             lambda: _open_popup(panel, catalog, event, editable=True))
+    else:
+        _add(menu, "Show attributes…", "Show this event's attributes. Switch the panel to Edit mode to change them.",
+             lambda: _open_popup(panel, catalog, event, editable=False))
     _add(menu, "Show in Catalogs", "Open this event's catalog in the Catalogs pane and select the event.",
          lambda: _show_in_browser(panel, catalog, event))
     _add(menu, "Zoom to event", "Show this event, with a margin on each side.", lambda: _zoom(panel, event))
@@ -82,17 +87,18 @@ def _menu_context(catalog, event) -> dict:
     return {"provider": name, "catalog": catalog_arg_value(name, catalog.uuid), "events": event.uuid}
 
 
-def _open_popup(panel, catalog, event) -> None:
-    popup = EventAttributesPopup(catalog, event, parent=panel)
+def _open_popup(panel, catalog, event, editable: bool) -> None:
+    popup = EventAttributesPopup(catalog, event, parent=panel, editable=editable)
     popup.show()
 
 
 class EventAttributesPopup(QDialog):
     """One event of the event table, turned on its side: one row per attribute. Same model, same
     delegate and attribute specs, so it edits exactly like the table, writing through the provider,
-    and is read-only where the table is."""
+    and is read-only where the table is. Opened from a panel that is not in Edit mode it only shows
+    (editable=False): the same rule as dragging or deleting the event there."""
 
-    def __init__(self, catalog, event, parent=None):
+    def __init__(self, catalog, event, parent=None, editable: bool = True):
         super().__init__(parent, Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setWindowTitle(f"{catalog.name}: {_title(event)}")
@@ -102,6 +108,8 @@ class EventAttributesPopup(QDialog):
         # The model listens to the event's signals through closures: let go of them on close.
         self.finished.connect(self.source_model.clear)
         self.view = _attribute_view(self.source_model, self)
+        if not editable:
+            self.view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.addWidget(self.view)

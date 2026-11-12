@@ -145,6 +145,7 @@
 - The event table's time columns are titled "Start (UTC)" and "Stop (UTC)" and show milliseconds when an event has some, so two burst events in the same second can be told apart. An unlabelled event's menu title ends with "UTC".
 - "Zoom to event" on an event with no duration shows one hour on each side, like Jump mode. It used to set an empty range.
 - The event menu's "Show in catalog browser" is now "Show in Catalogs", the name of the pane.
+- An event's attributes are edited from the panel only in Edit mode, like moving or deleting it. In View and Jump mode the menu entry reads "Show attributes…" and the window only shows them.
 - Right-click a catalog event on a plot: the panel menu starts with that event. Edit attributes… opens a small editor next to the plot, which edits like the catalog browser's event table (read-only where the table is); Show in catalog browser, Zoom to event, Copy start and stop (UTC, two spreadsheet cells), and Delete (in edit mode, when the catalog allows it). Plugins' event menu entries show there too. With the current plotting library this needs the crosshair on (the default), to know which event is under the mouse.
 - Catalog providers can give a tooltip on every row of the catalog tree (`node_tooltip(node_type, path=None, catalog=None)`), not only on their own row, and on their context-menu actions (`ProviderAction(..., tooltip=...)`).
 - A provider's `status_changed` now repaints its project and folder rows too, so badges and "(read-only)" labels update right away.

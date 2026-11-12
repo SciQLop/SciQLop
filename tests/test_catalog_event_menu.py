@@ -8,7 +8,7 @@ import pytest
 from .fixtures import *  # noqa: F401,F403
 
 BASE = datetime(2020, 1, 1, tzinfo=timezone.utc)
-EVENT_ENTRIES = ["Edit attributes…", "Show in Catalogs", "Zoom to event", "Copy start and stop", "Delete"]
+EVENT_ENTRIES = ["Show attributes…", "Show in Catalogs", "Zoom to event", "Copy start and stop", "Delete"]
 
 
 @pytest.fixture
@@ -222,12 +222,19 @@ def test_closing_the_popup_lets_go_of_the_event(qtbot, scene):
     assert popup.source_model.rowCount() == 0   # disconnected from the event's signals
 
 
-def test_edit_attributes_opens_the_popup(qtbot, scene):
+@pytest.mark.parametrize("mode, entry, can_edit", [
+    ("VIEW", "Show attributes…", False), ("JUMP", "Show attributes…", False), ("EDIT", "Edit attributes…", True)])
+def test_attributes_are_edited_in_edit_mode_and_only_shown_otherwise(qtbot, scene, mode, entry, can_edit):
+    from PySide6.QtWidgets import QAbstractItemView
+    from SciQLop.components.catalogs.backend.panel_manager import InteractionMode
     from SciQLop.components.catalogs.ui.event_menu import EventAttributesPopup
     panel, _, _, event = scene
-    _action(_menu_at(qtbot, panel, event.start.timestamp() + 60), "Edit attributes…").trigger()
+    panel.catalog_manager.mode = getattr(InteractionMode, mode)
+    _action(_menu_at(qtbot, panel, event.start.timestamp() + 60), entry).trigger()
     popups = [w for w in panel.findChildren(EventAttributesPopup) if w.isVisible()]
     assert len(popups) == 1
+    no_editing = popups[0].view.editTriggers() == QAbstractItemView.EditTrigger.NoEditTriggers
+    assert no_editing is not can_edit
     popups[0].close()
 
 
