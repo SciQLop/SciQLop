@@ -380,7 +380,7 @@ class _BasePlot(GuardedImpl, Plot):
         impl = self._get_impl_or_raise()
         if graph._impl not in (impl.plottables() or []):
             raise ValueError("graph does not belong to this plot")
-        impl.remove_plottable(graph._impl)
+        impl.remove(graph._impl)
 
     @on_main_thread
     def rescale_axes(self) -> None:
@@ -498,7 +498,7 @@ class _BasePlot(GuardedImpl, Plot):
     @on_main_thread
     def legend_visible(self) -> bool:
         """Whether the plot shows its legend."""
-        return self._get_impl_or_raise().legend().is_visible()
+        return self._get_impl_or_raise().legend().visible()
 
     @legend_visible.setter
     @on_main_thread
@@ -1299,7 +1299,7 @@ class ProjectionPlot(GuardedImpl):
                 f"this projection plot has {impl.subplot_count()} subplots, so it "
                 f"needs {impl.subplot_count()} dimensions, but got {len(dims)}"
                 + ("; pass z= for the third" if z is None else ""))
-        curve = impl.add_reference_curve([t, *dims])
+        curve = impl.reference_curve([t, *dims])
         if curve is None:
             raise RuntimeError("upstream refused to create projection curve")
         if name is not None:

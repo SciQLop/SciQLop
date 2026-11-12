@@ -100,7 +100,7 @@ class _DataSpan:
             return MultiPlotsVerticalSpan(panel, initial, color, False, True, label)
         span = SciQLopVerticalSpan(plot, initial)
         span.set_color(color)
-        span.set_tool_tip(label)
+        span.set_tooltip(label)
         return span
 
     @staticmethod

@@ -913,12 +913,12 @@ class RectangularSpan(_PlotItem):
     @property
     @on_main_thread
     def tool_tip(self) -> str:
-        return self._get_impl_or_raise().tool_tip()
+        return self._get_impl_or_raise().tooltip()
 
     @tool_tip.setter
     @on_main_thread
     def tool_tip(self, tool_tip: str):
-        self._get_impl_or_raise().set_tool_tip(tool_tip)
+        self._get_impl_or_raise().set_tooltip(tool_tip)
 
 
 class HorizontalSpan(_PlotItem):
@@ -1047,9 +1047,9 @@ class HorizontalSpan(_PlotItem):
     @property
     @on_main_thread
     def tool_tip(self) -> str:
-        return self._get_impl_or_raise().tool_tip()
+        return self._get_impl_or_raise().tooltip()
 
     @tool_tip.setter
     @on_main_thread
     def tool_tip(self, tool_tip: str):
-        self._get_impl_or_raise().set_tool_tip(tool_tip)
+        self._get_impl_or_raise().set_tooltip(tool_tip)

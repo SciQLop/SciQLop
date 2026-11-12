@@ -11,21 +11,17 @@ def _checked(ok: bool, path: str) -> None:
         raise OSError(f"failed to save {path!r}: check that the directory exists and is writable")
 
 
-def _raster(method: str):
+def _as(image_format: str):
     def write(panel, path, width, height, scale):
-        _checked(getattr(panel._get_impl_or_raise(), method)(path, width, height, scale), path)
+        _checked(panel._get_impl_or_raise().save(path, width, height, scale, format=image_format), path)
     return write
 
 
-def _pdf(panel, path, width, height, scale):
-    _checked(panel._get_impl_or_raise().save_pdf(path, width, height), path)
-
-
 CORE_TARGETS = (
-    ExportTarget("sciqlop.png", "PNG", (".png",), _raster("save_png")),
-    ExportTarget("sciqlop.pdf", "PDF", (".pdf",), _pdf, scalable=False),
-    ExportTarget("sciqlop.jpg", "JPEG", (".jpg", ".jpeg"), _raster("save_jpg")),
-    ExportTarget("sciqlop.bmp", "BMP", (".bmp",), _raster("save_bmp")),
+    ExportTarget("sciqlop.png", "PNG", (".png",), _as("png")),
+    ExportTarget("sciqlop.pdf", "PDF", (".pdf",), _as("pdf"), scalable=False),
+    ExportTarget("sciqlop.jpg", "JPEG", (".jpg", ".jpeg"), _as("jpg")),
+    ExportTarget("sciqlop.bmp", "BMP", (".bmp",), _as("bmp")),
 )
 
 for _target in CORE_TARGETS:

@@ -236,7 +236,7 @@ class CatalogOverlay(QObject):
                 src[0] = None
 
         def _refresh_tooltip(*_, e=event, s=span):
-            s.set_tool_tip(_format_tooltip(e, self._catalog.name))
+            s.set_tooltip(_format_tooltip(e, self._catalog.name))
 
         event.range_changed.connect(_on_event_changed)
         event.range_changed.connect(_refresh_tooltip)

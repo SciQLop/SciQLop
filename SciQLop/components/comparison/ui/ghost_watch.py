@@ -23,7 +23,7 @@ def _refuse(plot_key: int, ghost_key: int, message: str) -> None:
     reg = hints_registry_of(plot_key)
     ghost = reg.graph_for_key(ghost_key) if reg is not None else None
     if ghost is not None:
-        reg.plot.remove_plottable(ghost)
+        reg.plot.remove(ghost)
         note(reg.plot, message)
 
 

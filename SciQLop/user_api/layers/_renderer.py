@@ -253,7 +253,7 @@ class LayerRenderer(QObject):
                 vs.set_color(color)
                 vs.set_read_only(True)
                 if label:
-                    vs.set_tool_tip(label)
+                    vs.set_tooltip(label)
             self._spans.append(vs)
 
     def _render_hlines(self, hlines: list[HLine]):

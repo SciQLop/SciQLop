@@ -50,13 +50,19 @@ def test_select_event_selects_its_span(qtbot, qapp):
     assert span.selected
 
 
+def _tooltip(span) -> str:
+    # SciQLopPlots 0.53: a method on plot spans, a property on MultiPlotsVerticalSpan.
+    tip = span.tooltip
+    return tip() if callable(tip) else tip
+
+
 def test_overlay_tooltip_follows_event_range_edits(qtbot, qapp):
     """GH #37: the hover text kept the range the span was created with."""
     overlay, event, span = _overlay_with_one_event(qapp)
 
     event.stop = event.start + timedelta(hours=5, minutes=7, seconds=9)
 
-    assert event.stop.strftime("%H:%M:%S") in span.tool_tip()
+    assert event.stop.strftime("%H:%M:%S") in _tooltip(span)
 
 
 def test_overlay_tooltip_follows_event_meta_edits(qtbot, qapp):
@@ -65,7 +71,7 @@ def test_overlay_tooltip_follows_event_meta_edits(qtbot, qapp):
     event.meta["note"] = "edited after creation"
     event.meta_changed.emit("note")
 
-    assert "edited after creation" in span.tool_tip()
+    assert "edited after creation" in _tooltip(span)
 
 
 def test_editing_an_event_after_its_panel_is_destroyed_is_harmless(qtbot, qapp):

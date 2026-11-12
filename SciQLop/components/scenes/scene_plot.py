@@ -121,7 +121,7 @@ def add_boundary(proj, resolved: ResolvedScene, kind: str, model) -> BoundaryCur
 def remove_boundary(proj, curves: BoundaryCurves) -> None:
     for pane, pane_graphs in enumerate(curves.graphs):
         for g in pane_graphs:
-            proj.subplot(pane).remove_plottable(g)
+            proj.subplot(pane).remove(g)
     for reporter in curves.reporters:
         reporter.clear()
         reporter.deleteLater()
@@ -223,7 +223,7 @@ def add_trajectory(proj, resolved: ResolvedScene, source: str):
 
 
 def remove_trajectory(proj, graph, reporter) -> None:
-    proj.remove_plottable(graph)
+    proj.remove(graph)
     reporter.clear()
     reporter.deleteLater()
 

@@ -13,6 +13,7 @@ from SciQLopPlots import SciQLopWaterfallGraph as _SciQLopWaterfallGraph
 from SciQLopPlots import WaterfallOffsetMode as _WaterfallOffsetMode
 from SciQLopPlots import ColorGradient as _ColorGradient
 from SciQLopPlots import GraphLineStyle as _SqpLineShape
+from SciQLopPlots import Histogram2DNormalization as _SqpNormalization
 from PySide6.QtGui import QColor as _QColor
 from SciQLop.core.colors import to_qcolor
 from ._thread_safety import on_main_thread, GuardedImpl, _qt_property
@@ -462,8 +463,8 @@ class Histogram2D(GuardedImpl, _Named, _ColorScaled, Plottable):
     x_bins_log = _qt_property("x_bins_log", "set_x_bins_log", to_qt=bool)
     y_bins_log = _qt_property("y_bins_log", "set_y_bins_log", to_qt=bool)
     normalization = _qt_property("normalization", "set_normalization",
-                                to_qt=lambda n: HistogramNormalization(n).value,
-                                from_qt=HistogramNormalization)
+                                to_qt=lambda n: _SqpNormalization(HistogramNormalization(n).value),
+                                from_qt=lambda n: HistogramNormalization(int(getattr(n, "value", n))))
 
     @property
     def x_bin_edges(self):

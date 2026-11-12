@@ -44,7 +44,7 @@ def _paint_plots_over(pixmap, window) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         for i, plot in enumerate(_visible_plots(window)):
             file = os.path.join(tmp, f"{i}.png")
-            plot.save_png(file, 0, 0, pixmap.devicePixelRatio())
+            plot.save(file, 0, 0, pixmap.devicePixelRatio(), format="png")
             origin = plot.mapTo(window, QPoint(0, 0))
             painter.save()
             painter.setClipRegion(plot.visibleRegion().translated(origin))

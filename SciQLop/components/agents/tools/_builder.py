@@ -238,7 +238,7 @@ def _screenshot_plot_tool(main_window) -> Dict[str, Any]:
             return _error_content("panel has no plots")
         if plot_index < 0 or plot_index >= len(plots):
             return _error_content(f"plot_index {plot_index} out of range (0..{len(plots) - 1})")
-        return _screenshot_to_content(plots[plot_index]._impl.save_png)
+        return _screenshot_to_content(lambda path: plots[plot_index]._impl.save(path, format="png"))
 
     return _text_tool(
         "sciqlop_screenshot_plot",

@@ -39,7 +39,7 @@ def _alignment_line(plot, t0: float):
     line = SciQLopVerticalLine(plot, t0, False)
     line.set_line_style(Qt.PenStyle.DotLine)
     line.set_color(plot.palette().color(QPalette.ColorRole.WindowText))
-    line.set_tool_tip("the events line up here")
+    line.set_tooltip("the events line up here")
     return line
 
 
