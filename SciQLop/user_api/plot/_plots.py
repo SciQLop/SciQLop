@@ -243,19 +243,9 @@ def plot_product_or_raise(impl, product: AnyProductType, **kwargs):
     return result
 
 
-def _concrete_impl(impl):
-    """``panel.plots()`` yields ``SciQLopPlotInterfacePtr`` smart-pointer
-    wrappers whose Shiboken type the C++ binding constructors (plot items,
-    spans, …) reject. Dereference to the most-derived concrete plot once, at
-    wrapper construction, so every downstream call sees the same type
-    regardless of how the plot was obtained."""
-    data = getattr(impl, "data", None)
-    return data() if callable(data) else impl
-
-
 class _BasePlot(GuardedImpl, Plot):
     def __init__(self, impl):
-        self._impl: Optional[_SciQLopPlot] = _concrete_impl(impl)
+        self._impl: Optional[_SciQLopPlot] = impl
         self._get_impl_or_raise().destroyed.connect(self._on_destroyed)
 
     def _get_impl_or_raise(self):
@@ -1072,7 +1062,7 @@ class ProjectionPlot(GuardedImpl):
 
     def __init__(self, impl):
         assert is_projection_plot(impl)
-        self._impl: Optional[_SciQLopNDProjectionPlot] = _concrete_impl(impl)
+        self._impl: Optional[_SciQLopNDProjectionPlot] = impl
         self._get_impl_or_raise().destroyed.connect(self._on_destroyed)
 
     @property

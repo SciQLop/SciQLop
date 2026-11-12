@@ -22,9 +22,8 @@ def add_placeholder(panel, model, reason: str = ""):
     """simplify: names the plugin from the kind's id prefix; look it up in the app-store index by `provides`
     once that index carries it (sciqlop-appstore generator)."""
     from SciQLop.components.plotting.ui.diagnostic_overlay import overlay_of
-    from SciQLop.components.scenes.scene_plot import concrete_plot
     panel.create_plot(len(panel.plots()), PlotType.TimeSeries)
-    plot = concrete_plot(panel.plots()[-1])
+    plot = panel.plots()[-1]
     key = _key(plot)
     _KEPT[key] = model
     plot.destroyed.connect(lambda *_: _KEPT.pop(key, None))

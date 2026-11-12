@@ -619,8 +619,8 @@ def test_graph_context_section_renders_with_speasy_ctx(qtbot, monkeypatch):
     class _FakeGraph(QObject):
         def __init__(self, name):
             super().__init__(); self.setObjectName(name); self._md = {}
-        def meta_data(self): return dict(self._md)
-        def set_meta_data(self, d): self._md = dict(d)
+        def metadata(self): return dict(self._md)
+        def set_metadata(self, d): self._md = dict(d)
         def name(self): return self.objectName()
 
     class _FakeProvider:
@@ -634,7 +634,7 @@ def test_graph_context_section_renders_with_speasy_ctx(qtbot, monkeypatch):
     ctx = build_speasy_ctx(g, panel_name="P", plot_index=0,
                            speasy_id="x/y", graph_type="Line")
     ctx.provider_name = "FakeSpeasy3"
-    g.set_meta_data(ctx.to_meta_data())
+    g.set_metadata(ctx.to_meta_data())
     providers["FakeSpeasy3"] = _FakeProvider()
     try:
         section = GraphContextSection(g)
@@ -656,7 +656,7 @@ def test_graph_context_section_no_context_disables_buttons(qtbot):
     class _FakeGraph(QObject):
         def __init__(self, name):
             super().__init__(); self.setObjectName(name); self._md = {}
-        def meta_data(self): return dict(self._md)
+        def metadata(self): return dict(self._md)
 
     g = _FakeGraph("g_sec_empty")
     section = GraphContextSection(g)

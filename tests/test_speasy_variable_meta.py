@@ -125,8 +125,8 @@ def test_jsonable_meta_is_qvariant_round_trippable(qtbot):
     graph = g[1] if hasattr(g, "__iter__") else g
     payload = jsonable_meta({"UNITS": np.str_("nT"), "FILLVAL": np.float64(-1e31),
                              "LABL_PTR_1": np.array(["bx", "by"])})
-    graph.set_meta_data({"kind": "speasy", "data_meta": payload})
-    back = graph.meta_data()["data_meta"]
+    graph.set_metadata({"kind": "speasy", "data_meta": payload})
+    back = graph.metadata()["data_meta"]
     assert back["UNITS"] == "nT"
     assert back["FILLVAL"] == -1e31
     assert list(back["LABL_PTR_1"]) == ["bx", "by"]

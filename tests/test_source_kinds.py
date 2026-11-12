@@ -17,13 +17,14 @@ class _Graph:
     def __init__(self, ctx):
         self._md = ctx.to_meta_data()
 
-    def meta_data(self):
+    def metadata(self):
         return self._md
 
     def objectName(self):
         return "g"
 
-    name = "B"
+    def name(self):
+        return "B"
 
 
 @pytest.fixture

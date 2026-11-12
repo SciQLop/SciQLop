@@ -11,22 +11,12 @@ def ordered_plots(panel) -> list:
     ``findChildren`` alone returns Qt insertion order which doesn't match the
     panel's logical layout after templates / re-orderings.
     """
-    try:
-        ptrs = list(panel.plots())
-    except Exception:
-        return list(panel.findChildren(SciQLopPlot))
-    by_name = {p.objectName(): p for p in panel.findChildren(SciQLopPlot)}
-    return [by_name[ptr.objectName()] for ptr in ptrs if ptr.objectName() in by_name]
-
-
-def _concrete(plot):
-    data = getattr(plot, "data", None)
-    return data() if callable(data) else plot
+    return [plot for plot in panel.plots() if isinstance(plot, SciQLopPlot)]
 
 
 def ordered_panel_plots(panel) -> list:
     """Every plot in panel order, each a concrete widget (time-series, projection or placeholder)."""
-    return [_concrete(ptr) for ptr in panel.plots()]
+    return list(panel.plots())
 
 
 def plot_graphs(plot) -> list:

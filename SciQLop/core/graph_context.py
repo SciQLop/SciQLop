@@ -85,14 +85,11 @@ def _is_importable(module_name: str, qualname: str, obj: object) -> bool:
 
 
 def _write_slot(graph, data: dict) -> None:
-    """The graph's metadata slot: ``set_meta_data`` up to SciQLopPlots 0.52, ``set_metadata`` after."""
-    setter = getattr(graph, "set_metadata", None) or graph.set_meta_data
-    setter(data)
+    graph.set_metadata(data)
 
 
 def _read_slot(graph) -> dict:
-    getter = getattr(graph, "metadata", None) or graph.meta_data
-    return getter() or {}
+    return graph.metadata() or {}
 
 
 def attach_context(graph, ctx: GraphContext,
@@ -283,17 +280,8 @@ def build_static_ctx(graph, *, panel_name: str, plot_index: int,
 
 
 def graph_name(graph) -> str:
-    """Display name for a graph. SciQLopPlots <= 0.52 exposes ``name`` as a string
-    property, later versions as a method. Falls back to ``objectName()`` when
-    neither yields anything usable.
-    """
-    n = getattr(graph, "name", None)
-    if callable(n):
-        try:
-            n = n()
-        except Exception:
-            n = None
-    return n or graph.objectName()
+    """Display name for a graph; its ``objectName()`` when it has no name."""
+    return graph.name() or graph.objectName()
 
 
 def graph_time_range(graph) -> Optional[tuple]:

@@ -49,12 +49,10 @@ def _refusal(plot, product: list[str], node) -> str | None:
 def drop_product(plot, product: list[str], panel):
     """Put *product* on *plot* (None: on *panel*) as the drop rules say. Never raises: a refusal or failure
     shows why. Returns what the rule returned."""
-    from SciQLop.components.scenes.scene_plot import concrete_plot
     from SciQLop.components.scenes.tree import show_refusal
     node = ProductsModel.node(product)
     if node is None:
         return None
-    plot = concrete_plot(plot)
     refusal = _refusal(plot, product, node)
     if refusal is not None:
         show_refusal(plot, panel, refusal)

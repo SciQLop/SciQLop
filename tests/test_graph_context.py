@@ -81,10 +81,10 @@ class _DictMetaGraph(QObject):
         self.setObjectName(name)
         self._md = {}
 
-    def meta_data(self):
+    def metadata(self):
         return dict(self._md)
 
-    def set_meta_data(self, d):
+    def set_metadata(self, d):
         self._md = dict(d)
 
 
@@ -95,7 +95,7 @@ def test_attach_data_meta_merges_without_clobbering_context(qtbot):
         graph_type="Line", speasy_id="amda/imf", provider_name="Speasy",
         knobs={"k": 1},
     )
-    g.set_meta_data(ctx.to_meta_data())
+    g.set_metadata(ctx.to_meta_data())
 
     attach_data_meta(g, {"UNITS": "nT", "CATDESC": "B field"})
 
@@ -110,7 +110,7 @@ def test_attach_data_meta_merges_without_clobbering_context(qtbot):
 def test_attach_data_meta_noop_without_context(qtbot):
     g = _DictMetaGraph("g_noctx")
     attach_data_meta(g, {"UNITS": "nT"})  # no context attached yet
-    assert g.meta_data() == {}
+    assert g.metadata() == {}
 
 
 def _module_level_function():
@@ -124,10 +124,10 @@ class _FakeGraph(QObject):
         self._md = {}
         self.setObjectName(name)
 
-    def meta_data(self):
+    def metadata(self):
         return dict(self._md)
 
-    def set_meta_data(self, d):
+    def set_metadata(self, d):
         self._md = dict(d)
 
 
@@ -139,8 +139,8 @@ def test_attach_context_writes_meta_data(qtbot):
         graph_type="Line", speasy_id="amda/imf", provider_name="Speasy",
     )
     attach_context(g, ctx)
-    assert g.meta_data()["kind"] == SPEASY
-    assert g.meta_data()["speasy_id"] == "amda/imf"
+    assert g.metadata()["kind"] == SPEASY
+    assert g.metadata()["speasy_id"] == "amda/imf"
 
 
 def test_context_of_round_trip(qtbot):
@@ -167,7 +167,7 @@ def test_context_of_empty_returns_none(qtbot):
 def test_context_of_garbage_returns_none(qtbot):
     from SciQLop.core.graph_context import context_of
     g = _FakeGraph("g4")
-    g.set_meta_data({"kind": "speasy", "graph_id": "x",
+    g.set_metadata({"kind": "speasy", "graph_id": "x",
                       "panel_name": "P", "plot_index": "not-an-int",
                       "graph_type": "Line"})
     assert context_of(g) is None
@@ -176,7 +176,7 @@ def test_context_of_garbage_returns_none(qtbot):
 def test_context_of_filters_unknown_fields_for_forward_compat(qtbot):
     from SciQLop.core.graph_context import context_of
     g = _FakeGraph("g5")
-    g.set_meta_data({
+    g.set_metadata({
         "kind": "speasy", "graph_id": "g5", "panel_name": "P",
         "plot_index": 0, "graph_type": "Line", "speasy_id": "x/y",
         "future_field_we_dont_know": "value",
@@ -320,7 +320,7 @@ def test_update_knobs_no_op_when_no_context(qtbot):
     from SciQLop.core.graph_context import update_knobs
     g = _FakeGraph("g_no_ctx")
     update_knobs(g, {"a": 1})
-    assert g.meta_data() == {}
+    assert g.metadata() == {}
 
 
 def test_graph_time_range_walks_past_qrhi_to_plot(qtbot):
