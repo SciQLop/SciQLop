@@ -95,16 +95,19 @@ class TourController(QObject):
 
     def abort(self) -> None:
         self._disconnect_active_completion()
-        self._finish()
+        self._finish(completed=False)
 
-    def _finish(self) -> None:
+    def _finish(self, completed: bool = True) -> None:
+        """A tour left with Skip or Escape is not completed: the picker keeps
+        offering it as new."""
         if self._finished:
             return
         self._finished = True
         self._detach_coach_mark_signals()
         self._coach_mark.hide()
-        with OnboardingSettings() as s:
-            s.completed_tours[self._tour.id] = True
+        if completed:
+            with OnboardingSettings() as s:
+                s.completed_tours[self._tour.id] = True
         self._dispose()
 
     def _dispose(self) -> None:

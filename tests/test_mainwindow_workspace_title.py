@@ -68,6 +68,7 @@ def test_window_built_after_a_workspace_autoload_still_gets_its_title_and_tour(
     monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(ws_dir))
     with OnboardingSettings() as s:
         s.completed_tours = {}
+        s.tour_offered = False
 
     mw = SciQLopMainWindow()
 

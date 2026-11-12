@@ -25,16 +25,19 @@ def test_repeated_workspace_loads_start_the_tour_once(main_window, qtbot, monkey
 
     with OnboardingSettings() as s:
         s.completed_tours = {}
-    started = []
-    monkeypatch.setattr(main_window, "_start_tour", started.append)
+        s.tour_offered = False
+    offers = []
+    monkeypatch.setattr(main_window, "_offer_getting_started_tour", lambda: offers.append(True))
+    main_window._tour_timer.timeout.disconnect()
+    main_window._tour_timer.timeout.connect(main_window._offer_getting_started_tour)
     main_window._tour_timer.stop()
 
     main_window._maybe_run_onboarding_tour(None)
     main_window._maybe_run_onboarding_tour(None)
-    qtbot.waitUntil(lambda: bool(started), timeout=1500)
+    qtbot.waitUntil(lambda: bool(offers), timeout=1500)
     qtbot.wait(700)
 
-    assert started == ["getting_started"]
+    assert offers == [True]
 
 
 def test_batch_sessions_never_start_the_tour(main_window, qtbot, monkeypatch):
@@ -44,15 +47,13 @@ def test_batch_sessions_never_start_the_tour(main_window, qtbot, monkeypatch):
 
     with OnboardingSettings() as s:
         s.completed_tours = {}
+        s.tour_offered = False
     monkeypatch.setenv(BATCH_ENV, BatchRequest(script="s.py").to_env())
-    started = []
-    monkeypatch.setattr(main_window, "_start_tour", started.append)
     main_window._tour_timer.stop()
 
     main_window._maybe_run_onboarding_tour(None)
-    qtbot.wait(700)
 
-    assert started == []
+    assert not main_window._tour_timer.isActive()
 
 
 def test_maybe_run_onboarding_tour_starts_when_not_completed(main_window, qtbot):
@@ -60,12 +61,45 @@ def test_maybe_run_onboarding_tour_starts_when_not_completed(main_window, qtbot)
 
     with OnboardingSettings() as s:
         s.completed_tours = {}
+        s.tour_offered = False
 
     main_window._onboarding_controller = None
-    main_window._maybe_run_onboarding_tour(None)
+    offer = main_window._offer_getting_started_tour()
+    assert offer.isVisible() and not offer.isModal()
+    assert main_window._onboarding_controller is None
+    offer.accept()
     qtbot.waitUntil(lambda: main_window._onboarding_controller is not None, timeout=1000)
     assert main_window._onboarding_controller._tour.id == "getting_started"
     main_window._onboarding_controller.abort()
+
+
+def test_declining_the_offer_starts_nothing_and_it_is_not_asked_again(main_window, qtbot):
+    from SciQLop.components.onboarding.backend.settings import OnboardingSettings
+
+    with OnboardingSettings() as s:
+        s.completed_tours = {}
+        s.tour_offered = False
+    main_window._onboarding_controller = None
+    main_window._tour_timer.stop()
+
+    main_window._offer_getting_started_tour().reject()
+    main_window._maybe_run_onboarding_tour(None)
+
+    assert main_window._onboarding_controller is None
+    assert not main_window._tour_timer.isActive()
+    assert OnboardingSettings().completed_tours == {}
+
+
+def test_leaving_a_tour_does_not_mark_it_completed(main_window, qtbot):
+    from SciQLop.components.onboarding.backend.settings import OnboardingSettings
+
+    with OnboardingSettings() as s:
+        s.completed_tours = {}
+    main_window._onboarding_controller = None
+    main_window._start_tour("getting_started")
+    main_window._onboarding_controller.abort()
+
+    assert OnboardingSettings().completed_tours.get("getting_started") is None
 
 
 def test_starting_a_tour_while_one_runs_restarts_it(main_window, qtbot):

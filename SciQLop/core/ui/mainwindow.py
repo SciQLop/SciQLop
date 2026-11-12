@@ -495,7 +495,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._tour_timer = QtCore.QTimer(self)
         self._tour_timer.setSingleShot(True)
         self._tour_timer.setInterval(500)
-        self._tour_timer.timeout.connect(self._start_getting_started_tour)
+        self._tour_timer.timeout.connect(self._offer_getting_started_tour)
         wm.workspace_loaded.connect(self._maybe_run_onboarding_tour)
         if wm.has_workspace:
             self._on_workspace_already_loaded(wm.workspace)
@@ -1147,12 +1147,26 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _maybe_run_onboarding_tour(self, *_args) -> None:
         from SciQLop.core.batch import in_batch_session
-        if in_batch_session() or OnboardingSettings().completed_tours.get("getting_started", False):
+        onboarding = OnboardingSettings()
+        if in_batch_session() or onboarding.tour_offered or onboarding.completed_tours.get("getting_started", False):
             return
         self._tour_timer.start()
 
-    def _start_getting_started_tour(self) -> None:
-        self._start_tour("getting_started")
+    def _offer_getting_started_tour(self) -> QMessageBox:
+        """Asked once, at the first start: a tour that begins by itself takes
+        the window away from someone who came to do something else."""
+        with OnboardingSettings() as s:
+            s.tour_offered = True
+        box = QMessageBox(QMessageBox.Icon.Question, "Welcome to SciQLop",
+                          "New here? Take a short guided tour of SciQLop.", parent=self)
+        box.setInformativeText("You can start it later from Help › Take a tour.")
+        box.addButton("Start the tour", QMessageBox.ButtonRole.AcceptRole)
+        box.addButton("Not now", QMessageBox.ButtonRole.RejectRole)
+        box.accepted.connect(lambda: self._start_tour("getting_started"))
+        box.setModal(False)
+        box.show()
+        self._tour_offer = box
+        return box
 
     def _refresh_tools_entries(self) -> None:
         for action in self._tools_entry_actions:

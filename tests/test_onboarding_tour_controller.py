@@ -325,7 +325,7 @@ def test_later_step_resolver_reads_earlier_step_context(main_window, qtbot):
         controller.abort()
 
 
-def test_skip_sets_completed_and_hides_overlay(main_window, qtbot):
+def test_skip_hides_the_overlay_and_leaves_the_tour_not_completed(main_window, qtbot):
     from SciQLop.components.onboarding.ui.tour_controller import TourController
     from SciQLop.components.onboarding.backend.settings import OnboardingSettings
 
@@ -341,7 +341,7 @@ def test_skip_sets_completed_and_hides_overlay(main_window, qtbot):
 
     assert not controller._coach_mark.isVisible()
     assert not controller._coach_mark.bubble.isVisible()
-    assert OnboardingSettings().completed_tours.get("t8") is True
+    assert OnboardingSettings().completed_tours.get("t8") is None
 
 
 def test_replaying_after_completion_does_not_double_fire_on_stale_connections(main_window, qtbot):

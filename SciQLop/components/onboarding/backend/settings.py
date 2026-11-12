@@ -10,3 +10,6 @@ class OnboardingSettings(ConfigEntry):
     subcategory: ClassVar[str] = "Onboarding"
 
     completed_tours: Dict[str, bool] = Field(default_factory=dict)
+    tour_offered: bool = Field(
+        default=False, json_schema_extra={"widget": "hidden"},
+        description="The first-start offer to take the tour was shown; it is shown once.")
