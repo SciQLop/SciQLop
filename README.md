@@ -101,7 +101,7 @@ SciQLop provides a powerful catalog system for labeling and browsing events in y
 - **Color mapping**: color events by any metadata column (categorical or continuous with matplotlib colormaps)
 - **Graphical editing**: Shift+drag to create new events, drag span edges to resize, click to jump to an event
 - **Full API from notebooks**: `catalogs.list()`, `catalogs.get()`, `catalogs.create()`, `catalogs.save()`,
-  `catalogs.add_events()`, `catalogs.remove_events()`
+  `catalogs.add_events()`, `catalogs.remove_events()`, and `catalogs.persist()` to write the changes to disk
 
 <p align="center">
 <img src="pictures/sciqlop_catalogs.png" alt="SciQLop catalogs" width="80%"/>
@@ -287,6 +287,10 @@ catalogs.create("My Catalogs//my_events", [
      datetime(2015, 10, 22, 7, 0, tzinfo=timezone.utc),
      {"type": "magnetopause_crossing"}),
 ])
+
+# Write it to disk, like the catalog browser's Save.
+# Until then the catalog only exists in memory and is lost when SciQLop closes.
+catalogs.persist("My Catalogs//my_events")
 
 # List all catalogs
 for c in catalogs.list():

@@ -259,10 +259,14 @@ class CatalogService:
 
     @_on_main_thread_once_loaded
     def save(self, path: str, data) -> None:
-        """Save events to a catalog, creating it if it doesn't exist (upsert).
+        """Replace the events of a catalog, creating it if it doesn't exist (upsert).
 
         Existing events are replaced in bulk. UUIDs embedded in
         ``event.meta["__sciqlop_uuid__"]`` are preserved on round-trip.
+
+        The change is in memory only: call :meth:`persist` to write it to
+        disk, like the catalog browser's Save. Without it the change is lost
+        when SciQLop closes.
 
         Parameters
         ----------
@@ -349,6 +353,10 @@ class CatalogService:
     def create(self, path: str, data) -> None:
         """Create a new catalog with the given events (strict — fails if exists).
 
+        The change is in memory only: call :meth:`persist` to write it to
+        disk, like the catalog browser's Save. Without it the change is lost
+        when SciQLop closes.
+
         Parameters
         ----------
         path : str
@@ -382,6 +390,10 @@ class CatalogService:
     def add_events(self, path: str, data) -> None:
         """Append events to an existing catalog.
 
+        The change is in memory only: call :meth:`persist` to write it to
+        disk, like the catalog browser's Save. Without it the change is lost
+        when SciQLop closes.
+
         Parameters
         ----------
         path : str
@@ -408,6 +420,10 @@ class CatalogService:
         Events are identified by their ``__sciqlop_uuid__`` metadata key
         (present on events returned by :meth:`get`). Raw UUID strings are
         also accepted.
+
+        The change is in memory only: call :meth:`persist` to write it to
+        disk, like the catalog browser's Save. Without it the change is lost
+        when SciQLop closes.
 
         Parameters
         ----------
