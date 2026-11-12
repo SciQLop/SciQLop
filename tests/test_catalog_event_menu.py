@@ -8,7 +8,7 @@ import pytest
 from .fixtures import *  # noqa: F401,F403
 
 BASE = datetime(2020, 1, 1, tzinfo=timezone.utc)
-EVENT_ENTRIES = ["Edit attributes…", "Show in catalog browser", "Zoom to event", "Copy start and stop", "Delete"]
+EVENT_ENTRIES = ["Edit attributes…", "Show in Catalogs", "Zoom to event", "Copy start and stop", "Delete"]
 
 
 @pytest.fixture
@@ -146,7 +146,7 @@ def test_show_in_catalog_browser_reveals_the_event(qtbot, scene):
     panel, _, catalog, event = scene
     got = []
     panel.catalog_manager.catalog_event_clicked.connect(lambda c, e: got.append((c, e)))
-    _action(_menu_at(qtbot, panel, event.start.timestamp() + 60), "Show in catalog browser").trigger()
+    _action(_menu_at(qtbot, panel, event.start.timestamp() + 60), "Show in Catalogs").trigger()
     assert got == [(catalog, event)]
 
 
@@ -188,7 +188,7 @@ def test_the_popup_has_one_row_per_attribute(qtbot, scene):
     qtbot.addWidget(popup)
     model = popup.view.model()
     names = [model.headerData(r, Qt.Orientation.Vertical, Qt.ItemDataRole.DisplayRole) for r in range(model.rowCount())]
-    assert names[:2] == ["start", "stop"] and set(names[2:]) == {"label", "quality"}
+    assert names[:2] == ["Start (UTC)", "Stop (UTC)"] and set(names[2:]) == {"label", "quality"}
     assert model.columnCount() == 1
 
 
@@ -229,3 +229,30 @@ def test_edit_attributes_opens_the_popup(qtbot, scene):
     popups = [w for w in panel.findChildren(EventAttributesPopup) if w.isVisible()]
     assert len(popups) == 1
     popups[0].close()
+
+
+def test_zoom_to_a_zero_length_event_shows_an_hour_each_side():
+    from types import SimpleNamespace
+    from SciQLop.components.catalogs.ui.event_menu import _zoom
+    when = BASE + timedelta(hours=3)
+    panel = SimpleNamespace(time_range=None)
+    _zoom(panel, SimpleNamespace(start=when, stop=when))
+    assert panel.time_range.start() == pytest.approx(when.timestamp() - 3600)
+    assert panel.time_range.stop() == pytest.approx(when.timestamp() + 3600)
+
+
+@pytest.mark.parametrize("when, expected", [
+    (datetime(2020, 1, 1, 12, 0, 5, tzinfo=timezone.utc), "2020-01-01 12:00:05"),
+    (datetime(2020, 1, 1, 12, 0, 5, 250000, tzinfo=timezone.utc), "2020-01-01 12:00:05.250"),
+    (datetime(2020, 1, 1, 12, 0, 5, 400, tzinfo=timezone.utc), "2020-01-01 12:00:05"),
+])
+def test_event_times_show_milliseconds_only_when_they_have_some(when, expected):
+    from SciQLop.components.catalogs.ui.event_table import format_event_time
+    assert format_event_time(when) == expected
+
+
+def test_an_unlabelled_event_is_titled_by_its_time_in_utc():
+    from types import SimpleNamespace
+    from SciQLop.components.catalogs.ui.event_menu import _title
+    event = SimpleNamespace(meta={}, start=datetime(2020, 1, 1, 12, 0, 5, tzinfo=timezone.utc))
+    assert _title(event) == "2020-01-01 12:00:05 UTC"

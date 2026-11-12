@@ -582,8 +582,8 @@ def test_event_table_model_meta_columns(qtbot, qapp):
     headers = []
     for c in range(model.columnCount()):
         headers.append(model.headerData(c, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole))
-    assert "start" in headers
-    assert "stop" in headers
+    assert "Start (UTC)" in headers
+    assert "Stop (UTC)" in headers
     assert "index" in headers
     assert "catalog" in headers
     assert "class" in headers

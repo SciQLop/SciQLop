@@ -14,7 +14,8 @@ from SciQLop.core import TimeRange
 from SciQLop.core.menus import CATALOG_EVENTS
 from SciQLop.core.ui.tooltips import rich_tooltip
 
-from .event_table import EventTableModel
+from SciQLop.components.catalogs.backend.panel_manager import ZERO_LENGTH_EVENT_MARGIN_S
+from .event_table import EventTableModel, format_event_time
 from .event_table_delegate import EventTableDelegate
 
 _ZOOM_PADDING = 0.1  # of the event's duration, each side, so its edges stay visible and draggable
@@ -28,7 +29,7 @@ def add_event_section(menu: QMenu, panel, overlay, event) -> None:
     title.setEnabled(False)
     _add(menu, "Edit attributes…", "Edit this event's attributes, like a row of the catalog's event table.",
          lambda: _open_popup(panel, catalog, event))
-    _add(menu, "Show in catalog browser", "Open this event's catalog in the catalog browser and select the event.",
+    _add(menu, "Show in Catalogs", "Open this event's catalog in the Catalogs pane and select the event.",
          lambda: _show_in_browser(panel, catalog, event))
     _add(menu, "Zoom to event", "Show this event, with a margin on each side.", lambda: _zoom(panel, event))
     _add(menu, "Copy start and stop", "Copy the start and stop times (UTC), as two spreadsheet cells.",
@@ -51,7 +52,7 @@ def _add(menu: QMenu, text: str, tooltip: str, slot):
 
 def _title(event) -> str:
     label = event.meta.get("label")
-    return str(label) if label else event.start.strftime("%Y-%m-%d %H:%M:%S")
+    return str(label) if label else f"{format_event_time(event.start)} UTC"
 
 
 def _iso_utc(when) -> str:
@@ -64,7 +65,7 @@ def _range_text(event) -> str:
 
 def _zoom(panel, event) -> None:
     start, stop = event.start.timestamp(), event.stop.timestamp()
-    pad = (stop - start) * _ZOOM_PADDING
+    pad = (stop - start) * _ZOOM_PADDING if stop > start else ZERO_LENGTH_EVENT_MARGIN_S
     panel.time_range = TimeRange(start - pad, stop + pad)
 
 

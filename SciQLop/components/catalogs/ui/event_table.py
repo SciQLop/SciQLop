@@ -40,6 +40,15 @@ def _format_meta_value(value: Any) -> str:
     return str(value)
 
 
+_FIXED_COLUMN_TITLES = ("Start (UTC)", "Stop (UTC)")
+
+
+def format_event_time(dt) -> str:
+    """To the second, and to the millisecond when it has any: two burst events in one second differ."""
+    text = dt.strftime("%Y-%m-%d %H:%M:%S")
+    return f"{text}.{dt.microsecond // 1000:03d}" if dt.microsecond >= 1000 else text
+
+
 class EventTableModel(QAbstractTableModel):
     """Table model for catalog events: start, stop, then dynamic meta columns."""
 
@@ -172,7 +181,7 @@ class EventTableModel(QAbstractTableModel):
         return len(self._FIXED_COLUMNS) + len(self._meta_keys)
 
     def _format_dt(self, dt) -> str:
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
+        return format_event_time(dt)
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         base = super().flags(index)
@@ -277,7 +286,7 @@ class EventTableModel(QAbstractTableModel):
             return None
         if orientation == Qt.Orientation.Horizontal:
             if section < len(self._FIXED_COLUMNS):
-                return self._FIXED_COLUMNS[section]
+                return _FIXED_COLUMN_TITLES[section]
             return self._meta_keys[section - len(self._FIXED_COLUMNS)]
         return str(section + 1)
 

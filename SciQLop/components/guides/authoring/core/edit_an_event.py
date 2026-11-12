@@ -22,7 +22,7 @@ BODY_FROM, BODY_TO = (X0 + W1 // 2, Y), (X1 + W1 // 2, Y)
 MENU_X, MENU_Y = BODY_TO[0] + 8, Y - 12
 DELETE = (MENU_X + 44, MENU_Y + 18 + 22 * 5 - 2)
 GRAB1, DROP1, GRAB2, DROP2, MENU, CLICK_DELETE, RESET = 1.8, 3.1, 4.4, 5.9, 6.9, 8.6, 13.6
-MENU_ROWS = ["Event: 13:23:01", "Edit attributes…", "Show in catalog browser", "Zoom to event", "Copy start and stop", "Delete"]
+MENU_ROWS = ["Event: 13:23:01", "Edit attributes…", "Show in Catalogs", "Zoom to event", "Copy start and stop", "Delete"]
 
 # The band is drawn 100 wide and stretched a little; drawn 1 wide and stretched 80x, browsers blur it.
 band = lambda x, width: f"transform: translate({x}px, 0px) scale({width / 100}, 1);"

@@ -17,6 +17,9 @@ from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components.shortcuts import shortcut_text
 
 
+ZERO_LENGTH_EVENT_MARGIN_S = 3600.0  # each side of an event with no duration: there is nothing to scale from
+
+
 class InteractionMode(Enum):
     VIEW = "view"
     JUMP = "jump"
@@ -146,7 +149,7 @@ class PanelCatalogManager(QObject):
         from SciQLop.core import TimeRange
         duration = event.stop.timestamp() - event.start.timestamp()
         if duration <= 0:
-            margin = 3600.0  # 1 hour fallback for zero-duration events
+            margin = ZERO_LENGTH_EVENT_MARGIN_S
         else:
             margin = duration * (self.jump_zoom_out_factor - 1) / 2
         self._panel.time_range = TimeRange(
