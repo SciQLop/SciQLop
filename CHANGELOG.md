@@ -71,6 +71,7 @@
 - Opening a template says on the status bar which products it could not find. They used to be skipped with only a log line.
 - Saving a template under a name that already exists asks before replacing it. Importing a template checks the file first: a file that is not a panel template is refused with an explanation and nothing is copied.
 - A plugin install, a removal or a SciQLop update that fails leads with a plain sentence when the cause is a known one: it does not work with the packages already in the workspace, the package index could not be reached, no such package, no write access, disk full. The installer's own reason follows. The full command line is no longer shown; it is in the Logs pane.
+- A virtual product error on a plot names the product once. It read "b_mag: b_mag0: …", the second name being an internal one. A wrong number of columns now says what to change: "Return 3 columns, or declare it MultiComponent with one label per column."
 - A boundary model re-registered under another label moves in the products tree; the entry at its old label stayed behind.
 - A scene plot can switch frame: pick it in the plot's Properties panel (the frames centred on its body, e.g. GSE, GSM, SM for Earth) or call `scene_plot.set_frame("GSE")`. Boundaries and trajectories are redrawn in the new frame, and saved templates keep it.
 - A 3DView spacecraft dropped from the speasy tree (cdpp3dview/ACE) onto a scene plot was refused with "has no COORDINATE_SYSTEM". It is now fetched from 3DView in the scene's frame.

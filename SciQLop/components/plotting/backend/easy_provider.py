@@ -259,12 +259,12 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
                 data = resolve_dependency(spec, start, stop)
             except Exception as e:
                 raise RuntimeError(
-                    f"{self.name}: failed to resolve dependency '{spec.name}' "
+                    f"failed to resolve dependency '{spec.name}' "
                     f"({describe_target(spec.target)}): {e}") from e
             if data is None:
                 if self._debug:
                     raise RuntimeError(
-                        f"{self.name}: dependency '{spec.name}' "
+                        f"dependency '{spec.name}' "
                         f"({describe_target(spec.target)}) resolved to no data")
                 log.debug("%s: discarding result, dependency '%s' (%s) resolved to no data",
                           self.name, spec.name, describe_target(spec.target))
@@ -303,7 +303,8 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
                                     time.monotonic() - t0, start=float(start), stop=float(stop))
         errors = [d.message for d in result.diagnostics if d.level == "error"]
         if errors:
-            raise ValueError(f"{self.name}: " + "\n".join(errors))
+            # No name here: whoever shows this (the plot, %%vp) names the product itself.
+            raise ValueError("\n".join(errors))
         for d in result.diagnostics:
             if d.level == "warning":
                 log.warning(f"{self.name}: {d.message}")

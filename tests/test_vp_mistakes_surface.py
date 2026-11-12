@@ -219,3 +219,12 @@ def test_removing_a_product_removes_its_line(plot_panel, qtbot):
     _overlay_text_after_fetch(qtbot, plot)
     graph.deleteLater()
     qtbot.waitUntil(lambda: plot.overlay().text() == "", timeout=5000)
+
+
+def test_a_shape_error_names_the_product_once(plot_panel, qtbot):
+    def two_columns(start: float, stop: float):
+        return _xs(start, stop), np.ones((100, 2))
+
+    plot, _ = _plot_vp(plot_panel, two_columns, debug=True)
+    text = _overlay_text_after_fetch(qtbot, plot)
+    assert "Declared scalar" in text and text.count(": Declared") == 1 and "two_columns" not in text

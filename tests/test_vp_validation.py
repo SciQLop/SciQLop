@@ -278,3 +278,21 @@ def test_slow_callback_no_range():
     x = np.linspace(0.0, 10.0, 100)
     result = validate_with_data((x, np.sin(x)), "scalar", ["v"], elapsed=6.0)
     assert any("pan/zoom" in d.message for d in result.diagnostics)
+
+
+@pytest.mark.parametrize("declared, labels, y, expected", [
+    ("vector", ["x", "y", "z"], np.ones((10, 2)),
+     "Declared vector (3 components) but got shape (10, 2). "
+     "Return 3 columns, or declare it MultiComponent with one label per column."),
+    ("vector", ["x", "y", "z"], np.ones(10),
+     "Declared vector (3 components) but got shape (10,). "
+     "Return 3 columns, or declare it MultiComponent with one label per column."),
+    ("scalar", ["v"], np.ones((10, 2)),
+     "Declared scalar (1 component) but got shape (10, 2). "
+     "Return 1 column, or declare it MultiComponent with one label per column."),
+    ("multicomponent", ["a", "b"], np.ones((10, 3)),
+     "Declared multicomponent (2 components) but got shape (10, 3). Return 2 columns."),
+])
+def test_a_wrong_number_of_columns_says_what_to_change(declared, labels, y, expected):
+    result = validate_with_data((np.arange(10, dtype=np.float64), y), declared, labels)
+    assert expected in [d.message for d in result.diagnostics]

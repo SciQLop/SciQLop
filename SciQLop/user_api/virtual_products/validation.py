@@ -146,13 +146,18 @@ def _check_shape(data, declared_type: str, labels: Optional[List[str]]) -> List[
     if expected is None and labels:
         expected = len(labels)
 
-    if expected and y.ndim == 2 and y.shape[1] != expected:
-        return [Diagnostic("error",
-            f"Declared {declared_type} ({expected} components) but got shape {y.shape}")]
-    if expected and y.ndim == 1 and expected > 1:
-        return [Diagnostic("error",
-            f"Declared {declared_type} ({expected} components) but got shape {y.shape}")]
+    columns = y.shape[1] if y.ndim == 2 else 1
+    if expected and y.ndim in (1, 2) and columns != expected:
+        return [Diagnostic("error", _wrong_columns_message(declared_type, expected, y.shape))]
     return []
+
+
+def _wrong_columns_message(declared_type: str, expected: int, shape) -> str:
+    plural = "s" if expected > 1 else ""
+    fix = f"Return {expected} column{plural}"
+    if declared_type in _EXPECTED_COMPONENTS:
+        fix += ", or declare it MultiComponent with one label per column"
+    return f"Declared {declared_type} ({expected} component{plural}) but got shape {shape}. {fix}."
 
 
 def _check_spectrogram_shape(data, declared_type: str) -> List[Diagnostic]:
