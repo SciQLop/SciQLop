@@ -406,6 +406,21 @@ notary_log() {
     --team-id "$APPLE_TEAM_ID" 2>&1 || true
 }
 
+# Apple can answer "Accepted" a few seconds before the ticket is downloadable;
+# stapling right away then fails with exit code 68. Retry, and show the tool's
+# own message (through redact) when an attempt fails.
+staple() {
+  local target="$1" attempt out
+  for attempt in 1 2 3 4 5 6; do
+    if out=$(xcrun stapler staple "$target" 2>&1); then
+      return 0
+    fi
+    echo "Stapling attempt $attempt failed: $(redact "$out")"
+    sleep 20
+  done
+  return 1
+}
+
 if [[ -n "$APPLE_ID" && -n "$APPLE_ID_PWD" && -n "$APPLE_TEAM_ID" ]]; then
   echo "Zipping .app for notarization submission..."
   APP_ZIP="$DIST/SciQLop-$ARCH-app.zip"
@@ -434,7 +449,7 @@ if [[ -n "$APPLE_ID" && -n "$APPLE_ID_PWD" && -n "$APPLE_TEAM_ID" ]]; then
   rm -f "$APP_ZIP" "$NOTARY_OUT"
 
   echo "Stapling notarization ticket to .app..."
-  xcrun stapler staple "$APP" >/dev/null
+  staple "$APP"
   xcrun stapler validate "$APP" >/dev/null
   echo "Stapled and validated."
 fi
@@ -498,7 +513,7 @@ if [[ -n "$APPLE_ID" && -n "$APPLE_ID_PWD" && -n "$APPLE_TEAM_ID" ]]; then
   fi
   echo "DMG notarization Accepted."
   rm -f "$DMG_NOTARY_OUT"
-  xcrun stapler staple SciQLop-$ARCH.dmg >/dev/null
+  staple SciQLop-$ARCH.dmg
   echo "DMG stapled."
 fi
 
