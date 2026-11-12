@@ -8,6 +8,8 @@ Short looping animations that each teach one SciQLop manipulation, drawn as a si
 | `drop-on-a-panel.svg` | Where to drop on a panel that has plots: on a plot, on its top edge, on its bottom edge. |
 | `show-a-catalog.svg` | Open the Catalogs pane, drag a catalog onto a panel: its events show as spans. |
 | `create-an-event.svg` | Catalog mode Edit, then Shift+click, move, click again. |
+| `jump-to-an-event.svg` | Catalog mode Jump: pick an event in the list, the panel goes to it. |
+| `edit-an-event.svg` | In Edit mode: drag an edge to resize, the middle to move, right-click to delete. |
 
 Each file is a standalone SVG animated with CSS: no script, no image. It follows the light or dark
 theme of whatever displays it, and shows a still picture where animation is off. It plays in a web
