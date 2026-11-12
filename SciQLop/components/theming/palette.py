@@ -50,8 +50,20 @@ def current_palette() -> dict[str, str]:
     return SCIQLOP_PALETTE
 
 
+def _muted_text(palette: dict[str, str]) -> QColor:
+    """The colour of hints and placeholders: the theme's own, else its
+    unselected-text colour, else its text colour blended halfway into the
+    background. Qt's default is half-transparent black, unreadable on dark themes."""
+    for role in ("PlaceholderText", "UnselectedText"):
+        if role in palette:
+            return QColor(palette[role])
+    text, base = QColor(palette.get("Text", "#000000")), QColor(palette.get("Base", "#ffffff"))
+    return QColor(*((t + b) // 2 for t, b in zip(text.getRgb()[:3], base.getRgb()[:3])))
+
+
 def build_palette(palette: dict[str, str]) -> QtGui.QPalette:
     qpalette = QtGui.QPalette()
+    qpalette.setColor(QtGui.QPalette.ColorRole.PlaceholderText, _muted_text(palette))
     for role, color in palette.items():
         if role in QtGui.QPalette.ColorRole.__members__:
             qpalette.setColor(QtGui.QPalette.ColorRole[role], QtGui.QColor(color))

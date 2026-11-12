@@ -101,3 +101,18 @@ def test_highlighted_text_is_readable_on_highlight(restore_palette, name):
         f"{name}: HighlightedText {colors['HighlightedText']} on Highlight "
         f"{colors['Highlight']} is {ratio:.2f}:1"
     )
+
+
+@pytest.mark.parametrize("name", PALETTES)
+def test_muted_text_is_readable_on_every_theme(qapp, name):
+    """Hints ("Add a product to this panel", the tour's "1 / 14") are drawn in the
+    placeholder-text colour. Left at Qt's default it is half-transparent black."""
+    qpalette = palette_module.build_palette(palette_module._load_palette(name))
+    muted = qpalette.placeholderText().color()
+    assert muted.alpha() == 255
+    assert _contrast(muted, qpalette.base().color()) >= 3
+
+
+def test_a_theme_without_muted_colours_gets_one_from_its_text_colour(qapp):
+    qpalette = palette_module.build_palette({"Base": "#000000", "Text": "#ffffff"})
+    assert _contrast(qpalette.placeholderText().color(), QColor("#000000")) >= 3
