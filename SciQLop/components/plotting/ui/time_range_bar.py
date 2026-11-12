@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 from SciQLop.core import TimeRange
 from SciQLop.core.ui import Metrics, fit_combo_to_content
 from SciQLop.core.ui.tooltips import rich_tooltip
-from SciQLop.core.time_presets import TIME_PRESETS, duration_presets, preset_seconds
+from SciQLop.core.time_presets import TIME_PRESETS, duration_presets, format_duration, parse_duration
 
 ZOOM_LIMIT_PRESETS = [("1h", 3600.0), ("1d", 86400.0), ("1w", 604800.0), ("1y", 365.25 * 86400), ("Unlimited", 0.0)]
 
@@ -23,6 +23,10 @@ def _make_start_picker(parent):
 
 def _make_duration_combo(parent):
     w = QComboBox(parent)
+    w.setEditable(True)
+    w.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+    # Inline completion would turn the "1" of "12h" into "1m" and apply it.
+    w.setCompleter(None)
     for preset in duration_presets():
         w.addItem(preset.label)
     w.setCurrentText("1d")
@@ -85,11 +89,6 @@ class _PulseOverlay(QFrame):
         self._anim.start()
 
 
-def _closest_duration_index(seconds):
-    presets = duration_presets()
-    return min(range(len(presets)), key=lambda i: abs(presets[i].seconds - seconds))
-
-
 class TimeRangeBar(QWidget):
     """Time-navigation chrome: start picker, duration, step buttons, zoom-out limit."""
 
@@ -99,6 +98,7 @@ class TimeRangeBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._suppressing = False
+        self._duration_seconds = 86400.0
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         layout = QHBoxLayout(self)
@@ -124,7 +124,8 @@ class TimeRangeBar(QWidget):
 
         self._duration_combo.setToolTip(rich_tooltip(
             "Time window duration",
-            "Length of the time range shown in this panel."))
+            "Length of the time range shown in this panel. "
+            "Pick one or type your own: 90m, 3d, 1.5h."))
         self._start_picker.setToolTip(rich_tooltip(
             "Start time (UTC)",
             "Start of the time range shown in this panel."))
@@ -140,7 +141,8 @@ class TimeRangeBar(QWidget):
         layout.addWidget(self._zoom_limit_combo)
 
         self._start_picker.dateTimeChanged.connect(self._on_user_changed)
-        self._duration_combo.currentTextChanged.connect(self._on_user_changed)
+        self._duration_combo.currentTextChanged.connect(self._on_duration_typed)
+        self._duration_combo.lineEdit().editingFinished.connect(self._show_duration)
         self._backward_btn.clicked.connect(lambda: self.step(-1))
         self._forward_btn.clicked.connect(lambda: self.step(1))
         self._fast_backward_btn.clicked.connect(lambda: self.step(-5))
@@ -161,20 +163,30 @@ class TimeRangeBar(QWidget):
         """Keep the shown duration across a plugin adding or withdrawing presets; nothing is emitted."""
         if not shiboken6.isValid(self):
             return
-        seconds = self._duration_seconds
         self._suppressing = True
         try:
             self._duration_combo.clear()
             for preset in duration_presets():
                 self._duration_combo.addItem(preset.label)
-            self._duration_combo.setCurrentIndex(_closest_duration_index(seconds))
             fit_combo_to_content(self._duration_combo)
         finally:
             self._suppressing = False
+        self._show_duration()
 
-    @property
-    def _duration_seconds(self):
-        return preset_seconds(self._duration_combo.currentText())
+    def _show_duration(self) -> None:
+        """Write the window's real length in the box; nothing is emitted."""
+        self._suppressing = True
+        try:
+            self._duration_combo.setEditText(format_duration(self._duration_seconds))
+        finally:
+            self._suppressing = False
+
+    def _on_duration_typed(self, text: str) -> None:
+        seconds = parse_duration(text)
+        if self._suppressing or seconds is None:
+            return
+        self._duration_seconds = seconds
+        self.range_changed.emit(self.time_range)
 
     @property
     def duration_text(self) -> str:
@@ -193,10 +205,10 @@ class TimeRangeBar(QWidget):
         self._suppressing = True
         try:
             self._start_picker.setDateTime(QDateTime.fromMSecsSinceEpoch(int(tr.start() * 1000), QTimeZone.UTC))
-            dt = tr.stop() - tr.start()
-            self._duration_combo.setCurrentIndex(_closest_duration_index(dt))
+            self._duration_seconds = tr.stop() - tr.start()
         finally:
             self._suppressing = False
+        self._show_duration()
 
     def _on_user_changed(self, _=None):
         if not self._suppressing:

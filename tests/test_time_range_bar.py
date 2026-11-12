@@ -144,3 +144,62 @@ def test_pulse_does_not_restyle_target_per_frame(bar, qtbot, pulse, target):
     getattr(bar, pulse)()
     qtbot.wait(100)
     assert getattr(bar, target).styleSheet() == ""
+
+
+# --- The duration box follows the real window (a mouse zoom rarely lands on a preset) ---
+
+DAY = 86400.0
+
+
+def test_a_zoomed_window_shows_its_real_length(bar):
+    bar.set_range(TimeRange(1_000_000.0, 1_000_000.0 + 3 * DAY))
+    assert bar.duration_text == "3d"
+    assert bar.time_range.stop() - bar.time_range.start() == pytest.approx(3 * DAY)
+
+
+def test_stepping_keeps_the_zoomed_window_length(bar, qtbot):
+    start = 1_000_000.0
+    bar.set_range(TimeRange(start, start + 3 * DAY))
+    with qtbot.waitSignal(bar.range_changed, timeout=1000) as blocker:
+        bar._forward_btn.click()
+    moved = blocker.args[0]
+    assert moved.start() == pytest.approx(start + 3 * DAY, abs=1)
+    assert moved.stop() - moved.start() == pytest.approx(3 * DAY)
+
+
+def test_a_length_that_is_not_round_steps_by_the_exact_length(bar, qtbot):
+    start, length = 1_000_000.0, 9123.0
+    bar.set_range(TimeRange(start, start + length))
+    assert bar.duration_text == "2.53h"
+    with qtbot.waitSignal(bar.range_changed, timeout=1000) as blocker:
+        bar._forward_btn.click()
+    assert blocker.args[0].stop() - blocker.args[0].start() == pytest.approx(length)
+
+
+@pytest.mark.parametrize("typed, seconds", [("3d", 3 * DAY), ("90m", 5400.0), ("45s", 45.0)])
+def test_a_typed_duration_resizes_the_window(bar, qtbot, typed, seconds):
+    bar.set_range(TimeRange(1_000_000.0, 1_000_000.0 + 3600))
+    bar._duration_combo.lineEdit().selectAll()
+    with qtbot.waitSignal(bar.range_changed, timeout=1000):
+        qtbot.keyClicks(bar._duration_combo.lineEdit(), typed)
+    assert bar.time_range.stop() - bar.time_range.start() == pytest.approx(seconds)
+
+
+def test_typing_does_not_jump_to_a_preset_halfway(bar, qtbot):
+    """ "12h" starts like "1m" and "1h": no completion may apply those on the way."""
+    bar.set_range(TimeRange(1_000_000.0, 1_000_000.0 + 3 * DAY))
+    lengths = []
+    bar.range_changed.connect(lambda tr: lengths.append(tr.stop() - tr.start()))
+    bar._duration_combo.lineEdit().selectAll()
+    qtbot.keyClicks(bar._duration_combo.lineEdit(), "12h")
+    assert lengths == [43200.0]
+
+
+def test_text_that_is_not_a_duration_is_put_back(bar, qtbot):
+    bar.set_range(TimeRange(1_000_000.0, 1_000_000.0 + 3 * DAY))
+    signals = []
+    bar.range_changed.connect(signals.append)
+    bar._duration_combo.lineEdit().selectAll()
+    qtbot.keyClicks(bar._duration_combo.lineEdit(), "soon")
+    qtbot.keyClick(bar._duration_combo.lineEdit(), Qt.Key.Key_Return)
+    assert bar.duration_text == "3d" and signals == []
