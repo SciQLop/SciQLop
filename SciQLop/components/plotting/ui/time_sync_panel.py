@@ -9,7 +9,7 @@ from datetime import timedelta
 import numpy as np
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
+from PySide6.QtWidgets import QApplication, QFileDialog, QWidget
 from PySide6.QtGui import QColor
 from SciQLopPlots import SciQLopMultiPlotPanel, SciQLopTheme, ProductsModel, SciQLopPlot, \
     GraphType, SciQLopNDProjectionPlot, OverlayLevel, OverlaySizeMode, OverlayPosition, \
@@ -1691,6 +1691,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
     def _export_to(self, target):
         from SciQLop.components.plotting.export import export_panel
+        from SciQLop.core.ui.failure_dialog import show_failure
         from SciQLop.user_api.plot import PlotPanel
         path, _ = QFileDialog.getSaveFileName(
             self, f"Export as {target.label}", f"{self.objectName()}{target.suffixes[0]}",
@@ -1703,7 +1704,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
             export_panel(PlotPanel(self), path)
         except Exception as e:
             log.error(f"export to {path} failed: {e}", exc_info=True)
-            QMessageBox.warning(self, "Export failed", str(e))
+            show_failure(self, "Export failed", f"Could not export the panel to {path}.", e)
 
     def _update_template(self):
         self._save_template_with_preview(self._template_source_path)

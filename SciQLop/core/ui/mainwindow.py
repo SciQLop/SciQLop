@@ -51,6 +51,11 @@ register_icon("plot_panel", QtGui.QIcon("://icons/plot_panel_128.png"))
 
 log = getLogger(__name__)
 
+
+def catalog_error_status(message: str) -> str:
+    return f"{message.rstrip('.')}. It is recorded in the Logs pane."
+
+
 _DOCK_VIEW_TOOLTIPS = {
     "Welcome": "Workspaces, examples and templates.",
     "Products": "Browse every data archive by mission and instrument. Drag a product onto a panel to plot it.",
@@ -610,14 +615,18 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._statusbar.addPermanentWidget(self._stats_toggle)
         self._statusbar.addPermanentWidget(self._stats_container)
 
-        self.catalogs_browser.provider_error.connect(
-            lambda msg: self._statusbar.showMessage(msg, 8000))
+        self.catalogs_browser.provider_error.connect(self._show_catalog_error)
         self.catalogs_browser.provider_notice.connect(
             lambda msg: self._statusbar.showMessage(msg, 8000))
 
         self._refresh_mem_timer = QtCore.QTimer(self)
         self._refresh_mem_timer.timeout.connect(self._update_usage)
         self._refresh_mem_timer.start(1000)
+
+    def _show_catalog_error(self, message: str) -> None:
+        """An error stays on the status bar until the next message; the Logs pane keeps the record."""
+        log.error(message)
+        self._statusbar.showMessage(catalog_error_status(message))
 
     def _toggle_stats(self):
         visible = not self._stats_container.isVisible()

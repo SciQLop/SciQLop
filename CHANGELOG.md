@@ -66,6 +66,8 @@
 - A download that fails says so in plain words on the plot, with the server's name: "Could not download the data: amda.irap.omp.eu could not be reached. Check your connection, or try again later." It used to show the network library's message. The full error is still in the Logs pane.
 - A plot says "No data for X in this time range." when a product has nothing in the visible window. The note hides itself after a few seconds; Settings › Application › Plotting › "No data notice" turns it off or keeps it until data comes.
 - Several products on one plot each keep their own message. The last message used to replace the others, and one product recovering erased another one's error.
+- A failed export says what failed and what to try ("You are not allowed to write there. Choose another folder."), with the full error behind "Show Details". It used to show only the system's message. The same for saving an agent transcript.
+- A catalog error stays on the status bar until the next message and is recorded in the Logs pane. It used to vanish after 8 seconds with no trace.
 - A boundary model re-registered under another label moves in the products tree; the entry at its old label stayed behind.
 - A scene plot can switch frame: pick it in the plot's Properties panel (the frames centred on its body, e.g. GSE, GSM, SM for Earth) or call `scene_plot.set_frame("GSE")`. Boundaries and trajectories are redrawn in the new frame, and saved templates keep it.
 - A 3DView spacecraft dropped from the speasy tree (cdpp3dview/ACE) onto a scene plot was refused with "has no COORDINATE_SYSTEM". It is now fetched from 3DView in the scene's frame.

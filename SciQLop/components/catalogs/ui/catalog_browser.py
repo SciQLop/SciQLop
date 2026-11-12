@@ -369,8 +369,6 @@ class CatalogBrowser(QWidget):
         self._update_toolbar()
 
     def _report_failure(self, description: str, exc: Exception) -> None:
-        from SciQLop.components.sciqlop_logging import getLogger
-        getLogger(__name__).warning("%s: %s", description, exc)
         self.provider_error.emit(f"{description}: {exc}")
 
     # ---- slots ----

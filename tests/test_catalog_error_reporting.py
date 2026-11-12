@@ -244,3 +244,11 @@ def test_save_failure_reports_instead_of_raising(qtbot, qapp, monkeypatch):
     with qtbot.waitSignal(browser.provider_error, timeout=1000) as blocker:
         browser._on_save_clicked(proxy_idx)
     assert "save failed" in blocker.args[0]
+
+
+def test_a_catalog_error_stays_on_the_status_bar_and_points_to_the_logs(main_window, qtbot):
+    main_window.catalogs_browser.provider_error.emit("Could not add event: database is locked")
+    shown = main_window.statusBar().currentMessage()
+    assert shown == "Could not add event: database is locked. It is recorded in the Logs pane."
+    qtbot.wait(200)
+    assert main_window.statusBar().currentMessage() == shown

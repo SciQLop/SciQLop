@@ -1118,7 +1118,8 @@ class AgentChatDock(QWidget):
             with open(path, "w", encoding="utf-8") as f:
                 f.write(transcript_to_markdown(messages, title=self._current))
         except OSError as e:
-            QMessageBox.warning(self, "Export failed", str(e))
+            from SciQLop.core.ui.failure_dialog import show_failure
+            show_failure(self, "Export failed", f"Could not save the transcript to {path}.", e)
 
     def _init_tool_verbosity(self) -> None:
         level = AgentChatSettings().tool_verbosity
