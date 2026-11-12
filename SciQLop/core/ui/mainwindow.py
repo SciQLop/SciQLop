@@ -562,7 +562,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 icon=theme_icon("assistant"), callback=self.open_tour_picker)
             sciqlop_app().add_quickstart_shortcut(
                 name="Watch the guides", description="Short animations of the main manipulations",
-                icon=theme_icon("guides"), callback=self.show_guides)
+                icon=get_icon("guides"), callback=self.show_guides)
 
     def _setup_status_bar(self):
         self._statusbar = QtWidgets.QStatusBar(self)

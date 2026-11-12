@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QListWidget, QListWi
 
 import SciQLop
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.components.theming import register_icon, theme_icon
+from SciQLop.components.theming import get_icon, register_icon
 from SciQLop.core.ui import Metrics
 from SciQLop.core.ui.tooltips import rich_tooltip
 
@@ -56,7 +56,7 @@ class GuidesWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Guides")
-        self.setWindowIcon(theme_icon("guides"))
+        self.setWindowIcon(get_icon("guides"))
         self.list = QListWidget(self)
         self.list.setFixedWidth(Metrics.em(20))
         self.title = QLabel(self)
