@@ -40,18 +40,26 @@ def switch_workspace(workspace_name: str) -> None:
     ws_dir = Path(os.environ.get("SCIQLOP_WORKSPACE_DIR", "."))
     ws_dir.mkdir(parents=True, exist_ok=True)
     (ws_dir / SWITCH_WORKSPACE_FILE).write_text(workspace_name)
-    from PySide6.QtWidgets import QApplication
-    app = QApplication.instance()
-    app._sciqlop_exit_code = EXIT_SWITCH_WORKSPACE
-    QApplication.exit(EXIT_SWITCH_WORKSPACE)
+    _close_then_exit(EXIT_SWITCH_WORKSPACE)
 
 
 def restart_sciqlop() -> None:
     """Quit so the launcher restarts SciQLop into the same workspace (exit code 64)."""
+    _close_then_exit(EXIT_RESTART)
+
+
+def _close_then_exit(code: int) -> None:
+    """Quit with `code` by closing the main window, so it asks about unsaved
+    catalogs and running jobs and closes the plugins. Answering No keeps
+    SciQLop open."""
     from PySide6.QtWidgets import QApplication
     app = QApplication.instance()
-    app._sciqlop_exit_code = EXIT_RESTART
-    QApplication.exit(EXIT_RESTART)
+    window = getattr(app, "main_window", None)
+    if window is not None:
+        window.close_then_exit(code)
+        return
+    app._sciqlop_exit_code = code
+    QApplication.exit(code)
 
 
 def _signal_ready_and_wait_for_splash(timeout: float = 5.0) -> None:

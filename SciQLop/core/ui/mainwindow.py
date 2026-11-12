@@ -1054,6 +1054,25 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             self._close_plugins_sync()
         workspaces_manager_instance().quit()
         super().closeEvent(event)
+        self._exit_with_requested_code()
+
+    _exit_code_after_close = None
+
+    def close_then_exit(self, code: int) -> None:
+        """Close as the user would, then quit the application with `code`
+        (restart, switch workspace). Nothing happens when the user answers No
+        to one of the close questions."""
+        self._exit_code_after_close = code
+        self.close()
+        if not getattr(self, '_closing', False):
+            self._exit_code_after_close = None
+
+    def _exit_with_requested_code(self) -> None:
+        code = self._exit_code_after_close
+        if code is None:
+            return
+        QtWidgets.QApplication.instance()._sciqlop_exit_code = code
+        QtWidgets.QApplication.exit(code)
 
     def _warn_if_jobs_running(self, event: QCloseEvent) -> bool:
         from SciQLop.components.jobs.backend.jobs_backend import jobs_backend_instance
