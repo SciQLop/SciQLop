@@ -1,5 +1,5 @@
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QComboBox, QLabel, QDoubleSpinBox
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QComboBox, QLabel, QDoubleSpinBox, QPushButton
 
 from SciQLop.core.ui import fit_combo_to_content
 from SciQLop.components.shortcuts import bind_tooltip
@@ -7,6 +7,7 @@ from SciQLop.core.ui.tooltips import rich_tooltip
 
 
 CATALOG_MODES = [("View", "view"), ("Jump", "jump"), ("Edit", "edit")]
+NO_TARGET = "No editable catalog on this panel"
 
 
 def _make_mode_combo(parent):
@@ -43,11 +44,13 @@ class CatalogChrome(QWidget):
     """Per-panel catalog controls: interaction mode, jump zoom-out factor,
     target catalog for span creation.
 
-    The zoom-out spinbox is shown only in jump mode; the target combo only
-    while it has content (edit mode with at least one editable catalog).
+    The zoom-out spinbox is shown only in jump mode; the target combo and the
+    "New catalog…" button only in edit mode. With no editable catalog on the
+    panel the combo says so, greyed out, instead of hiding.
     """
 
     mode_changed = Signal(str)
+    new_catalog_requested = Signal()
     target_changed = Signal(str)
     zoom_out_changed = Signal(float)
 
@@ -71,6 +74,12 @@ class CatalogChrome(QWidget):
         self._target_label.setToolTip(self._target_combo.toolTip())
         self._target_label.setBuddy(self._target_combo)
         self._target_label.setVisible(False)
+        self._new_catalog_btn = QPushButton("New catalog…", self)
+        self._new_catalog_btn.setToolTip(rich_tooltip(
+            "New catalog",
+            "Create a catalog, show it on this panel and add new events to it."))
+        self._new_catalog_btn.setVisible(False)
+        self._new_catalog_btn.clicked.connect(self.new_catalog_requested)
 
         self._zoom_out_spin = _make_zoom_out_spin(self)
         self._zoom_out_label = QLabel("Zoom out:", self)
@@ -83,6 +92,7 @@ class CatalogChrome(QWidget):
         layout.addWidget(self._zoom_out_spin)
         layout.addWidget(self._target_label)
         layout.addWidget(self._target_combo)
+        layout.addWidget(self._new_catalog_btn)
 
         self._mode_combo.currentIndexChanged.connect(self._on_mode_changed)
         self._mode_combo.currentIndexChanged.connect(self._sync_zoom_out_visibility)
@@ -124,27 +134,34 @@ class CatalogChrome(QWidget):
         self._target_combo.clear()
         for name, uuid in items:
             self._target_combo.addItem(name, userData=uuid)
-        index = max(0, self._target_combo.findData(previous))
+        if not items:
+            self._target_combo.addItem(NO_TARGET, userData=None)
+        index = max(0, self._target_combo.findData(previous)) if items else 0
         self._target_combo.setCurrentIndex(index)
         self._target_combo.blockSignals(False)
+        self._target_combo.setEnabled(bool(items))
         fit_combo_to_content(self._target_combo)
-        visible = len(items) > 0
-        self._target_combo.setVisible(visible)
-        self._target_label.setVisible(visible)
+        self._set_target_widgets_visible(True)
         if items:
             self._on_target_changed(index)
+
+    def _set_target_widgets_visible(self, visible: bool) -> None:
+        for widget in (self._target_label, self._target_combo, self._new_catalog_btn):
+            widget.setVisible(visible)
 
     def clear_targets(self) -> None:
         self._target_combo.blockSignals(True)
         self._target_combo.clear()
         self._target_combo.blockSignals(False)
-        self._target_combo.setVisible(False)
-        self._target_label.setVisible(False)
+        self._set_target_widgets_visible(False)
 
     def selected_target(self) -> str | None:
-        if self._target_combo.count() == 0:
-            return None
         return self._target_combo.currentData()
+
+    def select_target(self, uuid: str) -> None:
+        index = self._target_combo.findData(uuid)
+        if index >= 0:
+            self._target_combo.setCurrentIndex(index)
 
     def _on_mode_changed(self, _index: int):
         value = self._mode_combo.currentData()

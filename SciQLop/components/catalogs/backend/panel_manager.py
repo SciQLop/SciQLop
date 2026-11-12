@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from PySide6.QtCore import QObject, Signal, Qt
 from PySide6.QtWidgets import QMenu
 
-from SciQLop.components.catalogs.backend.provider import Catalog, Capability, CatalogEvent
+from SciQLop.components.catalogs.backend.provider import Catalog, Capability, CatalogEvent, CatalogProvider
 from SciQLop.components.catalogs.backend.overlay import CatalogOverlay
 from SciQLop.components.catalogs.backend.registry import CatalogRegistry
 from SciQLop.components.catalogs.backend.color_palette import (
@@ -268,7 +268,19 @@ class PanelCatalogManager(QObject):
         chrome.target_changed.connect(lambda _: self._apply_span_creation_state())
         chrome.mode_changed.connect(self._on_chrome_mode_changed)
         chrome.zoom_out_changed.connect(self._on_zoom_out_changed)
+        chrome.new_catalog_requested.connect(self._create_catalog_for_new_events)
         chrome.mode = self._mode.value
+
+    def _create_catalog_for_new_events(self) -> None:
+        """The chrome's "New catalog…": create it, show it on this panel, make it the creation target."""
+        answer = _ask_new_catalog(self._panel)
+        if answer is None:
+            return
+        provider, name = answer
+        catalog = provider.create_catalog(name)
+        self.add_catalog(catalog)
+        self._catalog_chrome().select_target(catalog.uuid)
+        self._apply_span_creation_state()
 
     def _catalog_chrome(self):
         return getattr(self._panel, '_catalog_chrome', None)
@@ -330,6 +342,24 @@ class PanelCatalogManager(QObject):
     def _on_event_clicked(self, event: CatalogEvent, catalog: Catalog | None = None) -> None:
         self.event_clicked.emit(event)
         self.catalog_event_clicked.emit(catalog, event)
+
+
+def _ask_new_catalog(parent) -> tuple[CatalogProvider, str] | None:
+    """Ask where (when several sources can hold new catalogs) and under which name; None when cancelled."""
+    from PySide6.QtWidgets import QInputDialog
+    providers = [p for p in CatalogRegistry.instance().providers()
+                 if Capability.CREATE_CATALOGS in p.capabilities()]
+    if not providers:
+        return None
+    provider = providers[0]
+    if len(providers) > 1:
+        names = [p.name for p in providers]
+        choice, ok = QInputDialog.getItem(parent, "New catalog", "Create it in:", names, 0, False)
+        if not ok:
+            return None
+        provider = providers[names.index(choice)]
+    name, ok = QInputDialog.getText(parent, "New catalog", "Catalog name:")
+    return (provider, name.strip()) if ok and name.strip() else None
 
 
 def _shows(manager: PanelCatalogManager, provider_name: str, catalog_uuid: str) -> bool:
