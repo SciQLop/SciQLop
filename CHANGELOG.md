@@ -10,6 +10,8 @@
 - The time bar's duration box shows the real length of the window after a zoom (for example "3d" or "2.53h") and the step buttons move by that length. It showed the nearest preset and the next step shrank the window to it. The box can be typed into: "90m", "3d", "1.5h", "45s".
 - The palette's "Set time range" is now "Set time range for new panels", which is what it does, and confirms in the status bar.
 - A workspace that cannot be prepared at start-up says why in plain words above the traceback: no network on a first start (with the proxy setting to check), or a broken environment (with how to reset it).
+- Edit mode on a panel with no catalog that accepts events is no longer a dead end. The "Add to:" box stays, greyed out, reading "No editable catalog on this panel", and a "New catalog…" button creates one, shows it on the panel and selects it, so Shift+click works right after.
+- The catalogs tutorial has two new sections: downloading data for each event with Speasy (`spz.get_data(product, catalog)`), and computing a quantity per event (mean field strength and magnetic shear) that is stored back in the catalog as columns.
 - The catalog functions `save`, `create`, `add_events` and `remove_events` say in their documentation that the change stays in memory until `catalogs.persist(path)`. The README example and the catalogs tutorial now show `persist`.
 
 ### Batch mode
