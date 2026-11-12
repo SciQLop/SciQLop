@@ -111,12 +111,16 @@ def test_the_no_data_line_can_be_turned_off(plot_panel, qtbot, no_data_notice):
 def test_the_no_data_line_hides_itself_and_stays_away_while_the_gap_lasts(plot_panel, qtbot, monkeypatch):
     import SciQLop.components.plotting.ui.time_sync_panel as panel_module
     monkeypatch.setattr(panel_module, "_NO_DATA_NOTE_MS", 300)
+    # Recorded, not watched: on a slow machine the note can come and go between two looks at the plot.
+    said = []
+    say = panel_module._PlotMessages.say
+    monkeypatch.setattr(panel_module._PlotMessages, "say",
+                        lambda board, source, text, level: (said.append(text), say(board, source, text, level))[1])
     plot, _ = _plot_vp(plot_panel, _nothing)
-    _overlay_text_after_fetch(qtbot, plot)
-    qtbot.waitUntil(lambda: plot.overlay().text() == "", timeout=5000)
+    qtbot.waitUntil(lambda: len(said) == 1 and plot.overlay().text() == "", timeout=10000)
     plot_panel.time_range = ("2020-01-02T00:00", "2020-01-02T06:00")
     qtbot.wait(1000)
-    assert plot.overlay().text() == ""
+    assert plot.overlay().text() == "" and len(said) == 1
 
 
 def test_the_no_data_line_can_stay_until_data_comes(plot_panel, qtbot, monkeypatch, no_data_notice):

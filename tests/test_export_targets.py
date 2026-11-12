@@ -105,9 +105,11 @@ def test_a_failing_export_is_shown_not_raised(plot_panel, menu, tmp_path, monkey
     try:
         tsp = _answer_dialog(monkeypatch, str(tmp_path / "x.bad"))
         shown = []
-        monkeypatch.setattr(tsp.QMessageBox, "warning", lambda parent, title, text: shown.append(text))
+        from SciQLop.core.ui import failure_dialog
+        monkeypatch.setattr(failure_dialog, "show_failure",
+                            lambda parent, title, what_failed, exc: shown.append((what_failed, str(exc))))
         monkeypatch.setattr(tsp.log, "error", lambda *a, **k: None)
         _action(_export_submenu(plot_panel, menu), "Export as Bad\u2026").trigger()
     finally:
         EXPORT_TARGETS.remove_owner("et_demo")
-    assert shown == ["disk full"]
+    assert shown == [(f"Could not export the panel to {tmp_path / 'x.bad'}.", "disk full")]
