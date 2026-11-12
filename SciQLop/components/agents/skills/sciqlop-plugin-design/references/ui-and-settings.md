@@ -512,7 +512,7 @@ withdrawn:
   be saved and read in your format: `loads(text) -> dict`, `dumps(dict) -> text`. "Save as template" still writes
   `.json`; files in your format are listed while your plugin is active. Each suffix starts with a dot, e.g. `.tpl`.
 - `ctx.contribute("sciqlop.time_presets", TimePreset(id, label, seconds, description))` adds a duration to every
-  panel's time-range bar and to the palette's "Set time range". `description` is the palette wording ("Last 3 days").
+  panel's time-range bar and to the palette's "Set time range for new panels". `description` is the palette wording ("Last 3 days").
 - `ctx.contribute("sciqlop.themes", Theme(id, label, palette))` adds a theme to Settings → Appearance and to
   `user_api.themes`. `palette` maps Qt palette roles (`Window`, `Base`, `Text`, …) to colours, as the files in
   `SciQLop/resources/palettes` do. If your theme is the user's choice, it applies as soon as your plugin activates;

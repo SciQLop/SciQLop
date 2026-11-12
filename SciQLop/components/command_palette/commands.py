@@ -43,6 +43,7 @@ def _do_set_time_range(time_range: str = ""):
         return
     now = datetime.utcnow()
     _get_win()._default_time_range = TimeRange((now - timedelta(seconds=seconds)).timestamp(), now.timestamp())
+    _get_win().statusBar().showMessage(f"New panels will open on the last {time_range}.", 8000)
 
 
 def _do_switch_workspace(workspace: str = ""):
@@ -138,8 +139,8 @@ def register_builtin_commands(registry):
 
     registry.register(PaletteCommand(
         id="plot.set_time_range",
-        name="Set time range",
-        description="Set the global time range",
+        name="Set time range for new panels",
+        description="The time range a new panel opens on; open panels keep theirs",
         callback=_do_set_time_range,
         args=[TimeRangeArg()],
     ))

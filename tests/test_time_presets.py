@@ -117,3 +117,15 @@ def test_set_time_range_refuses_unreadable_text_and_keeps_the_range(window):
     _do_set_time_range("sometime")
     assert window._default_time_range is None
     assert "sometime" in window.statusBar().currentMessage()
+
+
+def test_the_palette_command_says_it_is_for_new_panels(window):
+    """It never moved the open panels; its name must not promise that."""
+    from SciQLop.components.command_palette.commands import _do_set_time_range, register_builtin_commands
+    from SciQLop.components.command_palette.backend.registry import CommandRegistry
+    registry = CommandRegistry()
+    register_builtin_commands(registry)
+    command = next(c for c in registry.commands() if c.id == "plot.set_time_range")
+    assert command.name == "Set time range for new panels"
+    _do_set_time_range("1w")
+    assert "New panels" in window.statusBar().currentMessage()
