@@ -121,6 +121,14 @@ class StartupWindow(QWidget):
         btn_row.addStretch()
         layout.addLayout(btn_row)
 
+        self._error_headline = QLabel()
+        self._error_headline.setWordWrap(True)
+        self._error_headline.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self._error_headline.setStyleSheet(
+            "color: #eee; padding: 12px 16px; font-size: 14px; font-weight: bold;")
+        self._error_headline.setVisible(False)
+        layout.addWidget(self._error_headline)
+
         self._error_text = QPlainTextEdit()
         self._error_text.setReadOnly(True)
         self._error_text.setStyleSheet(
@@ -156,6 +164,7 @@ class StartupWindow(QWidget):
         self._detail_label.setVisible(True)
         self._warning_banner.setVisible(False)
         self._continue_btn.setVisible(False)
+        self._error_headline.setVisible(False)
         self._error_text.setVisible(False)
         self._copy_btn.setVisible(False)
         self._quit_btn.setVisible(False)
@@ -180,12 +189,15 @@ class StartupWindow(QWidget):
         self._continue_btn.setVisible(False)
         self.warning_acknowledged.emit()
 
-    def show_error(self, traceback_text: str) -> None:
+    def show_error(self, traceback_text: str, explanation: str = "SciQLop could not start.") -> None:
+        """Show `explanation` in plain words above the technical details."""
         self._show_background = False
         self._enter_progress_state()
         self._text_bar.setVisible(False)
         self._phase_label.setVisible(False)
         self._detail_label.setVisible(False)
+        self._error_headline.setText(explanation)
+        self._error_headline.setVisible(True)
         self._error_text.setPlainText(traceback_text)
         self._error_text.setVisible(True)
         self._copy_btn.setVisible(True)

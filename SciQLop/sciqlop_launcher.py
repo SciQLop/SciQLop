@@ -409,7 +409,8 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
         prepare_fn, default_python, window.set_detail
     )
     if prep_error is not None:
-        window.show_error(prep_error)
+        from SciQLop.components.startup.failure import explain_preparation_failure
+        window.show_error(prep_error, explain_preparation_failure(prep_error))
         app.exec()
         return 1, workspace_dir
 
@@ -539,7 +540,9 @@ def _run_on_console(workspace_name: str | None, sciqlop_file: str | None,
                                             reset_environment=reset_environment)
     except Exception:
         import traceback
-        message = "Workspace preparation failed:\n" + traceback.format_exc()
+        from SciQLop.components.startup.failure import explain_preparation_failure
+        details = traceback.format_exc()
+        message = f"Workspace preparation failed:\n{details}\n{explain_preparation_failure(details)}"
         print(message, file=sys.stderr)
         _append_to_own_log(message)
         return 1, workspace_dir
