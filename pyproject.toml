@@ -51,7 +51,7 @@ dependencies = [
 # The application. `pip install SciQLop[all]` is what an end user wants, and
 # what a workspace venv installs.
 all = [
-    "SciQLopPlots==0.52.0",
+    "SciQLopPlots==0.53.0",
     "cloudpickle",
     "defusedxml",
     "speasy[blosc]>=1.8.5",
@@ -59,9 +59,9 @@ all = [
     "humanize",
     "seaborn",
     "scipy",
-    "pyside6==6.11.2",
-    "shiboken6==6.11.2",
-    "PySide6-QtAds==5.1.1",
+    "pyside6==6.12.0",
+    "shiboken6==6.12.0",
+    "PySide6-QtAds==5.1.1.1",
     "ipython",
     "ipywidgets",
     "jupyterlab_widgets",

@@ -88,6 +88,7 @@
 
 ### Dependencies
 
+- SciQLopPlots 0.53.0, with PySide6 6.12.0 and PySide6-QtAds 5.1.1.1 (the build for PySide6 6.12). SciQLopPlots 0.53 reviewed its whole Python API: wrong arguments now raise an error where they used to be ignored, and several names were renamed (the old ones still work, with a warning).
 - agent-client-protocol is capped below 1.0. Version 1.0 changed its Python API, and the agent panel could not connect to any agent with it.
 - SciQLopPlots 0.52.0:
   - A curve plotted without labels can be styled right after `plot()` (line style, colour, width, markers). Before, the style was silently lost until the data came back.
