@@ -66,6 +66,8 @@ def build_help_menu(window) -> QMenu:
     menu = _new_menu("Help")
     _add(menu, "Documentation and tutorials", _open(DOCUMENTATION_URL),
          "Documentation and tutorials", "Open the SciQLop website in your browser.")
+    _add(menu, "Guides", window.show_guides,
+         "Guides", "Short animations that each show one manipulation: plotting, catalogs, events.")
     _add(menu, "Take a tour…", window.open_tour_picker,
          "Take a tour", "Pick a guided walkthrough of a SciQLop feature.")
     window.shortcutsHelpAction = menu.addAction("Keyboard shortcuts", window.show_shortcuts_help)

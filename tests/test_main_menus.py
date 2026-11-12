@@ -46,7 +46,7 @@ def test_file_quit_closes_the_window(main_window, monkeypatch):
 
 def test_help_menu_entries(main_window):
     assert _texts(main_window.helpMenu) == [
-        "Documentation and tutorials", "Take a tour…", "Keyboard shortcuts",
+        "Documentation and tutorials", "Guides", "Take a tour…", "Keyboard shortcuts",
         "Report a problem…", "Troubleshooting", "About SciQLop"]
 
 

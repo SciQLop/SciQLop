@@ -192,6 +192,7 @@ task:
 - `sciqlop-catalogs/SKILL.md`: labeling events, catalogs, overlays on panels.
 - `sciqlop-troubleshooting/SKILL.md`: empty, wrong or slow plots, hangs, crashes.
 - `sciqlop-plugin-design/SKILL.md`: writing SciQLop plugins.
+- `sciqlop-gesture-guides/SKILL.md`: making an animated "show me how" guide for SciQLop or a plugin.
 
 ### Live Qt objects
 

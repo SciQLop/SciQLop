@@ -21,6 +21,8 @@
 - The getting-started tour no longer starts by itself. At the first start SciQLop asks once, "New here? Take a short guided tour", with Start the tour and Not now. A tour left with Skip or Escape is no longer listed as completed.
 - Welcome page: with only the default workspace, Examples and Templates start open. The news banner holds five plain lines about this version and stays closed once dismissed. The quick-start row starts with New plot panel.
 - The Logs pane takes its background and text colour from the theme; it was white with yellow text. Lines no longer repeat the level, and the source file and line number show only in debug mode. The session log file is unchanged.
+- Guides: seven short animations that each show one manipulation in a simplified window (add a panel and set its time range, plot a product, choose where a dropped product goes, show a catalog, create an event, go from event to event, resize or delete an event). They are under Help › Guides and in the command palette as "Guide: …". An empty panel offers "Show me how", and a "?" next to a panel's Catalog mode box opens the guide for the current mode. They take the colours of the current theme and need no web view.
+- Plugins can add guides: `register_guide(Guide(id, title, caption, path, keywords, contexts))` from `SciQLop.components.guides.registry` (extension point `sciqlop.guides`), and place a `GuideButton(context)` in their own widgets. The drawing kit is `SciQLop.components.guides.authoring`, and the bundled agent skill `sciqlop-gesture-guides` explains how to make one. Provisional, like the rest of the plugin API.
 
 ### Batch mode
 

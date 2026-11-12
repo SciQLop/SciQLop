@@ -31,6 +31,9 @@ def prepare_extension_points() -> None:
     import SciQLop.components.plotting.export  # noqa: F401  declares sciqlop.export_targets, contributes the core formats
     from SciQLop.components.command_palette.backend import registry as command_registry  # noqa: F401  declares sciqlop.commands
     from SciQLop.components.shortcuts import registry as _shortcuts  # noqa: F401  declares sciqlop.shortcuts
+    from SciQLop.components.guides import registry as _guides, palette as _guides_palette  # declares sciqlop.guides
+    _guides.register_core_guides()
+    _guides_palette.follow_guides()  # each guide is a "Guide: …" command
     from SciQLop.components.agents import registry as _agent_backends  # noqa: F401  declares sciqlop.agent_backends
     from SciQLop.components.agents.tools import contributed as _agent_tools  # noqa: F401  declares sciqlop.agent_tools
     from SciQLop.components.agents.skills import contribute_core_skills

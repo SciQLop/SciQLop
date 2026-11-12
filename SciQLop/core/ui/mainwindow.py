@@ -460,6 +460,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def show_about(self) -> None:
         show_about(self)
 
+    def show_guides(self, guide_id: Optional[str] = None) -> None:
+        from SciQLop.components.guides.ui import show_guides
+        show_guides(self, guide_id if isinstance(guide_id, str) else None)
+
     def reload_theme(self) -> None:
         sciqlop_app().apply_theme(SciQLopStyle().color_palette)
 

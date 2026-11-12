@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QComboBox, QLabel, QDoubleSp
 from SciQLop.core.ui import fit_combo_to_content
 from SciQLop.components.shortcuts import bind_tooltip
 from SciQLop.core.ui.tooltips import rich_tooltip
+from SciQLop.components.guides.ui import GuideButton
 
 
 CATALOG_MODES = [("View", "view"), ("Jump", "jump"), ("Edit", "edit")]
@@ -86,8 +87,10 @@ class CatalogChrome(QWidget):
         self._zoom_out_label.setToolTip(self._zoom_out_spin.toolTip())
         self._zoom_out_label.setBuddy(self._zoom_out_spin)
 
+        self._guide_button = GuideButton(f"catalog.mode.{self._mode_combo.currentData()}", self)
         layout.addWidget(self._mode_label)
         layout.addWidget(self._mode_combo)
+        layout.addWidget(self._guide_button)
         layout.addWidget(self._zoom_out_label)
         layout.addWidget(self._zoom_out_spin)
         layout.addWidget(self._target_label)
@@ -105,6 +108,7 @@ class CatalogChrome(QWidget):
         return self._zoom_out_spin.value()
 
     def _sync_zoom_out_visibility(self, *_):
+        self._guide_button.set_context(f"catalog.mode.{self.mode}")
         visible = self.mode == "jump"
         self._zoom_out_label.setVisible(visible)
         self._zoom_out_spin.setVisible(visible)

@@ -132,6 +132,7 @@ def activate(ctx):
 | `sciqlop.agent_skills` | `AgentSkill(name, directory)` | `name` |
 | `sciqlop.quickstart` | `QuickstartShortcut(name, description, icon, callback)`, through `SciQLop.core.sciqlop_application.sciqlop_app().add_quickstart_shortcut(...)` | `name` |
 | `sciqlop.tours` | `Tour(id, title, description, steps)`, through `register_tour(tour)` | `id` |
+| `sciqlop.guides` | `Guide(id, title, caption, path, keywords, contexts)`, through `register_guide(guide)` (`SciQLop.components.guides.registry`); see the `sciqlop-gesture-guides` skill | `id` |
 | `sciqlop.search_domains` | a `SearchDomain` (`name`, `snapshot()`), through `register_domain(domain)` | `name` |
 | `sciqlop.catalog_providers` | a `CatalogProvider` subclass instance; it registers itself when built | `name#address` |
 | `sciqlop.template_formats` | `TemplateFormat(id, label, suffixes, loads, dumps)` | `id` |

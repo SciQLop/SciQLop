@@ -12,6 +12,7 @@ from SciQLopPlots import (
 from SciQLop.core.mime import decode_mime
 from SciQLop.core.ui import Metrics
 from SciQLop.core.ui.tooltips import rich_tooltip
+from SciQLop.components.guides.ui import GuideButton
 from SciQLop.components import sciqlop_logging
 from SciQLop.components import smart_search
 from SciQLop.components.plotting.ui.proxy_share import proxy_plot_config_from_text
@@ -81,6 +82,8 @@ class ProductSearchOverlay(QWidget):
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._label.setStyleSheet(_MUTED + "font-size: 16ex;")
         layout.addWidget(self._label, 0, Qt.AlignmentFlag.AlignCenter)
+        self._guide_button = GuideButton("panel.empty", self, text="Show me how")
+        layout.addWidget(self._guide_button, 0, Qt.AlignmentFlag.AlignCenter)
 
         self._search_box = QLineEdit()
         self._search_box.setPlaceholderText(

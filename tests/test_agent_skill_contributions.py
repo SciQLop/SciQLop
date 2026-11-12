@@ -30,7 +30,7 @@ def _published(ws):
 
 def test_core_skills_are_contributions():
     contribute_core_skills()
-    assert len(_CORE) == 6
+    assert len(_CORE) == 7
     for name in _CORE:
         assert name in AGENT_SKILLS
         assert AGENT_SKILLS.owner_of(name) == "sciqlop"
