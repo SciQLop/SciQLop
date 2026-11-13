@@ -33,6 +33,16 @@ def _alpha(color: str, alpha: int) -> str:
     return f"rgba({c.red()}, {c.green()}, {c.blue()}, {alpha})"
 
 
+def _over(color: str, background: str, alpha: int) -> str:
+    """`color` at `alpha` (0-255) flattened onto `background`, as an opaque colour.
+
+    Why not `alpha`: a table view paints the full highlight under an item's stylesheet background, so a
+    translucent fill shows the highlight through and only trees and lists get the pale colour."""
+    fg, bg = QtGui.QColor(color), QtGui.QColor(background)
+    mix = (round(b + alpha / 255 * (f - b)) for f, b in zip(fg.getRgb()[:3], bg.getRgb()[:3]))
+    return QtGui.QColor(*mix).name()
+
+
 def _palette(palette: QtGui.QPalette, name: str):
     if hasattr(palette, name):
         b = getattr(palette, name)()
@@ -70,6 +80,7 @@ def _prime_env(palette: QtGui.QPalette, palette_name: str) -> None:
     env.globals['darken'] = lambda color, factor: QtGui.QColor(color).darker(factor).name()
     env.globals['icon'] = partial(_icon, palette_name)
     env.filters['alpha'] = _alpha
+    env.filters['over'] = _over
     env.filters['lighter'] = lambda color, factor: QtGui.QColor(color).lighter(factor).name()
     env.filters['lighten'] = lambda color, factor: QtGui.QColor(color).lighter(factor).name()
     env.filters['darker'] = lambda color, factor: QtGui.QColor(color).darker(factor).name()

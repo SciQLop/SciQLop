@@ -4,6 +4,7 @@
 
 ### Fixes before the release
 
+- Themes: a selected row in a tree, list or table stays readable when its window is not the active one (a dialog or a floating panel has the focus). In the six light themes it was white text on a pale fill.
 - Agents: closing SciQLop stops the agent processes started by the Agents panel. They were only stopped when a session was replaced, so one could keep running after SciQLop had quit.
 - My Catalogs: a request sent to the database thread no longer keeps the window or provider that sent it alive. The database thread could end up destroying it, for example the "Events without a catalog" dialog closed while a deletion was still running, and SciQLop could then crash a moment later.
 - "Restart now", opening another workspace and the store's restart now ask about unsaved catalog changes and running jobs, like closing the window does. They used to quit directly and the edits were lost. Answering No keeps SciQLop open.

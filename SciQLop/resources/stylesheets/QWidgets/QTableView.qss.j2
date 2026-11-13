@@ -21,5 +21,6 @@ QTableView::item:selected:active {
 }
 
 QTableView::item:selected:!active {
-    background: {{ palette('Selection') | alpha(80) }};
+    background: {{ palette('Selection') | over(palette('base'), 80) }};
+    color: {{ palette('text') }};
 }
