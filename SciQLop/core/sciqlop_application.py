@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Any, Callable, TYPE_CHECKING
 from SciQLop.components.theming import load_stylesheets, setup_palette, SciQLopStyle
 from SciQLop.components.theming.palette import active_theme_name
 from SciQLop.components.theming.themes import DEFAULT_THEME
+from SciQLop.core import pyside_layout_ownership
 from qasync import QEventLoop, QApplication
 import asyncio
 import math
@@ -31,6 +32,7 @@ def _patch_qasync_infinite_timer():
 
 
 _patch_qasync_infinite_timer()
+pyside_layout_ownership.install()
 
 
 def _saved_theme() -> str:
