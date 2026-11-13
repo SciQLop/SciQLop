@@ -239,3 +239,20 @@ def test_an_open_scene_plot_keeps_drawing_after_its_plugin_is_withdrawn(plot_pan
     redrawn = sp._boundary_graphs["magnetopause"].graphs[0][0]
     wait_for_data(qtbot, redrawn)
     assert np.isfinite(np.nanmax(redrawn.data()[0]))
+
+
+def _pane_backgrounds(sp):
+    from SciQLopPlots import SciQLopPlot
+    return {pane.theme().background().name() for pane in proj_of(sp).findChildren(SciQLopPlot)}
+
+
+def test_the_panes_of_a_scene_plot_follow_the_panel_theme(plot_panel, earth, monkeypatch):
+    from SciQLop.components.theming import palette
+    panel = plot_panel._get_impl_or_raise()
+    sp = plot_panel.plot_scene("Earth environment")
+    assert _pane_backgrounds(sp) == {panel.theme().background().name()}
+
+    monkeypatch.setattr(palette, "SCIQLOP_PALETTE", {**palette.SCIQLOP_PALETTE, "Base": "#123456"})
+    panel.update_theme()
+
+    assert _pane_backgrounds(sp) == {"#123456"}
