@@ -2,11 +2,12 @@ QProgressBar {
     background: palette(mid);
     color: palette(text);
     border: none;
-    border-radius: 0.4ex;
+    border-radius: {{ radius }};
     text-align: center;
+    min-height: 2.6ex;
 }
 
 QProgressBar::chunk {
     background-color: {{ palette('highlight') }};
-    border-radius: 0.4ex;
+    border-radius: {{ radius }};
 }

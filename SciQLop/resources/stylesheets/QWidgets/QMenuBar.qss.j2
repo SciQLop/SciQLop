@@ -8,7 +8,7 @@ QMenuBar {
 QMenuBar::item {
     padding: 0.4ex 0.8ex;
     background: transparent;
-    border-radius: 0.4ex;
+    border-radius: {{ radius }};
 }
 
 QMenuBar::item:selected {
@@ -21,13 +21,15 @@ QMenuBar::item:pressed {
 
 QMenu {
     background-color: palette(base);
-    border: 1px solid {{ palette('border') }};
-    border-radius: 0.4ex;
-    padding: 0.4ex 0;
+    border: 1px solid {{ soft_border }};
+    border-radius: {{ radius }};
+    padding: 0.5ex 0;
 }
 
 QMenu::item {
-    padding: 0.4ex 2.4ex 0.4ex 0.8ex;
+    padding: 0.8ex 3ex 0.8ex 1.4ex;
+    margin: 0 0.5ex;
+    border-radius: 0.6ex;
 }
 
 QMenu::item:selected {

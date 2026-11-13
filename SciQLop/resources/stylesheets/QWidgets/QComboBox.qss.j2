@@ -3,9 +3,9 @@ QDateTimeEdit,
 QDateEdit,
 QComboBox {
   color: palette(text);
-  border: 1px solid {{ palette('border') }};
-  padding-left: 0.5ex;
-  border-radius: 0.4ex;
+  border: 1px solid {{ soft_border }};
+  padding-left: 1ex;
+  border-radius: {{ radius }};
   height: {{ controls_height }};
   background-color: palette(button);
 }
@@ -23,7 +23,7 @@ QDateEdit::drop-down,
 QComboBox::drop-down {
   border: none;
   color: palette(text);
-  width: 2ex;
+  width: 3ex;
 }
 
 QDateTimeEdit::down-arrow,
@@ -53,7 +53,7 @@ QComboBox QAbstractItemView {
   color: palette(text);
   background-color: palette(base);
   border: 1px solid {{ palette('border') }};
-  border-radius: 0.4ex;
+  border-radius: {{ radius }};
   selection-color: palette(highlighted-text);
   selection-background-color: palette(highlight);
   outline: none;
@@ -132,4 +132,10 @@ QDateTimeEdit[frame='false']:disabled,
 QDateEdit[frame='false']:disabled,
 QComboBox[frame='false']:disabled {
   color: {{ palette('UnselectedText') }};
+}
+
+QDateTimeEdit:enabled:hover, QDateTimeEdit:focus,
+QDateEdit:enabled:hover, QDateEdit:focus,
+QComboBox:enabled:hover, QComboBox:focus {
+  border: 1px solid {{ palette('Selection') }};
 }

@@ -72,7 +72,10 @@ def _contrast(color: str, *others: str) -> str:
 
 def _prime_env(palette: QtGui.QPalette, palette_name: str) -> None:
     env.globals['sciqlop_list_templates'] = _list_stylesheets
-    env.globals['controls_height'] = '2.4ex'
+    env.globals['controls_height'] = '3.2ex'
+    env.globals['radius'] = '0.8ex'
+    # Outline of a control at rest: the theme's border colour, halfway to the surface it sits on.
+    env.globals['soft_border'] = _over(_palette(palette, 'border'), _palette(palette, 'base'), 140)
     env.globals['palette'] = partial(_palette, palette)
     env.globals['lighter'] = lambda color, factor: QtGui.QColor(color).lighter(factor).name()
     env.globals['lighten'] = lambda color, factor: QtGui.QColor(color).lighter(factor).name()

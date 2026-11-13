@@ -2,9 +2,9 @@ QDoubleSpinBox,
 QSpinBox {
     background-color: palette(base);
     margin: 0;
-    border: 1px solid {{ palette('border') }};
-    border-radius: 0.4ex;
-    padding: 0;
+    border: 1px solid {{ soft_border }};
+    border-radius: {{ radius }};
+    padding: 0 0.6ex;
     height: {{ controls_height }};
 }
 
@@ -13,7 +13,7 @@ QSpinBox:focus {
     background-color: palette(base);
     margin: 0;
     border: 1px solid {{ palette('Selection') }};
-    border-radius: 0.4ex;
+    border-radius: {{ radius }};
     padding: 0;
 }
 

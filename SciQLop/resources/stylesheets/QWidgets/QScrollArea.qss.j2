@@ -5,17 +5,18 @@ QScrollArea {
 }
 
 QScrollBar:vertical {
-    background: palette(base);
-    width: 0.8ex;
+    background: transparent;
+    width: 1.3ex;
     margin: 0;
     border: none;
-    border-radius: 0.4ex;
+    border-radius: 0.65ex;
 }
 
 QScrollBar::handle:vertical {
     background: {{ palette('mid') }};
-    min-height: 2ex;
-    border-radius: 0.4ex;
+    min-height: 4ex;
+    margin: 0.25ex;
+    border-radius: 0.65ex;
 }
 
 QScrollBar::handle:vertical:hover {
@@ -31,17 +32,18 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
 }
 
 QScrollBar:horizontal {
-    background: palette(base);
-    height: 0.8ex;
+    background: transparent;
+    height: 1.3ex;
     margin: 0;
     border: none;
-    border-radius: 0.4ex;
+    border-radius: 0.65ex;
 }
 
 QScrollBar::handle:horizontal {
     background: {{ palette('mid') }};
-    min-width: 2ex;
-    border-radius: 0.4ex;
+    min-width: 4ex;
+    margin: 0.25ex;
+    border-radius: 0.65ex;
 }
 
 QScrollBar::handle:horizontal:hover {

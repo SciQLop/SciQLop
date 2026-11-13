@@ -1,5 +1,5 @@
 QTabWidget::pane {
-    border-top: 1px solid {{ palette('border') }};
+    border-top: 1px solid {{ soft_border }};
 }
 
 QTabWidget::tab-bar {
@@ -9,7 +9,7 @@ QTabWidget::tab-bar {
 QTabBar::tab {
     background: palette(base);
     min-width: 8ex;
-    padding: 0.4ex 0.8ex;
+    padding: 0.9ex 1.6ex;
     margin: 0 0.2ex;
     border: none;
 }
@@ -19,7 +19,7 @@ QTabBar::tab:selected, QTabBar::tab:hover {
 }
 
 QTabBar::tab:selected {
-    border-bottom: 0.2ex solid {{ palette('Selection') }};
+    border-bottom: 0.35ex solid {{ palette('Selection') }};
 }
 
 QTabBar::tab:!selected {

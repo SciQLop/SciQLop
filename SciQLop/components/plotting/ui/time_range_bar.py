@@ -57,6 +57,7 @@ def _make_zoom_limit_combo(parent):
 def _make_nav_button(text, parent, tooltip=""):
     b = QPushButton(text, parent)
     b.setFixedWidth(Metrics.em(2.5))
+    b.setProperty("compact", True)  # no side padding in the stylesheet: the glyph needs the whole width
     b.setFocusPolicy(Qt.FocusPolicy.NoFocus)
     if tooltip:
         b.setToolTip(tooltip)

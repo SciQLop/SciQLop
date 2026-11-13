@@ -4,6 +4,7 @@
 
 ### Fixes before the release
 
+- Themes: the controls look less dated in every theme. Buttons, fields and lists are taller, corners are rounder, outlines are softer and turn to the accent colour under the mouse, the default button of a dialog is filled, table headers are flat, scroll bars are a little wider.
 - Themes: labels, checkboxes and radio buttons no longer paint their own background. They showed as lighter bands on toolbars and dialogs, for example "Zoom limit:" in the time bar.
 - Themes: a selected row in a tree, list or table stays readable when its window is not the active one (a dialog or a floating panel has the focus). In the six light themes it was white text on a pale fill.
 - Agents: closing SciQLop stops the agent processes started by the Agents panel. They were only stopped when a session was replaced, so one could keep running after SciQLop had quit.

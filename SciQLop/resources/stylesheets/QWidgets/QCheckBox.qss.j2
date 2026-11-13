@@ -22,7 +22,7 @@ QCheckBox::indicator:focus,
 QCheckBox::indicator:hover {
     background-color: {{ palette('highlight') | alpha(25) }};
     border: 1px solid palette(highlight);
-    border-radius: 0.4ex;
+    border-radius: {{ radius }};
 }
 
 QCheckBox::indicator:checked {
