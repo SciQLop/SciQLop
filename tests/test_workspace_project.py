@@ -106,6 +106,25 @@ class TestNormalizeUrlRequirement:
     def test_regular_requirement_unchanged(self):
         assert _normalize_url_requirement("speasy>=1.6") == "speasy>=1.6"
 
+    @pytest.mark.parametrize("path, expected", [
+        ("/Users/me/Downloads/sciqlop_juice_rpwi-0.1.2-py3-none-any.whl",
+         "sciqlop-juice-rpwi @ file:///Users/me/Downloads/sciqlop_juice_rpwi-0.1.2-py3-none-any.whl"),
+        ("/Users/me/Application Support/x/sciqlop_cocat-0.7.0-py3-none-any.whl",
+         "sciqlop-cocat @ file:///Users/me/Application%20Support/x/sciqlop_cocat-0.7.0-py3-none-any.whl"),
+        (r"C:\Users\me\Downloads\sciqlop_vibe-0.1.2-py3-none-any.whl",
+         "sciqlop-vibe @ file:///C:/Users/me/Downloads/sciqlop_vibe-0.1.2-py3-none-any.whl"),
+        ("file:///d/sciqlop_cocat-0.7.0-py3-none-any.whl",
+         "sciqlop-cocat @ file:///d/sciqlop_cocat-0.7.0-py3-none-any.whl"),
+    ])
+    def test_a_local_wheel_becomes_a_pep508_requirement(self, path, expected):
+        """A bare path is not a PEP 508 requirement: the workspace's pyproject was refused at the
+        next start ("project.dependencies[7] must be pep508") and nothing could be synced."""
+        assert _normalize_url_requirement(path) == expected
+
+    def test_a_named_wheel_requirement_is_left_alone(self):
+        req = "sciqlop-cocat @ file:///d/sciqlop_cocat-0.7.0-py3-none-any.whl"
+        assert _normalize_url_requirement(req) == req
+
     def test_pep508_requirement_unchanged(self):
         req = "spok @ https://github.com/LaboratoryOfPlasmaPhysics/spok/archive/refs/heads/main.zip"
         assert _normalize_url_requirement(req) == req

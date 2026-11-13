@@ -15,7 +15,7 @@ import os
 import re
 import sys
 import urllib.request
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Optional, List, Sequence, Union
 
 import packaging.version
@@ -231,6 +231,22 @@ def _name_from_wheel_url(url: str) -> str | None:
     return None
 
 
+def _file_uri(path: str) -> str:
+    """The file:// URI of a path written for either system, whichever one this is."""
+    if path.startswith("file:"):
+        return path
+    if re.match(r"^[A-Za-z]:[\\/]", path):
+        return PureWindowsPath(path).as_uri()
+    return (PurePosixPath(path) if path.startswith("/") else Path(path).resolve()).as_uri()
+
+
+def _local_wheel_requirement(req: str) -> str | None:
+    """``name @ file://…`` for a wheel given by its bare path, which pip and uv accept on a command
+    line but a pyproject's dependency list does not. None when *req* is not one."""
+    name = None if " @ " in req else _name_from_wheel_url(req)
+    return f"{name} @ {_file_uri(req)}" if name else None
+
+
 def _normalize_url_requirement(req: str) -> str:
     """Convert a raw URL to PEP 508 ``name @ url`` format if possible.
 
@@ -239,7 +255,7 @@ def _normalize_url_requirement(req: str) -> str:
     """
     stripped = req.strip()
     if not _URL_RE.match(stripped):
-        return stripped
+        return _local_wheel_requirement(stripped) or stripped
     # For wheel URLs, the filename is the authoritative source for the name
     whl_name = _name_from_wheel_url(stripped)
     if whl_name:
