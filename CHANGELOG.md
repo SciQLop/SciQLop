@@ -145,6 +145,7 @@
 
 ### Catalogs
 
+- Closing SciQLop after working with big catalogs no longer takes minutes or hours. SciQLop followed each event with its own small callback, and PySide re-reads all of them each time one event is destroyed: 40 000 events took 16 s to destroy, and four times longer each time the count doubled. One shared callback does the same work; 40 000 events now take 0.03 s.
 - The event table's time columns are titled "Start (UTC)" and "Stop (UTC)" and show milliseconds when an event has some, so two burst events in the same second can be told apart. An unlabelled event's menu title ends with "UTC".
 - "Zoom to event" on an event with no duration shows one hour on each side, like Jump mode. It used to set an empty range.
 - The event menu's "Show in catalog browser" is now "Show in Catalogs", the name of the pane.

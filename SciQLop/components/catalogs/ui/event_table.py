@@ -62,7 +62,7 @@ class EventTableModel(QAbstractTableModel):
         self._provider = None
         self._catalog = None
         self._meta_signal_provider = None
-        self._event_connections: list = []
+        self._followed_events: list[CatalogEvent] = []
         self._editable = False
 
     def set_context(self, provider, catalog) -> None:
@@ -97,19 +97,22 @@ class EventTableModel(QAbstractTableModel):
         self.endResetModel()
 
     def _connect_events(self) -> None:
-        self._event_connections = []
-        for e in self._events:
-            fn = lambda ev=e: self._on_event_range_changed(self.row_for_event(ev))
-            e.range_changed.connect(fn)
-            self._event_connections.append((e, fn))
+        # A method slot and sender(), not a closure per event: PySide scans every connection to a
+        # closure each time a sender dies, which made closing a big catalog quadratic.
+        self._followed_events = list(self._events)
+        for e in self._followed_events:
+            e.range_changed.connect(self._on_shown_event_range_changed)
 
     def _disconnect_events(self) -> None:
-        for e, fn in self._event_connections:
+        for e in self._followed_events:
             try:
-                e.range_changed.disconnect(fn)
+                e.range_changed.disconnect(self._on_shown_event_range_changed)
             except RuntimeError:
                 pass
-        self._event_connections = []
+        self._followed_events = []
+
+    def _on_shown_event_range_changed(self) -> None:
+        self._on_event_range_changed(self.row_for_event(self.sender()))
 
     def _connect_provider_meta_signal(self) -> None:
         if self._meta_signal_provider is not None:

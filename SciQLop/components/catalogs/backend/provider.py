@@ -138,7 +138,7 @@ class CatalogProvider(QObject):
         self._provider_dirty: bool = False
         self._needs_sort: set[str] = set()
         self._suppress_events_changed: set[str] = set()
-        self._range_connections: dict[str, list[tuple]] = {}
+        self._catalogs_following: dict[CatalogEvent, dict[str, Catalog]] = {}
         self._attribute_specs: dict[str, dict[str, "KnobSpec"]] = {}  # catalog_uuid → {key: spec}
         from .registry import CatalogRegistry
         CatalogRegistry.instance().register(self)
@@ -333,34 +333,47 @@ class CatalogProvider(QObject):
         if catalog.uuid not in self._suppress_events_changed:
             self.events_changed.emit(catalog)
 
-    def _disconnect_range_connections(self, catalog_uuid: str) -> None:
-        for event, slot in self._range_connections.get(catalog_uuid, []):
+    # One method slot for every event, found back with sender(): PySide scans all the connections to
+    # closures each time a sender dies, so a closure per event made closing a big catalog quadratic.
+    def _follow_range(self, catalog: Catalog, event: CatalogEvent) -> None:
+        followers = self._catalogs_following.setdefault(event, {})
+        if not followers:
+            event.range_changed.connect(self._on_followed_range_changed)
+        followers[catalog.uuid] = catalog
+
+    def _unfollow_range(self, catalog_uuid: str, event: CatalogEvent) -> None:
+        followers = self._catalogs_following.get(event)
+        if followers is None:
+            return
+        followers.pop(catalog_uuid, None)
+        if not followers:
+            del self._catalogs_following[event]
             try:
-                event.range_changed.disconnect(slot)
+                event.range_changed.disconnect(self._on_followed_range_changed)
             except RuntimeError:
                 pass
-        self._range_connections[catalog_uuid] = []
+
+    def _unfollow_ranges_of(self, catalog_uuid: str) -> None:
+        for event in self._events.get(catalog_uuid, []):
+            self._unfollow_range(catalog_uuid, event)
+
+    def _on_followed_range_changed(self) -> None:
+        event = self.sender()
+        for catalog in list(self._catalogs_following.get(event, {}).values()):
+            self._on_event_range_changed(event, catalog)
 
     def _set_events(self, catalog: Catalog, events: list[CatalogEvent]) -> None:
-        self._disconnect_range_connections(catalog.uuid)
+        self._unfollow_ranges_of(catalog.uuid)
         self._events[catalog.uuid] = sorted(events, key=lambda e: e.start)
-        connections = []
         for event in events:
-            slot = lambda ev=event, cat=catalog: self._on_event_range_changed(ev, cat)
-            event.range_changed.connect(slot)
-            connections.append((event, slot))
-        self._range_connections[catalog.uuid] = connections
+            self._follow_range(catalog, event)
 
     def _add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         if catalog.uuid not in self._events:
             self._events[catalog.uuid] = []
         self._ensure_sorted(catalog.uuid)
         bisect.insort(self._events[catalog.uuid], event, key=lambda e: e.start)
-        slot = lambda ev=event, cat=catalog: self._on_event_range_changed(ev, cat)
-        event.range_changed.connect(slot)
-        if catalog.uuid not in self._range_connections:
-            self._range_connections[catalog.uuid] = []
-        self._range_connections[catalog.uuid].append((event, slot))
+        self._follow_range(catalog, event)
         self._emit_events_changed(catalog)
 
     def _remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
@@ -369,15 +382,8 @@ class CatalogProvider(QObject):
             event_list.remove(event)
         except ValueError:
             pass
-        conns = self._range_connections.get(catalog.uuid, [])
-        for i, (ev, slot) in enumerate(conns):
-            if ev is event:
-                try:
-                    event.range_changed.disconnect(slot)
-                except RuntimeError:
-                    pass
-                conns.pop(i)
-                break
+        if event not in event_list:
+            self._unfollow_range(catalog.uuid, event)
         self._emit_events_changed(catalog)
 
     def add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
@@ -438,8 +444,7 @@ class CatalogProvider(QObject):
 
     def remove_catalog(self, catalog: Catalog) -> None:
         """Public API: remove a catalog. Override for backend persistence."""
-        self._disconnect_range_connections(catalog.uuid)
-        self._range_connections.pop(catalog.uuid, None)
+        self._unfollow_ranges_of(catalog.uuid)
         self._events.pop(catalog.uuid, None)
         self._dirty_catalogs.discard(catalog.uuid)
         self._needs_sort.discard(catalog.uuid)
