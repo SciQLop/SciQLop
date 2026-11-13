@@ -3,18 +3,22 @@ QLineEdit, QTextEdit, QPlainTextEdit {
     margin: 0;
     border: 1px solid {{ soft_border }};
     border-radius: {{ radius }};
-    padding: 0.2ex 0.8ex;
+    padding: 0.2ex {{ text_inset }};
+}
+
+QLineEdit {
     height: {{ controls_height }};
 }
 
-QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
-    background-color: palette(base);
-    margin: 0;
-    border: 1px solid {{ palette('Selection') }};
-    border-radius: {{ radius }};
-    padding: 0.2ex 0.8ex;
+QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled {
+    background-color: palette(window);
+    border: 1px solid {{ soft_border | over(palette('base'), 128) }};
 }
 
 QLineEdit:enabled:hover, QTextEdit:enabled:hover, QPlainTextEdit:enabled:hover {
     border: 1px solid {{ palette('Selection') | over(palette('base'), 150) }};
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+    border: 1px solid {{ palette('Selection') }};
 }

@@ -2,6 +2,12 @@ QTableView {
     alternate-background-color: palette(alternate-base);
     show-decoration-selected: 1;
     gridline-color: {{ soft_border }};
+    qproperty-showGrid: false;
+}
+
+QTableView::item {
+    padding: 0 1ex;
+    border-bottom: 1px solid {{ soft_border | over(palette('base'), 110) }};
 }
 
 QTableView QTableCornerButton::section {
@@ -15,7 +21,7 @@ QTableView::item:hover {
 }
 
 QTableView::item:selected {
-    border: none;
+    border-bottom: 1px solid {{ soft_border | over(palette('base'), 110) }};
 }
 
 QTableView::item:selected:active {
@@ -43,4 +49,9 @@ QHeaderView::section {
 
 QHeaderView::section:hover {
     color: palette(text);
+}
+
+QHeaderView::section:vertical {
+    border: none;
+    padding: 0 0.8ex;
 }

@@ -33,6 +33,7 @@ from SciQLop.core.extensions import current_owner, owned_by
 from SciQLop.core.name_follower import CORE_OWNER
 from SciQLop.core.panel_kinds import KIND_PROPERTY, PANEL_KINDS, PanelKind
 from SciQLop.core.plot_kinds import TIME_PANEL
+from SciQLop.core.ui.meter import Meter
 from SciQLop.core.ui.panel_host import _follow_panel_renames, dock_panel, panel_docks, panel_of
 from SciQLop.core.ui.panel_extensions_follower import PanelExtensionsFollower
 import SciQLop.components.plotting.time_panel_kind  # noqa: F401  a main window always has the core panel kind
@@ -574,7 +575,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.setStatusBar(self._statusbar)
         self._statusbar.setFixedHeight(Metrics.ex(1.5))
 
-        self._mem_usage = QtWidgets.QProgressBar()
+        self._mem_usage = Meter()
         self._sys_mem = psutil.virtual_memory().total // 1024 ** 2
         self._mem_usage.setMaximum(self._sys_mem)
         self._mem_usage.setFormat(f"System memory usage: %v / {self._sys_mem:.2f} MB")
@@ -582,7 +583,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             "Memory usage",
             "Memory used by SciQLop out of system memory."))
 
-        self._cpu_usage = QtWidgets.QProgressBar()
+        self._cpu_usage = Meter()
         self._cpu_usage.setFormat("CPU usage: %v%")
         self._cpu_usage.setToolTip(rich_tooltip(
             "CPU usage",

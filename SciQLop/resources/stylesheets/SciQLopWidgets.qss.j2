@@ -2,8 +2,8 @@ HLine { background-color: palette(mid); }
 
 Container {
     background-color: palette(base);
-    border: 1px solid {{ palette('border') }};
-    border-radius: 0.4ex;
+    border: 1px solid {{ soft_border }};
+    border-radius: {{ radius_large }};
 }
 
 /* --- Settings panel --- */
@@ -48,12 +48,12 @@ Container {
 
 #SettingRow {
     background-color: palette(base);
-    border: 1px solid {{ palette('border') }};
-    border-radius: 0.6ex;
+    border: 1px solid {{ soft_border }};
+    border-radius: {{ radius_large }};
 }
 
 #SettingRow:hover {
-    border-color: {{ palette('highlight') | alpha(100) }};
+    border-color: {{ palette('Selection') | over(palette('base'), 150) }};
 }
 
 #SettingRow QLabel {

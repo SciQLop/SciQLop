@@ -13,14 +13,14 @@ QScrollBar:vertical {
 }
 
 QScrollBar::handle:vertical {
-    background: {{ palette('mid') }};
+    background: {{ palette('text') | over(palette('base'), 70) }};
     min-height: 4ex;
     margin: 0.25ex;
     border-radius: 0.65ex;
 }
 
 QScrollBar::handle:vertical:hover {
-    background: {{ palette('light') | lighter(130) }};
+    background: {{ palette('text') | over(palette('base'), 120) }};
 }
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
@@ -40,14 +40,14 @@ QScrollBar:horizontal {
 }
 
 QScrollBar::handle:horizontal {
-    background: {{ palette('mid') }};
+    background: {{ palette('text') | over(palette('base'), 70) }};
     min-width: 4ex;
     margin: 0.25ex;
     border-radius: 0.65ex;
 }
 
 QScrollBar::handle:horizontal:hover {
-    background: {{ palette('light') | lighter(130) }};
+    background: {{ palette('text') | over(palette('base'), 120) }};
 }
 
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {

@@ -1,6 +1,6 @@
 QTreeView {
     background-color: {{ palette('base') }};
-    alternate-background-color: palette(alternate-base);
+    alternate-background-color: {{ palette('text') | over(palette('base'), 6) }};
     show-decoration-selected: 1;
     border: none;
 }
@@ -28,7 +28,15 @@ QTreeView::item:selected:!active {
 }
 
 QTreeView::branch {
-        background: palette(base);
+    background: transparent;
+}
+
+QTreeView::branch:selected:active {
+    background: {{ palette('Selection') }};
+}
+
+QTreeView::branch:selected:!active {
+    background: {{ palette('Selection') | over(palette('base'), 80) }};
 }
 
 

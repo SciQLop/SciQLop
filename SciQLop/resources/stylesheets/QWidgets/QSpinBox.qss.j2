@@ -4,17 +4,24 @@ QSpinBox {
     margin: 0;
     border: 1px solid {{ soft_border }};
     border-radius: {{ radius }};
-    padding: 0 0.6ex;
+    padding: 0 0 0 {{ text_inset }};
     height: {{ controls_height }};
+}
+
+QDoubleSpinBox:enabled:hover,
+QSpinBox:enabled:hover {
+    border: 1px solid {{ palette('Selection') | over(palette('base'), 150) }};
 }
 
 QDoubleSpinBox:focus,
 QSpinBox:focus {
-    background-color: palette(base);
-    margin: 0;
     border: 1px solid {{ palette('Selection') }};
-    border-radius: {{ radius }};
-    padding: 0;
+}
+
+QDoubleSpinBox:disabled,
+QSpinBox:disabled {
+    background-color: palette(window);
+    border: 1px solid {{ soft_border | over(palette('base'), 128) }};
 }
 
 QDoubleSpinBox::up-button,

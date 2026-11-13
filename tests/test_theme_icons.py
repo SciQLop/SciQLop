@@ -91,3 +91,27 @@ def test_tint_recolors_to_palette_contrast(qapp, sciqlop_resources):
     ]
     assert opaque, "tinted icon has no opaque pixels"
     assert all(c.rgb() == expected.rgb() for c in opaque)
+
+
+def _is_drawn_in(path, colour: str) -> bool:
+    """Every opaque pixel is `colour`, give or take the rounding of the tint."""
+    from PySide6.QtGui import QColor
+    img, wanted = QPixmap(str(path)).toImage(), QColor(colour).getRgb()[:3]
+    opaque = [img.pixelColor(x, y).getRgb()[:3] for y in range(img.height()) for x in range(img.width())
+              if img.pixelColor(x, y).alpha() > 200]
+    return bool(opaque) and all(max(abs(a - b) for a, b in zip(px, wanted)) <= 2 for px in opaque)
+
+
+def test_checkbox_and_radio_indicators_are_also_baked_in_the_accent_and_muted_colours(qapp, sciqlop_resources):
+    """A ticked box is drawn in the theme's accent colour and an empty one in its muted colour;
+    a stylesheet cannot tint an image, so those are baked next to the plain ones."""
+    from SciQLop.components.theming.icons import build_icon_set_for_palette, per_palette_icon_dir
+
+    build_icon_set_for_palette("zzz_variants_palette", "#ffffff", {"accent": "#123456", "muted": "#abcdef"})
+    out = per_palette_icon_dir("zzz_variants_palette")
+
+    for name in ("check_box_checked", "check_box_unchecked", "radio_button_checked", "radio_button_unchecked"):
+        assert _is_drawn_in(out / f"{name}_accent.png", "#123456")
+        assert _is_drawn_in(out / f"{name}_muted.png", "#abcdef")
+        assert (out / f"{name}_accent@2x.png").exists()
+    assert not (out / "delete_accent.png").exists()

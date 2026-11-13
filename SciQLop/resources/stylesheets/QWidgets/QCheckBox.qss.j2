@@ -13,30 +13,33 @@ QCheckBox:focus {
 }
 
 QCheckBox::indicator {
-    background-color: palette(base);
-    width: 2ex;
-    height: 2ex;
+    background-color: transparent;
+    width: 2.4ex;
+    height: 2.4ex;
 }
 
 QCheckBox::indicator:focus,
 QCheckBox::indicator:hover {
-    background-color: {{ palette('highlight') | alpha(25) }};
-    border: 1px solid palette(highlight);
-    border-radius: {{ radius }};
+    background-color: transparent;
+    border: none;
 }
 
 QCheckBox::indicator:checked {
-    image: {{ icon('check_box_checked') }};
+    image: {{ icon('check_box_checked_accent') }};
 }
 
 QCheckBox::indicator:unchecked {
-    image: {{ icon('check_box_unchecked') }};
+    image: {{ icon('check_box_unchecked_muted') }};
 }
 
 QCheckBox::indicator:checked:disabled {
-    image: {{ icon('check_box_checked') }};
+    image: {{ icon('check_box_checked_muted') }};
 }
 
 QCheckBox::indicator:unchecked:disabled {
-    image: {{ icon('check_box_unchecked') }};
+    image: {{ icon('check_box_unchecked_muted') }};
+}
+
+QCheckBox::indicator:unchecked:hover {
+    image: {{ icon('check_box_unchecked_accent') }};
 }

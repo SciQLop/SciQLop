@@ -194,17 +194,26 @@ def _is_theme_icon(path: str) -> bool:
     return ":/icons/theme/" in path or "://icons/theme/" in path
 
 
-def build_icon_set_for_palette(palette_name: str, base_color: str or QColor):
+# Drawn in more than the one contrast colour: ticked in the accent colour, empty in the muted one.
+_INDICATOR_ICONS = ("check_box_checked", "check_box_unchecked", "radio_button_checked", "radio_button_unchecked")
+
+
+def build_icon_set_for_palette(palette_name: str, base_color: str or QColor, indicator_colors: dict | None = None):
     """Bake palette-recolored PNGs that the stylesheet references via ``url()``
     (a Qt stylesheet can neither tint nor rescale a registry QIcon). Each theme
     icon is written at @1x and @2x so the QSS indicators stay crisp on HiDPI;
-    the source extension is irrelevant — SVG sources just render sharper."""
+    the source extension is irrelevant — SVG sources just render sharper.
+    `indicator_colors` maps a suffix to a colour: the checkbox and radio indicators are also
+    written as `<name>_<suffix>.png` in that colour."""
     if isinstance(base_color, str):
         base_color = QColor(base_color)
     dest_color = opposite_color(base_color)
     out_dir = per_palette_icon_dir(palette_name)
     for path in filter(_is_theme_icon, Icons.icons()):
         _bake_recolored_icon(Icons.get_icon(path), Path(path).stem, dest_color, out_dir)
+    for variant, color in (indicator_colors or {}).items():
+        for name in _INDICATOR_ICONS:
+            _bake_recolored_icon(get_icon(name, auto_adapt_colors=False), f"{name}_{variant}", QColor(color), out_dir)
 
 
 def _bake_recolored_icon(source: QIcon, name: str, color: QColor, out_dir: Path) -> None:

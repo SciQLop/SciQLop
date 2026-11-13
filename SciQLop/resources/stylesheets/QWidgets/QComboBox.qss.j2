@@ -4,18 +4,25 @@ QDateEdit,
 QComboBox {
   color: palette(text);
   border: 1px solid {{ soft_border }};
-  padding-left: 1ex;
+  padding-left: {{ text_inset }};
   border-radius: {{ radius }};
   height: {{ controls_height }};
-  background-color: palette(button);
+  background-color: {{ control_bg }};
+}
+
+/* A date is typed, so it looks like a field, as an editable combo box does. */
+QDateTimeEdit,
+QDateEdit,
+QComboBox:editable {
+  background-color: palette(base);
 }
 
 QDateTimeEdit:disabled,
 QDateEdit:disabled,
 QComboBox:disabled {
   color: {{ palette('UnselectedText') }};
-  background-color: palette(base);
-  border: 1px solid {{ palette('border') }};
+  background-color: palette(window);
+  border: 1px solid {{ soft_border | over(palette('base'), 128) }};
 }
 
 QDateTimeEdit::drop-down,
@@ -52,7 +59,7 @@ QDateEdit QAbstractItemView,
 QComboBox QAbstractItemView {
   color: palette(text);
   background-color: palette(base);
-  border: 1px solid {{ palette('border') }};
+  border: 1px solid {{ soft_border }};
   border-radius: {{ radius }};
   selection-color: palette(highlighted-text);
   selection-background-color: palette(highlight);
@@ -134,8 +141,14 @@ QComboBox[frame='false']:disabled {
   color: {{ palette('UnselectedText') }};
 }
 
-QDateTimeEdit:enabled:hover, QDateTimeEdit:focus,
-QDateEdit:enabled:hover, QDateEdit:focus,
-QComboBox:enabled:hover, QComboBox:focus {
+QDateTimeEdit:enabled:hover,
+QDateEdit:enabled:hover,
+QComboBox:enabled:hover {
+  border: 1px solid {{ palette('Selection') | over(palette('base'), 150) }};
+}
+
+QDateTimeEdit:focus,
+QDateEdit:focus,
+QComboBox:focus {
   border: 1px solid {{ palette('Selection') }};
 }

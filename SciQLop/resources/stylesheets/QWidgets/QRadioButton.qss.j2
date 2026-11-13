@@ -14,30 +14,33 @@ QRadioButton:focus {
 }
 
 QRadioButton::indicator {
-    background-color: palette(base);
-    width: 2ex;
-    height: 2ex;
+    background-color: transparent;
+    width: 2.4ex;
+    height: 2.4ex;
 }
 
 QRadioButton::indicator:focus,
 QRadioButton::indicator:hover {
-    background-color: {{ palette('highlight') | alpha(25) }};
-    border: 1px solid palette(highlight);
-    border-radius: 0.4ex;
+    background-color: transparent;
+    border: none;
 }
 
 QRadioButton::indicator:checked {
-    image: {{ icon('radio_button_checked') }};
+    image: {{ icon('radio_button_checked_accent') }};
 }
 
 QRadioButton::indicator:unchecked {
-    image: {{ icon('radio_button_unchecked') }};
+    image: {{ icon('radio_button_unchecked_muted') }};
 }
 
 QRadioButton::indicator:checked:disabled {
-    image: {{ icon('radio_button_checked') }};
+    image: {{ icon('radio_button_checked_muted') }};
 }
 
 QRadioButton::indicator:unchecked:disabled {
-    image: {{ icon('radio_button_unchecked') }};
+    image: {{ icon('radio_button_unchecked_muted') }};
+}
+
+QRadioButton::indicator:unchecked:hover {
+    image: {{ icon('radio_button_unchecked_accent') }};
 }

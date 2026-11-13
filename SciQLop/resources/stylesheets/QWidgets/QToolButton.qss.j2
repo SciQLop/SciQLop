@@ -1,25 +1,27 @@
 
 QToolButton {
-    background-color: palette(button);
+    background-color: {{ control_bg }};
     color: palette(text);
     border: 1px solid {{ soft_border }};
     border-radius: {{ radius }};
-    padding: 0.5ex 1.2ex;
+    padding: 0 1.2ex;
+    min-height: {{ controls_height }};
 }
 
 QToolButton:hover {
-    background-color: {{ palette('highlight') | over(palette('button'), 36) }};
-    border: 1px solid {{ palette('Selection') }};
+    background-color: {{ palette('highlight') | over(control_bg, 36) }};
+    border: 1px solid {{ palette('Selection') | over(palette('base'), 150) }};
 }
 
 QToolButton:pressed {
-    background-color: {{ palette('button') | darker(110) }};
+    background-color: {{ palette('highlight') | over(control_bg, 70) }};
     border: 1px solid {{ palette('Selection') }};
 }
 
 QToolButton:disabled {
     color: {{ palette('UnselectedText') }};
-    border: 1px solid {{ soft_border }};
+    background-color: palette(window);
+    border: 1px solid {{ soft_border | over(palette('base'), 128) }};
 }
 
 QToolButton::menu-indicator {
@@ -33,6 +35,8 @@ QToolButton::menu-indicator {
 QToolButton[autoRaise="true"] {
     background-color: transparent;
     border: none;
+    min-height: 0;
+    padding: 0.2ex 0.6ex;
 }
 
 QToolButton[autoRaise="true"]:hover {

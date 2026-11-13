@@ -74,6 +74,11 @@ def _prime_env(palette: QtGui.QPalette, palette_name: str) -> None:
     env.globals['sciqlop_list_templates'] = _list_stylesheets
     env.globals['controls_height'] = '3.2ex'
     env.globals['radius'] = '0.8ex'
+    env.globals['radius_small'] = '0.5ex'
+    env.globals['radius_large'] = '1ex'
+    env.globals['text_inset'] = '1ex'
+    # Fill of a button-like control: neutral, so that the accent colour only means "primary" or "selected".
+    env.globals['control_bg'] = _over(_palette(palette, 'text'), _palette(palette, 'base'), 18)
     # Outline of a control at rest: the theme's border colour, halfway to the surface it sits on.
     env.globals['soft_border'] = _over(_palette(palette, 'border'), _palette(palette, 'base'), 140)
     env.globals['palette'] = partial(_palette, palette)

@@ -76,5 +76,6 @@ def setup_palette(palette_name: str) -> QtGui.QPalette:
     _active_theme = _resolve(palette_name)
     SCIQLOP_PALETTE = _load_palette(_active_theme)
     qpalette = build_palette(SCIQLOP_PALETTE)
-    build_icon_set_for_palette(_active_theme, qpalette.base().color())
+    build_icon_set_for_palette(_active_theme, qpalette.base().color(),
+                               {"accent": qpalette.highlight().color(), "muted": _muted_text(SCIQLOP_PALETTE)})
     return qpalette

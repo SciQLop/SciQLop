@@ -1,0 +1,42 @@
+QSlider::groove:horizontal {
+    height: 0.5ex;
+    background: {{ soft_border }};
+    border-radius: 0.25ex;
+}
+
+QSlider::groove:vertical {
+    width: 0.5ex;
+    background: {{ soft_border }};
+    border-radius: 0.25ex;
+}
+
+QSlider::sub-page:horizontal, QSlider::add-page:vertical {
+    background: {{ palette('Selection') }};
+    border-radius: 0.25ex;
+}
+
+QSlider::sub-page:horizontal:disabled, QSlider::add-page:vertical:disabled {
+    background: {{ palette('UnselectedText') }};
+}
+
+QSlider::handle:horizontal {
+    width: 1.8ex;
+    height: 1.8ex;
+    margin: -0.65ex 0;
+    border-radius: 0.9ex;
+    background: palette(base);
+    border: 1px solid {{ palette('Selection') }};
+}
+
+QSlider::handle:vertical {
+    width: 1.8ex;
+    height: 1.8ex;
+    margin: 0 -0.65ex;
+    border-radius: 0.9ex;
+    background: palette(base);
+    border: 1px solid {{ palette('Selection') }};
+}
+
+QSlider::handle:hover {
+    background: {{ palette('highlight') | over(palette('base'), 50) }};
+}

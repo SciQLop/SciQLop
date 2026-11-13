@@ -4,6 +4,8 @@
 
 ### Fixes before the release
 
+- Themes, second pass: ticked checkboxes and radio buttons are drawn in the accent colour; tabs are flat with an underline; tables show row lines only; a tree's selection covers the whole row; sliders, group boxes and date fields are styled; buttons use a neutral fill so the accent colour only marks the main action. The scroll bar handle no longer vanishes under the mouse in the light themes.
+- The CPU and memory meters in the status bar are readable: their text changes colour where the bar is filled.
 - Themes: the controls look less dated in every theme. Buttons, fields and lists are taller, corners are rounder, outlines are softer and turn to the accent colour under the mouse, the default button of a dialog is filled, table headers are flat, scroll bars are a little wider.
 - Themes: labels, checkboxes and radio buttons no longer paint their own background. They showed as lighter bands on toolbars and dialogs, for example "Zoom limit:" in the time bar.
 - Themes: a selected row in a tree, list or table stays readable when its window is not the active one (a dialog or a floating panel has the focus). In the six light themes it was white text on a pale fill.

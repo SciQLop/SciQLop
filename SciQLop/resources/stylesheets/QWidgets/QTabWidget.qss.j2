@@ -6,25 +6,27 @@ QTabWidget::tab-bar {
     left: 1ex;
 }
 
+/* Only the underline tells the current tab: a filled tab reads as a box on a window-coloured bar. */
 QTabBar::tab {
-    background: palette(base);
+    background: transparent;
     min-width: 8ex;
     padding: 0.9ex 1.6ex;
     margin: 0 0.2ex;
     border: none;
+    border-bottom: 0.35ex solid transparent;
 }
 
-QTabBar::tab:selected, QTabBar::tab:hover {
-    background: palette(base);
+QTabBar::tab:!selected {
+    color: {{ palette('UnselectedText') }};
+}
+
+QTabBar::tab:hover:!selected {
+    color: palette(text);
+    border-bottom: 0.35ex solid {{ soft_border }};
 }
 
 QTabBar::tab:selected {
     border-bottom: 0.35ex solid {{ palette('Selection') }};
-}
-
-QTabBar::tab:!selected {
-    margin-top: 0.2ex;
-    color: {{ palette('UnselectedText') }};
 }
 
 /* Without its own image, macOS draws the selected tab's close glyph light, for its native dark
