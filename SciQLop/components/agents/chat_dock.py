@@ -175,16 +175,22 @@ class AgentChatDock(QWidget):
         """Best effort, on the event loop: a connected backend's loop tasks keep it, and its agent process,
         alive after the dock lets go of it. `_disconnect` is the teardown of backends written before the
         optional `aclose` (sciqlop_claude)."""
-        closer = getattr(backend, "aclose", None) or getattr(backend, "_disconnect", None)
-        if closer is not None:
-            self._spawn(self._run_closer(backend, closer))
+        self._spawn(self._closed(backend))
 
     @staticmethod
-    async def _run_closer(backend, closer) -> None:
+    async def _closed(backend) -> None:
+        closer = getattr(backend, "aclose", None) or getattr(backend, "_disconnect", None)
+        if closer is None:
+            return
         try:
             await closer()
         except Exception as error:
             log.warning("closing agent backend %s failed: %r", getattr(backend, "display_name", backend), error)
+
+    async def close_backends(self) -> None:
+        """At exit, awaited: an agent process must not outlive SciQLop, and a task spawned here would die
+        with the event loop before it ran."""
+        await asyncio.gather(*(self._closed(session.backend) for session in self._sessions.values()))
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -1281,6 +1287,12 @@ class AgentChatDock(QWidget):
 _DOCK_ATTR = "_sciqlop_agent_dock"
 _UI_READY_ATTR = "_sciqlop_agent_ui_ready"
 _DOCK_TITLE = "Agents"
+
+
+async def close_agent_backends(main_window) -> None:
+    dock = getattr(main_window, _DOCK_ATTR, None)
+    if dock is not None:
+        await dock.close_backends()
 
 
 def ensure_agent_dock(main_window) -> AgentChatDock:

@@ -1154,15 +1154,15 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     async def _async_close(self):
         import asyncio
         import inspect
+        from SciQLop.components.agents.chat_dock import close_agent_backends
         from SciQLop.components.plugins import loaded_plugins
-        tasks = []
+        tasks = [asyncio.ensure_future(close_agent_backends(self))]
         for plugin in loaded_plugins.__dict__.values():
             if hasattr(plugin, "close"):
                 result = plugin.close()
                 if inspect.isawaitable(result):
                     tasks.append(asyncio.ensure_future(result))
-        if tasks:
-            await asyncio.wait(tasks, timeout=5.0)
+        await asyncio.wait(tasks, timeout=5.0)
         self.close()
 
     def push_variables_to_console(self, variables: dict):
