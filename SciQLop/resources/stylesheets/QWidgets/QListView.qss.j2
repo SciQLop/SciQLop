@@ -15,14 +15,15 @@ QListView::item:selected {
 }
 
 QListView::item:selected:!active {
-    background: {{ palette('Selection') | over(palette('base'), 80) }};
+    background: {{ unfocused_selected_bg }};
     color: {{ palette('text') }};
 }
 
 QListView::item:selected:active {
-    background: {{ palette('Selection') }};
+    background: {{ selected_bg }};
+    color: {{ palette('text') }};
 }
 
 QListView::item:hover {
-    background: {{ palette('highlight') | alpha(25) }};
+    background: {{ hover_bg }};
 }

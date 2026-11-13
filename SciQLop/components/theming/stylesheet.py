@@ -78,6 +78,10 @@ def _prime_env(palette: QtGui.QPalette, palette_name: str) -> None:
     env.globals['radius_large'] = '1ex'
     env.globals['text_inset'] = '1ex'
     # Fill of a button-like control: neutral, so that the accent colour only means "primary" or "selected".
+    # A selected row: the accent colour as a tint, under normal text. A saturated bar with white text shouts.
+    env.globals['selected_bg'] = _over(_palette(palette, 'Selection'), _palette(palette, 'base'), 80)
+    env.globals['unfocused_selected_bg'] = _over(_palette(palette, 'text'), _palette(palette, 'base'), 30)
+    env.globals['hover_bg'] = _over(_palette(palette, 'text'), _palette(palette, 'base'), 14)
     env.globals['control_bg'] = _over(_palette(palette, 'text'), _palette(palette, 'base'), 18)
     # Outline of a control at rest: the theme's border colour, halfway to the surface it sits on.
     env.globals['soft_border'] = _over(_palette(palette, 'border'), _palette(palette, 'base'), 140)

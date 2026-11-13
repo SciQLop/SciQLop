@@ -7,9 +7,6 @@ QPushButton {
     padding: 0 1.6ex;
 }
 
-QPushButton[compact="true"] {
-    padding: 0;
-}
 
 QPushButton:disabled {
     color: {{ palette('UnselectedText') }};
@@ -40,4 +37,21 @@ QPushButton:enabled:default {
 
 QPushButton:enabled:default:hover {
     background-color: {{ palette('highlight') | lighter(112) }};
+}
+
+/* Icon-like buttons of a toolbar: flat until the mouse is over them. Last, to win over the rules above. */
+QPushButton[compact="true"] {
+    padding: 0;
+    background-color: transparent;
+    border: 1px solid transparent;
+}
+
+QPushButton[compact="true"]:enabled:hover {
+    background-color: {{ hover_bg }};
+    border: 1px solid transparent;
+}
+
+QPushButton[compact="true"]:enabled:pressed {
+    background-color: {{ unfocused_selected_bg }};
+    border: 1px solid transparent;
 }

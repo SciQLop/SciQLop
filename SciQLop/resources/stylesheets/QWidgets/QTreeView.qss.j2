@@ -11,19 +11,20 @@ QTreeView::item {
 }
 
 QTreeView::item:hover {
-    background: {{ palette('highlight') | alpha(25) }};
+    background: {{ hover_bg }};
 }
 
 QTreeView::item:selected {
     border: none;
 }
 
-QTreeView::item:selected:active{
-    background: {{ palette('Selection') }};
+QTreeView::item:selected:active {
+    background: {{ selected_bg }};
+    color: {{ palette('text') }};
 }
 
 QTreeView::item:selected:!active {
-    background: {{ palette('Selection') | over(palette('base'), 80) }};
+    background: {{ unfocused_selected_bg }};
     color: {{ palette('text') }};
 }
 
@@ -32,11 +33,11 @@ QTreeView::branch {
 }
 
 QTreeView::branch:selected:active {
-    background: {{ palette('Selection') }};
+    background: {{ selected_bg }};
 }
 
 QTreeView::branch:selected:!active {
-    background: {{ palette('Selection') | over(palette('base'), 80) }};
+    background: {{ unfocused_selected_bg }};
 }
 
 
