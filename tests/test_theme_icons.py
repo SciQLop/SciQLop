@@ -128,3 +128,19 @@ def test_a_left_arrow_is_baked_as_the_mirror_of_the_right_one(qapp, sciqlop_reso
     right, left = QImage(str(out / "arrow_right.png")), QImage(str(out / "arrow_left.png"))
     assert not left.isNull() and left == right.flipped(Qt.Orientation.Horizontal) and left != right
     assert (out / "arrow_left@2x.png").exists()
+
+
+def test_spin_arrows_are_baked_without_their_empty_margins(qapp, sciqlop_resources):
+    """A spin box arrow has half the height of its field: the 24 px icon, mostly margin, came out as a speck."""
+    from PySide6.QtGui import QImage
+    from SciQLop.components.theming.icons import build_icon_set_for_palette, per_palette_icon_dir
+
+    build_icon_set_for_palette("zzz_tight_palette", "#ffffff")
+    out = per_palette_icon_dir("zzz_tight_palette")
+
+    for name in ("arrow_drop_up", "arrow_drop_down"):
+        full, tight = QImage(str(out / f"{name}.png")), QImage(str(out / f"{name}_tight.png"))
+        assert tight.width() < full.width() and tight.height() < full.height()
+        edges = [tight.pixelColor(x, y).alpha() for x in range(tight.width()) for y in (0, tight.height() - 1)]
+        assert any(edges), "the drawing touches the top and bottom edges"
+        assert (out / f"{name}_tight@2x.png").exists()

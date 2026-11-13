@@ -24,6 +24,8 @@ QSpinBox:disabled {
     border: 1px solid {{ soft_border | over(palette('base'), 128) }};
 }
 
+/* The arrow is its own sub-control. As an image on the button, Qt still drew its native arrow under it,
+   and the two halves came out at different sizes. */
 QDateTimeEdit::up-button,
 QDateEdit::up-button,
 QTimeEdit::up-button,
@@ -31,26 +33,12 @@ QDoubleSpinBox::up-button,
 QSpinBox::up-button {
     subcontrol-origin: border;
     subcontrol-position: top right;
-    width: 2ex;
-    image: {{ icon('arrow_drop_up') }};
-    border-width: 0;
-    margin-right: 0.5ex;
-}
-
-QDateTimeEdit::up-button:hover,
-QDateEdit::up-button:hover,
-QTimeEdit::up-button:hover,
-QDoubleSpinBox::up-button:hover,
-QSpinBox::up-button:hover {
-    image: {{ icon('arrow_drop_up') }};
-}
-
-QDateTimeEdit::up-button:pressed,
-QDateEdit::up-button:pressed,
-QTimeEdit::up-button:pressed,
-QDoubleSpinBox::up-button:pressed,
-QSpinBox::up-button:pressed {
-    image: {{ icon('arrow_drop_up') }};
+    width: 3ex;
+    border: none;
+    background: transparent;
+    margin: 1px 1px 0 0;
+    padding-top: 0.3ex;
+    border-top-right-radius: {{ radius }};
 }
 
 QDateTimeEdit::down-button,
@@ -60,24 +48,44 @@ QDoubleSpinBox::down-button,
 QSpinBox::down-button {
     subcontrol-origin: border;
     subcontrol-position: bottom right;
-    width: 2ex;
-    image: {{ icon('arrow_drop_down') }};
-    border-width: 0;
-    margin-right: 0.5ex;
+    width: 3ex;
+    border: none;
+    background: transparent;
+    margin: 0 1px 1px 0;
+    padding-bottom: 0.3ex;
+    border-bottom-right-radius: {{ radius }};
 }
 
+QDateTimeEdit::up-button:hover,
+QDateEdit::up-button:hover,
+QTimeEdit::up-button:hover,
+QDoubleSpinBox::up-button:hover,
+QSpinBox::up-button:hover,
 QDateTimeEdit::down-button:hover,
 QDateEdit::down-button:hover,
 QTimeEdit::down-button:hover,
 QDoubleSpinBox::down-button:hover,
 QSpinBox::down-button:hover {
-    image: {{ icon('arrow_drop_down') }};
+    background: {{ hover_bg }};
 }
 
-QDateTimeEdit::down-button:pressed,
-QDateEdit::down-button:pressed,
-QTimeEdit::down-button:pressed,
-QDoubleSpinBox::down-button:pressed,
-QSpinBox::down-button:pressed {
-   image: {{ icon('arrow_drop_down') }};
+QDateTimeEdit::up-arrow,
+QDateEdit::up-arrow,
+QTimeEdit::up-arrow,
+QDoubleSpinBox::up-arrow,
+QSpinBox::up-arrow {
+    image: {{ icon('arrow_drop_up_tight') }};
+    width: 1.6ex;
+    height: 0.8ex;
+}
+
+QDateTimeEdit::down-arrow,
+QDateEdit::down-arrow,
+QTimeEdit::down-arrow,
+QDoubleSpinBox::down-arrow,
+QSpinBox::down-arrow {
+    image: {{ icon('arrow_drop_down_tight') }};
+    width: 1.6ex;
+    height: 0.8ex;
+    margin: 0;  /* the combo box rules, shared by date fields, shift this arrow for their drop-down */
 }

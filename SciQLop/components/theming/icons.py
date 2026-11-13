@@ -212,9 +212,26 @@ def build_icon_set_for_palette(palette_name: str, base_color: str or QColor, ind
     for path in filter(_is_theme_icon, Icons.icons()):
         _bake_recolored_icon(Icons.get_icon(path), Path(path).stem, dest_color, out_dir)
     _bake_mirrored(out_dir, "arrow_right", "arrow_left")
+    for name in ("arrow_drop_up", "arrow_drop_down"):
+        _bake_trimmed(out_dir, name, f"{name}_tight")
     for variant, color in (indicator_colors or {}).items():
         for name in _INDICATOR_ICONS:
             _bake_recolored_icon(get_icon(name, auto_adapt_colors=False), f"{name}_{variant}", QColor(color), out_dir)
+
+
+def _drawn_rect(image: QImage) -> QRect:
+    drawn = [(x, y) for y in range(image.height()) for x in range(image.width()) if image.pixelColor(x, y).alpha() > 0]
+    xs, ys = [x for x, _ in drawn], [y for _, y in drawn]
+    return QRect(QPoint(min(xs), min(ys)), QPoint(max(xs), max(ys))) if drawn else image.rect()
+
+
+def _bake_trimmed(out_dir: Path, name: str, trimmed_name: str) -> None:
+    """The icon without its empty margins. A spin box arrow has half the height of the field: the 24 px
+    icon, two thirds of it margin, came out as a speck with clipped edges."""
+    for suffix in ("", "@2x"):
+        image = QImage(str(out_dir / f"{name}{suffix}.png"))
+        if not image.isNull():
+            image.copy(_drawn_rect(image)).save(str(out_dir / f"{trimmed_name}{suffix}.png"))
 
 
 def _bake_mirrored(out_dir: Path, name: str, mirrored_name: str) -> None:
