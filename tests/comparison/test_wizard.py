@@ -207,6 +207,9 @@ def _select_event_rows(browser, rows):
 
 def test_catalog_events_menu_offers_compare(main_window, qtbot):
     from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from SciQLop.components.command_palette.backend.registry import CommandRegistry
+    from SciQLop.components.comparison.ui.commands import register_comparison_commands
+    register_comparison_commands(CommandRegistry())
     _, catalog = _catalog_with("CmpWizMenu", _event("m1", 0), _event("m2", 2), _event("m3", 4))
     browser = CatalogBrowser()
     qtbot.addWidget(browser)
