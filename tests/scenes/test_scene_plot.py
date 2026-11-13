@@ -212,3 +212,30 @@ def test_the_add_docstring_names_a_real_scene(earth):
     names = [s.name for s in list_scenes()]
     assert 'scene="earth_gsm"' not in PlotPanel.add.__doc__
     assert any(f'scene="{n}"' in PlotPanel.add.__doc__ for n in names)
+
+
+def _withdraw_every_scene_contribution():
+    """As when the plugin that contributed the bodies, the models and the scenes is withdrawn."""
+    from SciQLop.components.scenes import registry
+    from SciQLop.core.extensions import owned_by
+    points = (registry.SCENES, registry.BOUNDARIES, registry.BODIES)
+    with owned_by("leaving_plugin"):
+        for point in points:
+            for item in point.list():
+                point.contribute(item, replace=True)
+    for point in points:
+        point.remove_owner("leaving_plugin")
+    assert not any(point.list() for point in points)
+
+
+def test_an_open_scene_plot_keeps_drawing_after_its_plugin_is_withdrawn(plot_panel, earth, qtbot):
+    sp = plot_panel.plot_scene("Earth environment")
+    wait_for_data(qtbot, sp._boundary_graphs["magnetopause"].graphs[0][0])
+
+    _withdraw_every_scene_contribution()
+    plot_panel.time_range = TimeRange(7200.0, 10800.0)
+    sp.set_frame("GSM")
+
+    redrawn = sp._boundary_graphs["magnetopause"].graphs[0][0]
+    wait_for_data(qtbot, redrawn)
+    assert np.isfinite(np.nanmax(redrawn.data()[0]))
