@@ -1,4 +1,5 @@
 import shiboken6
+from SciQLop.core.ui.calendar import plain_calendar
 from PySide6.QtCore import Qt, Signal, QDateTime, QTimeZone, QPropertyAnimation
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QDateTimeEdit, QComboBox, QPushButton, QLabel, QFrame,
@@ -20,6 +21,7 @@ def _make_start_picker(parent):
     # intermediate date moved the panel and started a download.
     w.setKeyboardTracking(False)
     w.setCalendarPopup(True)
+    plain_calendar(w.calendarWidget())
     w.setTimeZone(QTimeZone.UTC)
     return w
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from SciQLop.core.ui.calendar import plain_calendar
 from PySide6.QtCore import QDateTime, QModelIndex, Qt, QTimeZone
 from PySide6.QtWidgets import QStyledItemDelegate, QWidget, QDateTimeEdit
 
@@ -42,6 +43,7 @@ def _utc_datetime_edit(parent: QWidget) -> QDateTimeEdit:
     edit = QDateTimeEdit(parent)
     edit.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
     edit.setCalendarPopup(True)
+    plain_calendar(edit.calendarWidget())
     edit.setTimeZone(QTimeZone.UTC)
     return edit
 

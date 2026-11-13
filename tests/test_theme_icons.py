@@ -115,3 +115,16 @@ def test_checkbox_and_radio_indicators_are_also_baked_in_the_accent_and_muted_co
         assert _is_drawn_in(out / f"{name}_muted.png", "#abcdef")
         assert (out / f"{name}_accent@2x.png").exists()
     assert not (out / "delete_accent.png").exists()
+
+
+def test_a_left_arrow_is_baked_as_the_mirror_of_the_right_one(qapp, sciqlop_resources):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QImage
+    from SciQLop.components.theming.icons import build_icon_set_for_palette, per_palette_icon_dir
+
+    build_icon_set_for_palette("zzz_mirror_palette", "#ffffff")
+    out = per_palette_icon_dir("zzz_mirror_palette")
+
+    right, left = QImage(str(out / "arrow_right.png")), QImage(str(out / "arrow_left.png"))
+    assert not left.isNull() and left == right.flipped(Qt.Orientation.Horizontal) and left != right
+    assert (out / "arrow_left@2x.png").exists()

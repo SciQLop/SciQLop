@@ -211,9 +211,18 @@ def build_icon_set_for_palette(palette_name: str, base_color: str or QColor, ind
     out_dir = per_palette_icon_dir(palette_name)
     for path in filter(_is_theme_icon, Icons.icons()):
         _bake_recolored_icon(Icons.get_icon(path), Path(path).stem, dest_color, out_dir)
+    _bake_mirrored(out_dir, "arrow_right", "arrow_left")
     for variant, color in (indicator_colors or {}).items():
         for name in _INDICATOR_ICONS:
             _bake_recolored_icon(get_icon(name, auto_adapt_colors=False), f"{name}_{variant}", QColor(color), out_dir)
+
+
+def _bake_mirrored(out_dir: Path, name: str, mirrored_name: str) -> None:
+    """The icon set has no left arrow: the calendar's "previous month" button uses the right one, flipped."""
+    for suffix in ("", "@2x"):
+        image = QImage(str(out_dir / f"{name}{suffix}.png"))
+        if not image.isNull():
+            image.flipped(Qt.Orientation.Horizontal).save(str(out_dir / f"{mirrored_name}{suffix}.png"))
 
 
 def _bake_recolored_icon(source: QIcon, name: str, color: QColor, out_dir: Path) -> None:

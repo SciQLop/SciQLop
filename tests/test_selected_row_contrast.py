@@ -27,7 +27,8 @@ def _declared(body: str, prop: str):
 def _selected_row_colours(name: str, view: str, state: str) -> tuple[QColor, QColor]:
     qss = load_stylesheets(palette_module.setup_palette(name), name)
     colors = palette_module.current_palette()
-    body = re.search(rf"{view}::item:selected:{re.escape(state)}\s*\{{([^}}]*)\}}", qss).group(1)
+    # At the start of a line: the calendar popup has its own, more specific, rules for its table.
+    body = re.search(rf"(?m)^{view}::item:selected:{re.escape(state)}\s*\{{([^}}]*)\}}", qss).group(1)
     fill = _over(_resolve(_declared(body, "background"), colors), QColor(colors["base"]))
     text = _declared(body, "color")
     return (_resolve(text, colors) if text else QColor(colors["highlightedtext"])), fill

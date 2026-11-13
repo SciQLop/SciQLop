@@ -24,6 +24,9 @@ QSpinBox:disabled {
     border: 1px solid {{ soft_border | over(palette('base'), 128) }};
 }
 
+QDateTimeEdit::up-button,
+QDateEdit::up-button,
+QTimeEdit::up-button,
 QDoubleSpinBox::up-button,
 QSpinBox::up-button {
     subcontrol-origin: border;
@@ -34,16 +37,25 @@ QSpinBox::up-button {
     margin-right: 0.5ex;
 }
 
+QDateTimeEdit::up-button:hover,
+QDateEdit::up-button:hover,
+QTimeEdit::up-button:hover,
 QDoubleSpinBox::up-button:hover,
 QSpinBox::up-button:hover {
     image: {{ icon('arrow_drop_up') }};
 }
 
+QDateTimeEdit::up-button:pressed,
+QDateEdit::up-button:pressed,
+QTimeEdit::up-button:pressed,
 QDoubleSpinBox::up-button:pressed,
 QSpinBox::up-button:pressed {
     image: {{ icon('arrow_drop_up') }};
 }
 
+QDateTimeEdit::down-button,
+QDateEdit::down-button,
+QTimeEdit::down-button,
 QDoubleSpinBox::down-button,
 QSpinBox::down-button {
     subcontrol-origin: border;
@@ -54,11 +66,17 @@ QSpinBox::down-button {
     margin-right: 0.5ex;
 }
 
+QDateTimeEdit::down-button:hover,
+QDateEdit::down-button:hover,
+QTimeEdit::down-button:hover,
 QDoubleSpinBox::down-button:hover,
 QSpinBox::down-button:hover {
     image: {{ icon('arrow_drop_down') }};
 }
 
+QDateTimeEdit::down-button:pressed,
+QDateEdit::down-button:pressed,
+QTimeEdit::down-button:pressed,
 QDoubleSpinBox::down-button:pressed,
 QSpinBox::down-button:pressed {
    image: {{ icon('arrow_drop_down') }};

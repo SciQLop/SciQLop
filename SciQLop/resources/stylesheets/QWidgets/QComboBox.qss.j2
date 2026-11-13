@@ -1,6 +1,7 @@
 
 QDateTimeEdit,
 QDateEdit,
+QTimeEdit,
 QComboBox {
   color: palette(text);
   border: 1px solid {{ soft_border }};
@@ -13,6 +14,7 @@ QComboBox {
 /* A date is typed, so it looks like a field, as an editable combo box does. */
 QDateTimeEdit,
 QDateEdit,
+QTimeEdit,
 QComboBox:editable {
   background-color: palette(base);
 }
@@ -87,20 +89,32 @@ QCalendarWidget {
 }
 
 QCalendarWidget QWidget#qt_calendar_navigationbar {
-  background-color: palette(button);
-  padding: 0.2ex;
+  background-color: palette(base);
+  border-bottom: 1px solid {{ soft_border }};
+  padding: 0.6ex;
 }
 
 QCalendarWidget QToolButton {
   color: palette(text);
   background-color: transparent;
   border: none;
-  padding: 0.3ex 0.6ex;
-  border-radius: 0.3ex;
+  min-height: 0;
+  padding: 0.6ex 1ex;
+  border-radius: {{ radius_small }};
+  font-weight: 600;
 }
 
 QCalendarWidget QToolButton:hover {
-  background-color: palette(mid);
+  background-color: {{ hover_bg }};
+  border: none;
+}
+
+QCalendarWidget QToolButton#qt_calendar_prevmonth {
+  qproperty-icon: {{ icon('arrow_left') }};
+}
+
+QCalendarWidget QToolButton#qt_calendar_nextmonth {
+  qproperty-icon: {{ icon('arrow_right') }};
 }
 
 QCalendarWidget QToolButton::menu-indicator {
@@ -108,23 +122,44 @@ QCalendarWidget QToolButton::menu-indicator {
   width: 0;
 }
 
+QCalendarWidget QSpinBox {
+  min-width: 8ex;
+}
+
 QCalendarWidget QTableView {
   background-color: palette(base);
   selection-background-color: palette(highlight);
   selection-color: palette(highlighted-text);
-  alternate-background-color: palette(alternate-base);
+  alternate-background-color: palette(base);
   outline: none;
+}
+
+/* The day names, which QCalendarWidget draws as the first row of its table. */
+QCalendarWidget QTableView::item {
+  border: none;
+  padding: 0;
+}
+
+QCalendarWidget QTableView::item:hover {
+  background: {{ hover_bg }};
+}
+
+QCalendarWidget QTableView::item:selected:active,
+QCalendarWidget QTableView::item:selected:!active {
+  background: palette(highlight);
+  color: palette(highlighted-text);
+  border: none;
 }
 
 QCalendarWidget QMenu {
   color: palette(text);
   background-color: palette(base);
-  border: 1px solid {{ palette('border') }};
+  border: 1px solid {{ soft_border }};
 }
 
 QCalendarWidget QMenu::item:selected {
-  color: palette(highlighted-text);
-  background-color: palette(highlight);
+  color: palette(text);
+  background-color: {{ hover_bg }};
 }
 
 QDateTimeEdit[frame='false'],
