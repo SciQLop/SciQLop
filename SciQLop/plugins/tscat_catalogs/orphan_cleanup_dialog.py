@@ -9,6 +9,7 @@ from PySide6.QtGui import QCursor
 
 from tscat_gui.tscat_driver.model import tscat_model
 
+from .driver_callbacks import while_alive
 from .orphans import ORPHAN_CATALOG_UUID, BulkDeleteOrphanEventsAction
 from SciQLop.core.ui.tooltips import rich_tooltip
 
@@ -98,7 +99,7 @@ class OrphanCleanupDialog(QDialog):
         """
         self._set_busy(True, status_text="Deleting orphan events…")
         action = BulkDeleteOrphanEventsAction(
-            user_callback=lambda _action: self._on_delete_done(),
+            user_callback=while_alive(self, lambda dialog, _action: dialog._on_delete_done()),
             uuids=list(uuids) if uuids is not None else None,
         )
         tscat_model.do(action)

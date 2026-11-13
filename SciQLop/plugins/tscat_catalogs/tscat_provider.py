@@ -26,6 +26,7 @@ import tscat
 from tscat_gui.model_base.constants import EntityRole
 
 from ._patches import driver_action_failures
+from .driver_callbacks import while_alive
 
 
 SCHEMA_ATTR_PREFIX = "sciqlop_schema__"
@@ -431,8 +432,8 @@ class TscatCatalogProvider(CatalogProvider):
     def add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         self._ensure_clean_session()
 
-        def _link_to_catalog(action):
-            self._pending_actions += 1
+        def _link_to_catalog(provider, action):
+            provider._pending_actions += 1
             tscat_model.do(AddEventsToCatalogueAction(
                 user_callback=None,
                 uuids=[action.entity.uuid],
@@ -456,7 +457,7 @@ class TscatCatalogProvider(CatalogProvider):
 
         with self._tracked_action():
             tscat_model.do(CreateEntityAction(
-                user_callback=_link_to_catalog,
+                user_callback=while_alive(self, _link_to_catalog),
                 cls=tscat._Event,
                 args=args,
             ))
@@ -660,7 +661,8 @@ class TscatCatalogProvider(CatalogProvider):
     def _do_dispatch_orphan_refresh(self) -> None:
         """Actually queue the driver action. Wired to the debounce timer."""
         from .orphans import GetOrphanEventsAction
-        tscat_model.do(GetOrphanEventsAction(user_callback=self._on_orphan_query_done))
+        tscat_model.do(GetOrphanEventsAction(
+            user_callback=while_alive(self, TscatCatalogProvider._on_orphan_query_done)))
 
     @Slot(object)
     def _on_orphan_query_done(self, action) -> None:
