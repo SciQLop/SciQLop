@@ -13,12 +13,11 @@ rather than killing the parent test session.
 """
 from __future__ import annotations
 
-import os
-import subprocess
-import sys
 import textwrap
 
 import pytest
+
+from .inner_pytest import assert_passed_without_segfault, run_inner_pytest
 
 
 REPRO_BODY = textwrap.dedent('''
@@ -88,25 +87,4 @@ def inner_test_path(tmp_path_factory):
 
 
 def test_panel_delete_with_layer_does_not_crash(inner_test_path):
-    """Subprocess invocation. Treat SIGSEGV (the user's reported crash)
-    as failure; tolerate other shutdown noise (SIGABRT etc. from Qt
-    teardown happens after the test body completes and is unrelated)."""
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    result = subprocess.run(
-        [sys.executable, "-m", "pytest", str(inner_test_path),
-         "--no-xvfb", "-x", "-q", "-s",
-         "--rootdir", repo_root,
-         "-p", "no:cacheprovider"],
-        cwd=repo_root, capture_output=True, text=True, timeout=240,
-    )
-    sigsegv = result.returncode in (-11, 139)
-    assert not sigsegv, (
-        f"panel-delete SIGSEGV reproduced: returncode={result.returncode}\n"
-        f"--- stdout ---\n{result.stdout[-4000:]}\n"
-        f"--- stderr ---\n{result.stderr[-4000:]}"
-    )
-    assert "1 passed" in result.stdout or "passed" in result.stdout, (
-        f"inner test did not report a pass: returncode={result.returncode}\n"
-        f"--- stdout ---\n{result.stdout[-4000:]}\n"
-        f"--- stderr ---\n{result.stderr[-4000:]}"
-    )
+    assert_passed_without_segfault(run_inner_pytest(inner_test_path), "panel-delete")
