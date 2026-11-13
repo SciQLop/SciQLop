@@ -1,5 +1,5 @@
 import pytest
-from IPython.core.interactiveshell import InteractiveShell
+from .helpers import ipython_shell_for_a_test
 
 from SciQLop.core import kernel_namespace as kn
 from SciQLop.components.jupyter.kernel.namespace import kernel_poster
@@ -22,7 +22,7 @@ def clean_up() -> None:
 
 @pytest.fixture
 def shell(qapp):
-    shell = InteractiveShell()
+    shell = ipython_shell_for_a_test()
     follow_kernel_namespace(shell)
     yield shell
     unfollow_kernel_namespace(shell)
@@ -59,7 +59,7 @@ def test_an_invalid_name_is_refused():
 
 def test_a_name_contributed_before_the_shell_is_replayed(qapp):
     contribute("kn_demo.early", "early", 1)
-    fresh = InteractiveShell()
+    fresh = ipython_shell_for_a_test()
     try:
         follow_kernel_namespace(fresh)
         assert fresh.user_ns["early"] == 1

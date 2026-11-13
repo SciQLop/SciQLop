@@ -1,5 +1,5 @@
 import pytest
-from IPython.core.interactiveshell import InteractiveShell
+from .helpers import ipython_shell_for_a_test
 
 from SciQLop.core import magics as magics_module
 from SciQLop.core.extensions import owned_by
@@ -12,7 +12,7 @@ OWNERS = ("mg_demo", "mg_demo2")
 
 @pytest.fixture
 def shell(qapp):
-    shell = InteractiveShell()
+    shell = ipython_shell_for_a_test()
     register_all_magics(shell)
     yield shell
     unfollow_magics(shell)
@@ -65,7 +65,7 @@ def test_a_plugin_line_magic_runs(shell):
 def test_a_magic_contributed_before_the_shell_is_replayed(qapp):
     contribute(Magic("mg_demo.early", "early", "line", lambda line: "early"))
     try:
-        fresh = InteractiveShell()
+        fresh = ipython_shell_for_a_test()
         register_all_magics(fresh)
         assert fresh.run_line_magic("early", "") == "early"
     finally:
@@ -197,7 +197,7 @@ def test_registration_is_posted_to_a_running_kernel_loop(qapp):
     class StandInKernelThread:
         loop = _StandInLoop()
 
-    fresh = InteractiveShell()
+    fresh = ipython_shell_for_a_test()
     try:
         register_all_magics(fresh, kernel_poster(StandInKernelThread))
         assert registered(fresh, "line", "plot") is None

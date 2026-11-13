@@ -78,3 +78,15 @@ def call_from_worker_thread(qtbot, monkeypatch, fn):
     if "error" in outcome:
         raise outcome["error"]
     return outcome.get("result")
+
+
+def ipython_shell_for_a_test():
+    """An IPython shell that leaves nothing behind. A plain `InteractiveShell()` writes its history to the
+    developer's own ~/.ipython database, and runs a full garbage collection when the interpreter exits:
+    with a few dozen shells the test session took 10 s more to end, which the stall watchdog reported."""
+    import atexit
+    from IPython.core.interactiveshell import InteractiveShell
+    from traitlets.config import Config
+    shell = InteractiveShell(config=Config(HistoryManager={"enabled": False}))
+    atexit.unregister(shell.atexit_operations)
+    return shell
