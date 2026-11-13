@@ -221,7 +221,8 @@ body {
     color: var(--Text);
 }
 
-#news-banner #news-list.collapsed {
+/* Folded, the banner still tells something: its first two items. */
+#news-banner #news-list.collapsed .news-item:nth-child(n+3) {
     display: none;
 }
 
@@ -547,9 +548,18 @@ h2 {
     opacity: 0.9;
 }
 
-.release-current {
-    background: color-mix(in srgb, var(--Highlight) 8%, var(--Window));
-    border: 1px solid var(--Borders);
+/* Nothing to do when up to date: a quiet line, not a band above the quickstart cards. */
+#latest-release.release-current {
+    background: none;
+    border: none;
+    padding: 0 2px;
+    margin-bottom: 10px;
+    font-size: 0.82em;
+    color: var(--UnselectedText);
+}
+
+.release-current .release-label {
+    font-weight: 500;
 }
 
 .release-update {

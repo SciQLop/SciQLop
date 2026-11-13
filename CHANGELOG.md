@@ -4,6 +4,7 @@
 
 ### Fixes before the release
 
+- Welcome page: the quickstart cards have equal widths and clearer icons; "What's new" shows its first two items when folded, and "Show all" says how many there are; "Up to date" is a quiet line instead of a band at the top.
 - Welcome page and Plugin Store: cards have a soft outline and lift slightly under the mouse instead of zooming over their neighbours; thumbnails are no longer faded at the bottom; template cards look like the other cards and "Import a template…" has a proper card; section titles line up; in the store the current tab is underlined and long descriptions end with an ellipsis.
 - Date and time fields: the up and down arrows are drawn like those of number fields (they showed as a broken glyph). The calendar of the time bar and of the catalog date editor follows the theme: no red weekends, no week numbers, no grid, themed arrows.
 - Themes, third pass: a selected row is a tint of the accent colour under normal text instead of a saturated bar with white text; rows under the mouse get a neutral tint; the time bar's step buttons are flat until the mouse is over them.

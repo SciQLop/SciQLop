@@ -237,11 +237,13 @@ function loadNews() {
             row.appendChild(textSpan);
             list.appendChild(row);
         });
+        const showAll = "Show all " + news.length + " ▾";
         list.classList.add("collapsed");
-        toggle.textContent = "Show all ▾";
+        toggle.textContent = showAll;
+        toggle.style.display = news.length > 2 ? "" : "none";
         toggle.onclick = function() {
             const collapsed = list.classList.toggle("collapsed");
-            toggle.textContent = collapsed ? "Show all ▾" : "Show less ▴";
+            toggle.textContent = collapsed ? showAll : "Show less ▴";
         };
         banner.classList.remove("hidden");
         document.getElementById("news-dismiss").onclick = function() {
