@@ -181,13 +181,13 @@ function loadTemplates() {
             card.className = "card";
             card.dataset.name = t.name.toLowerCase();
             var imgHtml = t.image
-                ? '<img class="card-preview" src="' + escapeHtmlAttr("file://" + t.image) + '">'
-                : '';
-            card.innerHTML = imgHtml +
-                '<div class="card-header">' +
-                    '<span class="card-name">' + escapeHtml(t.name) + '</span>' +
-                '</div>' +
-                '<p class="card-desc">' + escapeHtml(t.description || "Panel template") + '</p>';
+                ? '<img class="card-image" src="' + escapeHtmlAttr("file://" + t.image) + '">'
+                : '<div class="card-image placeholder"></div>';
+            card.innerHTML = '<div class="card-image-wrapper">' + imgHtml + '</div>' +
+                '<div class="card-body">' +
+                    '<div class="card-name-row"><span class="card-name">' + escapeHtml(t.name) + '</span></div>' +
+                    '<div class="card-tags">' + escapeHtml(t.description || "Panel template") + '</div>' +
+                '</div>';
             card.addEventListener("click", function() {
                 backend.load_template(t.stem);
             });
@@ -201,7 +201,9 @@ function loadTemplates() {
         var importCard = document.createElement("div");
         importCard.className = "card card-action";
         importCard.title = "Import a panel template from a file.";
-        importCard.innerHTML = '<span class="card-action-label">Import\u2026</span>';
+        importCard.innerHTML =
+            '<div class="card-image-wrapper"><div class="card-image placeholder">+</div></div>' +
+            '<div class="card-body"><span class="card-name">Import a template\u2026</span></div>';
         importCard.addEventListener("click", function() {
             backend.import_template();
         });

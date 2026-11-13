@@ -35,9 +35,11 @@ body {
 
 .page-btn:hover { color: var(--Text); }
 
+.page-btn { border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; }
+
 .page-btn.active {
-    background: var(--AlternateBase);
     color: var(--Text);
+    border-bottom-color: var(--Highlight);
 }
 
 #updates-count { font-size: 0.85em; color: var(--Highlight); }
@@ -66,9 +68,9 @@ body {
 
 #search-input {
     flex: 1;
-    padding: 6px 12px;
-    border: 1px solid var(--Borders);
-    border-radius: 4px;
+    padding: 8px 14px;
+    border: 1px solid color-mix(in srgb, var(--Borders) 45%, var(--Window));
+    border-radius: 8px;
     background: var(--Base);
     color: var(--Text);
     font-size: 0.9em;
@@ -140,7 +142,7 @@ body {
     height: 180px;
     border-radius: 10px;
     overflow: hidden;
-    border: 1px solid var(--Borders);
+    border: 1px solid color-mix(in srgb, var(--Borders) 45%, var(--Window));
     margin-bottom: 6px;
     cursor: pointer;
 }
@@ -157,7 +159,8 @@ body {
     display: flex; flex-direction: column; justify-content: center; max-width: 55%;
 }
 
-.hero-kick { font-size: 0.72em; letter-spacing: 1px; text-transform: uppercase; color: var(--Highlight); font-weight: 600; }
+/* Over the dark veil, whatever the theme: the accent colour was unreadable there. */
+.hero-kick { font-size: 0.78em; color: #c6d0de; font-weight: 600; }
 .hero-meta h3 { font-size: 1.7em; margin: 4px 0 6px; color: #fff; }
 .hero-meta p { font-size: 0.9em; color: #c6d0de; margin-bottom: 12px; }
 
@@ -190,8 +193,9 @@ body {
 
 .tile {
     background: var(--Window);
-    border: 1px solid var(--Borders);
-    border-radius: 9px;
+    border: 1px solid color-mix(in srgb, var(--Borders) 45%, var(--Window));
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10);
     overflow: hidden;
     cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -200,7 +204,8 @@ body {
 
 .tile:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+    border-color: color-mix(in srgb, var(--Highlight) 60%, var(--Window));
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
 .tile-shot {
@@ -242,6 +247,9 @@ body {
     line-height: 1.35;
     height: 2.7em;
     overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .tile-ft {

@@ -276,12 +276,21 @@ section {
 .section-header {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 8px;
+    gap: 6px;
+    margin-bottom: 10px;
 }
 
 .section-header h2 {
-    flex: 1;
+    margin-bottom: 0;
+}
+
+/* Headings line up on the left edge; the fold arrow follows its title. */
+.section-header .section-toggle {
+    order: 2;
+}
+
+.section-header .browse-link {
+    margin-left: auto;
 }
 
 
@@ -349,19 +358,21 @@ h2 {
 /* --- Cards --- */
 
 .card {
-    border: 1px solid var(--Borders);
-    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--Borders) 45%, var(--Window));
+    border-radius: 10px;
     background: var(--Window);
     cursor: pointer;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.25);
+    transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10);
     overflow: hidden;
     user-select: none;
 }
 
+/* A lift, not a zoom: a card that grows over its neighbours hides their edges. */
 .card:hover {
-    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.4);
-    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    border-color: color-mix(in srgb, var(--Highlight) 60%, var(--Window));
+    transform: translateY(-2px);
 }
 
 .card.selected {
@@ -375,16 +386,6 @@ h2 {
     overflow: hidden;
 }
 
-.card-image-wrapper::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 32px;
-    background: linear-gradient(to bottom, transparent, var(--Window));
-    pointer-events: none;
-}
 
 .card-image {
     width: 100%;
@@ -405,15 +406,6 @@ h2 {
 .card-image.featured-placeholder {
     color: rgba(255, 255, 255, 0.85);
     font-weight: 700;
-}
-
-.card-preview {
-    width: 100%;
-    height: 120px;
-    object-fit: cover;
-    background: var(--AlternateBase);
-    display: block;
-    border-radius: 8px 8px 0 0;
 }
 
 .card-body {
@@ -489,7 +481,8 @@ h2 {
 
 /* --- New workspace card --- */
 
-.card.new-workspace .card-image.placeholder {
+.card.new-workspace .card-image.placeholder,
+.card.card-action .card-image.placeholder {
     font-size: 3em;
 }
 

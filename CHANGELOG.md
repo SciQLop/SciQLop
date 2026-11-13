@@ -4,6 +4,7 @@
 
 ### Fixes before the release
 
+- Welcome page and Plugin Store: cards have a soft outline and lift slightly under the mouse instead of zooming over their neighbours; thumbnails are no longer faded at the bottom; template cards look like the other cards and "Import a template…" has a proper card; section titles line up; in the store the current tab is underlined and long descriptions end with an ellipsis.
 - Date and time fields: the up and down arrows are drawn like those of number fields (they showed as a broken glyph). The calendar of the time bar and of the catalog date editor follows the theme: no red weekends, no week numbers, no grid, themed arrows.
 - Themes, third pass: a selected row is a tint of the accent colour under normal text instead of a saturated bar with white text; rows under the mouse get a neutral tint; the time bar's step buttons are flat until the mouse is over them.
 - Themes, second pass: ticked checkboxes and radio buttons are drawn in the accent colour; tabs are flat with an underline; tables show row lines only; a tree's selection covers the whole row; sliders, group boxes and date fields are styled; buttons use a neutral fill so the accent colour only marks the main action. The scroll bar handle no longer vanishes under the mouse in the light themes.
