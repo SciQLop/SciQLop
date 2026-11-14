@@ -60,7 +60,7 @@ def _bundled_plugins_dir() -> str:
 
 def load_module(path, name):
     try:
-        if os.path.realpath(path) == _bundled_plugins_dir():
+        if _is_built_in(path):
             # Bundled plugins must live under ONE module identity. Spec-loading
             # them as top-level `<name>` creates a second module object when
             # anything later imports `SciQLop.plugins.<name>` (tests, notebooks)
@@ -257,10 +257,20 @@ def _source(folder, name) -> str:
     return f"entry point {name!r}" if folder is None else f"folder plugin {os.path.join(folder, name)}"
 
 
+def _is_built_in(folder) -> bool:
+    return folder is not None and os.path.realpath(folder) == _bundled_plugins_dir()
+
+
 def _entries(plugin_list, ep_plugins) -> dict:
-    """The last of several plugins sharing an id wins: entry points are listed after folders."""
+    """The last of several plugins sharing an id wins: entry points are listed after folders.
+    Except over a built-in plugin: a plugin that moved into SciQLop is still installed as a package
+    in older workspaces, and that stale copy must not replace the one shipped with this version."""
     entries = {}
     for folder, name in plugin_list:
+        if name in entries and _is_built_in(entries[name].folder):
+            log.warning(f"Plugin id {name!r} is a built-in plugin; ignoring the {_source(folder, name)} "
+                        f"of the same id (an older, separately installed copy: it can be uninstalled)")
+            continue
         if name in entries:
             log.warning(f"Plugin id {name!r} is used by {_source(entries[name].folder, name)} and "
                         f"{_source(folder, name)}; loading the {_source(folder, name)}")

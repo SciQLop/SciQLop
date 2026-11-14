@@ -187,6 +187,24 @@ def test_entry_point_shadowing_a_folder_plugin_is_warned(tmp_path, fresh, monkey
     assert len(warned) == 1 and str(tmp_path) in warned[0] and "entry point" in warned[0]
 
 
+def test_an_installed_package_does_not_replace_a_built_in_plugin(tmp_path, fresh, monkeypatch):
+    """A plugin that moved into SciQLop is still installed as a package in older workspaces:
+    the built-in one loads, once, and the stale package is named in the log."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+    spy = MagicMock()
+    monkeypatch.setattr(loader, "log", spy)
+    monkeypatch.setattr(loader, "_bundled_plugins_dir", lambda: str(tmp_path))
+    built_in = _plugin(tmp_path, "moved_in_p", "def activate(ctx):\n    return 'built-in'\n", _desc())
+    ep = _ep("moved_in_p", SimpleNamespace(files=None, version="0.9.0"))
+
+    entries = loader._entries([built_in, (None, "moved_in_p")], {"moved_in_p": ep})
+
+    assert entries["moved_in_p"].folder == str(tmp_path)
+    warned = [c.args[0] for c in spy.warning.call_args_list if "moved_in_p" in c.args[0]]
+    assert len(warned) == 1 and "built-in" in warned[0] and "entry point" in warned[0]
+
+
 def test_has_reports_present_optional_dependency(tmp_path, fresh):
     plugins = [
         _plugin(tmp_path, "opt_mars", "def activate(ctx):\n    return 1\n", _desc()),
