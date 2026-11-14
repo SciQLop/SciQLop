@@ -106,6 +106,9 @@ dev = [
     # available at test time.
     "tscat>=0.5.1",
     "tscat_gui>=0.7.0",
+    # Same for cocat-rs: a runtime dependency of SciQLop/plugins/sciqlop_cocat (see its plugin.json),
+    # needed here by tests/sciqlop_cocat.
+    "cocat-rs>=0.8,<0.11",
     "pytest-xdist>=3.8.0",
     "pytest-timeout>=2.3.1",
     # runtime deps of the ACP layer (SciQLop/components/agents/acp), declared
@@ -159,6 +162,9 @@ sciqlop-console = "SciQLop.app:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "live: tests of the cocat-rs plugin that run a local cocat-server (need COCAT_SERVER; skipped unless -m live)",
+]
 qt_api = "pyside6"
 xvfb_width = 2560
 xvfb_height = 1440

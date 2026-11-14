@@ -1,0 +1,16 @@
+{
+  "name": "Shared Catalogs (cocat-rs)",
+  "version": "0.10.5",
+  "description": "Your catalogues, on this computer or with your CoCat account, and catalogues edited live with collaborators, through the Rust cocat-rs client",
+  "authors": [
+    {
+      "name": "Alexis Jeandet",
+      "email": "alexis.jeandet@member.fsf.org",
+      "organization": "LPP"
+    }
+  ],
+  "license": "MIT",
+  "python_dependencies": ["cocat-rs>=0.8,<0.11", "numpy"],
+  "dependencies": [],
+  "disabled": true
+}

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Shared Catalogs (cocat-rs) is now a built-in plugin
+
+- The cocat-rs catalogue plugin ships with SciQLop instead of being installed from the Plugin Store. It is off by default: enable "Shared Catalogs (cocat-rs)" in Settings › Plugins. If you had installed it before, it stays enabled, SciQLop now loads its own copy, and the separately installed package is ignored (it can be removed from the workspace).
+
 ### Fixes before the release
 
 - Welcome page: the quickstart cards have equal widths and clearer icons; "What's new" shows its first two items when folded, and "Show all" says how many there are; "Up to date" is a quiet line instead of a band at the top.
