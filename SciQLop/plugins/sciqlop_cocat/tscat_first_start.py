@@ -1,6 +1,7 @@
 """The person's tscat catalogues in CoCat: brought in once, at the first start, and again from the
-menu. At the first start they go to a project kept on this computer: sending them to an account is
-the person's choice, which the offer to move local catalogues already asks."""
+menu. At the first start they go to the account's own project, which is private (the server refuses
+to share it). Signed out they go to a project kept on this computer, and the offer to move local
+catalogues brings them to the account at the next sign-in."""
 from __future__ import annotations
 
 import uuid
@@ -22,12 +23,10 @@ class ImportingTscat:
         if self._read_tscat is None or self._local is None or self._local.tscat_imported:
             return
         try:
-            imported = await self._bring_tscat_in(None)
+            await self._bring_tscat_in(None)
         except Exception as error:
             return self._cannot_import_tscat(describe(error))
         self._local.note_tscat_imported()
-        if imported:
-            await self._offer_move()
 
     async def import_tscat_into(self, room_id: str) -> None:
         try:
@@ -41,13 +40,15 @@ class ImportingTscat:
         self.error_occurred.emit(f"Cannot import your tscat catalogues: {why}")
 
     async def _bring_tscat_in(self, room_id: str | None) -> Imported:
-        """Into the given project, else the one kept on this computer. Nothing is made or told when
-        tscat holds nothing."""
+        """Into the given project, else the account's own, else the one kept on this computer.
+        Nothing is made or told when tscat holds nothing."""
         text = await self._read_tscat()
         content = tscat_content(text) if text is not None else None
         if not content:
             return Imported()
-        room_id = room_id or await self._room_on_this_computer()
+        room_id = room_id or self._account_project() or await self._room_on_this_computer()
+        if room_id in self._local_ids:
+            self._local.offer_move_again()
         self.flush_ranges()
         imported = content.write_into(self._rooms[room_id])
         self._rewrap_room(room_id)

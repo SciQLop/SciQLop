@@ -80,6 +80,11 @@ class Remembered:
         self._data["move_offered"] = True
         self._save()
 
+    def offer_move_again(self) -> None:
+        """The offer is made once; catalogues that came to this computer after it are still unasked for."""
+        self._data["move_offered"] = False
+        self._save()
+
     @property
     def tscat_imported(self) -> bool:
         """The tscat catalogues were brought in, or there were none: it is done once."""

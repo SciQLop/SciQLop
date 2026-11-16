@@ -1,4 +1,5 @@
-"""At the first start, the person's tscat catalogues come into the project kept on this computer."""
+"""At the first start, the person's tscat catalogues come into their account's own project, or signed
+out into the project kept on this computer."""
 import json
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from SciQLop.components.catalogs import CatalogRegistry
 from SciQLop.plugins.sciqlop_cocat import provider as provider_module
 from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
+from SciQLop.plugins.sciqlop_cocat.remembered import Remembered
 from SciQLop.plugins.sciqlop_cocat.tscat_import import TscatUnreadable, read_tscat_database
 from .test_provider_rooms import ROOMS, FakeSession, _call_and_settle, opened, run  # noqa: F401
 from .tscat_databases import build, edge_cases
@@ -119,23 +121,54 @@ def test_what_did_not_come_across_is_told(start):
     assert "event 1600-01-01T00:00:00 to 2021-03-01T01:00:00 of Shocks is left out" in notice
 
 
-def test_signed_in_they_stay_on_this_computer_until_the_person_moves_them(start, opened, monkeypatch):
+@pytest.fixture
+def asked(monkeypatch):
+    """The offers to move local catalogues into the account, each declined."""
     asked = []
     monkeypatch.setattr(provider_module.questions, "ask_move",
                         lambda names, target: asked.append((names, target)) or False)
-    p = start(Tscat(SHOCKS), FakeSession(rooms=ROOMS))
-    assert shown(p) == [("tscat catalogues (on this computer)", "Shocks")]
-    assert opened["a"].catalogues() == []
-    assert asked == [(["tscat catalogues"], "My catalogues")]
-    [local_id] = p._local_ids
-    assert opened[local_id].connected_with is None
+    return asked
 
 
-def test_signed_in_the_person_may_move_them_into_the_account_at_once(start, monkeypatch):
-    monkeypatch.setattr(provider_module.questions, "ask_move", lambda names, target: True)
+def test_signed_in_they_go_straight_into_the_account_s_own_project(start, asked):
     p = start(Tscat(SHOCKS), FakeSession(rooms=ROOMS))
     assert shown(p) == [("My catalogues (default)", "Shocks")]
     assert [c.path for c in p.catalogs()] == [["a"]]
+    assert p._local_ids == set() and asked == []
+    assert p.notices == ["1 catalogue(s) and 1 event(s) imported from tscat into My catalogues (default)."]
+
+
+def test_signed_in_while_the_server_cannot_be_reached_they_stay_on_this_computer(start, asked):
+    session = FakeSession(rooms=ROOMS)
+    session.reachable = False
+    p = start(Tscat(SHOCKS), session)
+    assert shown(p) == [("My catalogues (default)", "Shocks")]
+    assert [c.path[0] for c in p.catalogs()] == list(p._local_ids)
+
+
+def test_imported_signed_out_they_are_offered_to_the_account_at_sign_in(start, asked):
+    tscat = Tscat(SHOCKS)
+    run(start(tscat).close())
+    p = start(tscat, FakeSession(rooms=ROOMS))
+    assert asked == [(["My catalogues"], "My catalogues")]
+    assert shown(p) == [("My catalogues (on this computer)", "Shocks")]
+
+
+def test_they_are_offered_at_sign_in_even_when_the_move_was_offered_before_the_import(start, asked, tmp_path):
+    """The offer is made once per computer: an import that came after it would stay local unasked."""
+    Remembered(tmp_path / "local").note_move_offered()
+    tscat = Tscat(SHOCKS)
+    run(start(tscat).close())
+    start(tscat, FakeSession(rooms=ROOMS))
+    assert asked == [(["My catalogues"], "My catalogues")]
+
+
+def test_once_declined_the_move_is_not_offered_again(start, asked):
+    tscat = Tscat(SHOCKS)
+    run(start(tscat).close())
+    run(start(tscat, FakeSession(rooms=ROOMS)).close())
+    start(tscat, FakeSession(rooms=ROOMS))
+    assert len(asked) == 1
 
 
 def test_a_provider_given_no_tscat_reader_imports_nothing(qapp, tmp_path):
