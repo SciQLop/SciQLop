@@ -134,12 +134,29 @@ def _unlisted(data: dict) -> int:
     return sum(1 for e in data["events"] if e["uuid"] not in accounted_for)
 
 
-def import_tscat_text(project, text: str) -> Imported:
-    """Writes what `read_tscat_database` read into the project."""
+@dataclass(frozen=True)
+class TscatContent:
+    """What a tscat database holds, as a project can take it."""
+    data: dict
+    notes: tuple[str, ...] = ()   # what had to be left out or renamed for that
+
+    def __bool__(self) -> bool:
+        return bool(self.data["events"] or self.data["catalogues"])
+
+    def write_into(self, project) -> Imported:
+        with warnings.catch_warnings(record=True) as said:
+            warnings.simplefilter("always")
+            catalogues = project.import_tscat_json(json.dumps(self.data))
+        notes = (*self.notes, *dict.fromkeys(str(warning.message) for warning in said))
+        return Imported(len(catalogues), len(self.data["events"]), _unlisted(self.data), notes)
+
+
+def tscat_content(text: str) -> TscatContent:
+    """`text` is what `read_tscat_database` read."""
     data, left_out = _without_out_of_range_events(json.loads(text))
     data, renamed = _without_reserved_keys(data)
-    with warnings.catch_warnings(record=True) as said:
-        warnings.simplefilter("always")
-        catalogues = project.import_tscat_json(json.dumps(data))
-    notes = [*left_out, *renamed, *dict.fromkeys(str(warning.message) for warning in said)]
-    return Imported(len(catalogues), len(data["events"]), _unlisted(data), tuple(notes))
+    return TscatContent(data, (*left_out, *renamed))
+
+
+def import_tscat_text(project, text: str) -> Imported:
+    return tscat_content(text).write_into(project)

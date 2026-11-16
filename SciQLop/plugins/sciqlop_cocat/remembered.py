@@ -81,6 +81,15 @@ class Remembered:
         self._save()
 
     @property
+    def tscat_imported(self) -> bool:
+        """The tscat catalogues were brought in, or there were none: it is done once."""
+        return self._data.get("tscat_imported", False)
+
+    def note_tscat_imported(self) -> None:
+        self._data["tscat_imported"] = True
+        self._save()
+
+    @property
     def followed(self) -> list[dict]:
         """The public catalogues followed live, as the server listed them."""
         return list(self._data.get("followed", []))

@@ -79,3 +79,8 @@ def test_load_starts_the_provider_once_sciqlop_runs(loaded, monkeypatch, qtbot):
 def test_one_provider_keeps_local_projects_apart_from_the_account_caches(loaded, tmp_path):
     provider = loaded(False).provider
     assert provider._cache_dir == tmp_path / "cocat_rs" and provider._local_dir == tmp_path / "cocat_rs_local"
+
+
+def test_the_provider_is_given_the_reader_of_the_tscat_database(loaded):
+    from SciQLop.plugins.sciqlop_cocat.tscat_import import read_tscat_database
+    assert loaded(False).provider._read_tscat is read_tscat_database

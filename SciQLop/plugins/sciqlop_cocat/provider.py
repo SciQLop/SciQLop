@@ -30,11 +30,12 @@ from . import tips
 from .history_dialog import ask_text, show_history_dialog
 from . import questions
 from .icons import status_badge
-from .transfer import NeedsValueRange, export_catalogue, import_file, import_tscat_database, tscat_available
+from .transfer import NeedsValueRange, export_catalogue, import_file, tscat_available
 from .remembered import Remembered
 from .public import PUBLIC, PUBLIC_FOLDER, Following, as_info
 from .links import Linking
 from .submission import Submitting
+from .tscat_first_start import ImportingTscat
 from .sharing_dialog import describe, show_sharing_dialog
 from .convert import (
     SCHEMA_ATTR_PREFIX,
@@ -129,12 +130,12 @@ def _default_project(infos) -> str | None:
     return next((i.id for i in infos if i.personal), infos[0].id if infos else None)
 
 
-class CocatRsProvider(Following, Linking, Submitting, CatalogProvider):
+class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogProvider):
     NAME = PROVIDER_NAME
     DESCRIPTION = "Your catalogues, and the projects shared with you, through cocat-rs."
 
     def __init__(self, author: str = "SciQLop", session=None, cache_dir: Path | None = None,
-                 local_dir: Path | None = None, parent: QObject | None = None):
+                 local_dir: Path | None = None, read_tscat=None, parent: QObject | None = None):
         self._author = author
         self._session = session
         self._cache_dir = cache_dir
@@ -161,6 +162,7 @@ class CocatRsProvider(Following, Linking, Submitting, CatalogProvider):
         self._local_dir = local_dir            # projects kept on this computer only
         self._local = Remembered(local_dir) if local_dir is not None else None
         self._local_ids: set[str] = set()      # the shown projects that are kept on this computer
+        self._read_tscat = read_tscat          # tscat_import.read_tscat_database; None: tscat is left alone
         self._public_ids: set[str] = set()     # the joined projects that are followed public catalogues
         self._public_views: dict[str, dict] = {}  # a listed public catalogue's uuid in SciQLop -> its row
         self._public_loading: set[str] = set()  # uuids of the listed ones being opened
@@ -332,6 +334,7 @@ class CocatRsProvider(Following, Linking, Submitting, CatalogProvider):
     async def _start(self) -> None:
         if not (self._session is not None and self._session.signed_in and await self.connect()):
             await self.show_signed_out()
+        await self.import_tscat_once()
 
     def _account_copy(self):
         """The last account's own project, whose cache stays usable signed out."""
@@ -733,12 +736,12 @@ class CocatRsProvider(Following, Linking, Submitting, CatalogProvider):
         actions = [action("Import…", lambda p: self._ask_and_import(p[0]))]
         if tscat_available():
             actions.append(action("Import tscat catalogues",
-                                          lambda p: self.import_into(p[0], import_tscat_database)))
+                                  lambda p: asyncio.ensure_future(self.import_tscat_into(p[0]))))
         return actions
 
     # ---- import and export ----
 
-    def import_into(self, room_id: str, read, what: str = "tscat catalogues") -> bool:
+    def import_into(self, room_id: str, read, what: str) -> bool:
         """`read(project)` adds catalogues to the room; they are then shown, as no listener reports them."""
         self.flush_ranges()
         try:

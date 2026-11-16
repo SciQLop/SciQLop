@@ -1,5 +1,5 @@
 """Catalogue files in and out of a CoCat project: VOTable, tscat's JSON and TFCat, all written and
-read by cocat-rs. Also the one-off import of the local tscat database."""
+read by cocat-rs."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -61,8 +61,3 @@ def tscat_available() -> bool:
     except ImportError:
         return False
     return True
-
-
-def import_tscat_database(project) -> list:
-    """Uuids are kept, so importing again updates what an earlier import wrote."""
-    return cocat_rs.tscat.import_database(project)

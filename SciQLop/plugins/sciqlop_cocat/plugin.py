@@ -9,6 +9,7 @@ from SciQLop.components.storage import user_data_dir
 from .provider import CocatRsProvider
 from .session import Session
 from .settings import CocatRsSettings
+from .tscat_import import read_tscat_database
 
 log = getLogger(__name__)
 
@@ -25,7 +26,8 @@ class Plugin(QObject):
         super().__init__(main_window)
         settings = CocatRsSettings()
         self.provider = CocatRsProvider(session=Session(settings.server_url), cache_dir=user_data_dir("cocat_rs"),
-                                        local_dir=user_data_dir("cocat_rs_local"), parent=self)
+                                        local_dir=user_data_dir("cocat_rs_local"),
+                                        read_tscat=read_tscat_database, parent=self)
         QTimer.singleShot(0, self.provider.start)
         if builtin_plugin_enabled(SciQLopPluginsSettings()):
             log.warning("Both the built-in 'Collaborative Catalogs' plugin and 'Shared Catalogs "

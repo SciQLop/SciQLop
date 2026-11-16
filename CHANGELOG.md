@@ -5,6 +5,7 @@
 ### Shared Catalogs (cocat-rs) is now a built-in plugin
 
 - The cocat-rs catalogue plugin ships with SciQLop instead of being installed from the Plugin Store. It is off by default: enable "Shared Catalogs (cocat-rs)" in Settings › Plugins. If you had installed it before, it stays enabled, SciQLop now loads its own copy, and the separately installed package is ignored (it can be removed from the workspace).
+- The first time the plugin starts, it brings your tscat catalogues ("My Catalogs") into a project kept on this computer: events, attributes, ratings, tags, the trash, and dynamic catalogues as smart catalogues. Your tscat database is only read, never changed. Nothing is sent to a CoCat account unless you choose to move the catalogues there. What cannot be kept as it was (an event dated before 1677 or after 2262, a filter CoCat cannot express) is listed in a message and in the log. "Import tscat catalogues" in a project's menu does the same on request, and never makes duplicates.
 
 ### Fixes before the release
 
