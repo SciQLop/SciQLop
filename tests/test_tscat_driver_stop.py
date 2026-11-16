@@ -13,9 +13,13 @@ from dataclasses import dataclass
 from .fixtures import *  # noqa: F401,F403
 
 
-def test_stop_waits_for_the_running_action(main_window):
+def test_stop_waits_for_the_running_action(qapp, monkeypatch):
     from tscat_gui.tscat_driver.actions import Action
     from tscat_gui.tscat_driver.driver import TscatDriver
+    from SciQLop.plugins.tscat_catalogs._patches import _stop_after_running_action
+
+    # The plugin installs it when it loads, and it is off by default.
+    monkeypatch.setattr(TscatDriver, "stop", _stop_after_running_action)
 
     @dataclass
     class SlowAction(Action):
