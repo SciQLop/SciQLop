@@ -3,6 +3,8 @@ says, what it cannot is said in the notes, and the tscat database is never writt
 import asyncio
 import hashlib
 import shutil
+import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -261,6 +263,20 @@ def test_a_database_of_an_older_tscat_is_read_without_being_upgraded_in_place(tm
     assert (result.catalogues, result.events) == (2, 2)  # of each, one is in tscat's trash
     [catalogue] = project.catalogues()
     assert catalogue.tags == {"tag1", "#tag2", "", "'as"} and catalogue.rule is not None
+
+
+def test_a_database_left_with_an_old_version_mark_is_read_all_the_same(tmp_path, project):
+    """Seen on a real database: next to its current version, the version table still names the first
+    one, and tscat then refuses to open it. The copy is repaired, the database is left as it is."""
+    database, held = build(tmp_path / "tscat", edge_cases)
+    with closing(sqlite3.connect(database)) as db, db:
+        db.execute("INSERT INTO alembic_version VALUES ('0c057a8951ba')")
+    before = fingerprint(database.parent)
+
+    result = import_tscat_text(project, read(database))
+
+    assert (result.catalogues, result.events) == (len(held.catalogues), len(held.events))
+    assert fingerprint(database.parent) == before
 
 
 def test_no_database_is_nothing_to_import(tmp_path):

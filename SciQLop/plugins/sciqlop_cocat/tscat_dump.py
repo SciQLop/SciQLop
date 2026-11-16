@@ -31,6 +31,31 @@ def snapshot(database: Path, folder: Path) -> Path:
     return copy
 
 
+def _superseded(versions: list[str]) -> list[str]:
+    """The versions that another of them was upgraded from, by tscat's own chain of upgrades."""
+    import tscat.orm_sqlalchemy
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+    config = Config()
+    config.set_main_option("script_location", str(Path(tscat.orm_sqlalchemy.__file__).with_name("migrations")))
+    script = ScriptDirectory.from_config(config)
+    earlier = {v: {r.revision for r in script.iterate_revisions(v, "base")} - {v} for v in versions}
+    return [v for v in versions if any(v in earlier[other] for other in versions)]
+
+
+def drop_superseded_versions(copy: Path) -> None:
+    """A database can name an old version next to its current one, and tscat then refuses to open
+    it ("more than one head"). The old mark says nothing the current one does not: it is dropped,
+    here on the copy only."""
+    with closing(sqlite3.connect(copy)) as database, database:
+        if not database.execute("SELECT 1 FROM sqlite_master WHERE name = 'alembic_version'").fetchone():
+            return
+        versions = [row[0] for row in database.execute("SELECT version_num FROM alembic_version")]
+        if len(versions) > 1:
+            database.executemany("DELETE FROM alembic_version WHERE version_num = ?",
+                                 [(version,) for version in _superseded(versions)])
+
+
 class _CapturedText:
     """Stands for the project cocat-rs imports into: keeps the text instead."""
     text = ""
@@ -59,7 +84,9 @@ def main(output: str, database: str | None = None) -> int:
     if not source.exists():
         return NO_DATABASE
     with tempfile.TemporaryDirectory() as folder:
-        Path(output).write_text(as_json(snapshot(source, Path(folder))), encoding="utf-8")
+        copy = snapshot(source, Path(folder))
+        drop_superseded_versions(copy)
+        Path(output).write_text(as_json(copy), encoding="utf-8")
     return 0
 
 
