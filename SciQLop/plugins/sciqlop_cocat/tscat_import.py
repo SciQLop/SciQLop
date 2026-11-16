@@ -1,0 +1,145 @@
+"""The person's tscat catalogues brought into a CoCat project.
+
+tscat reads its database (in a process of its own, on a copy: see tscat_dump.py) and cocat-rs
+converts it. Uuids are kept, so importing again updates what an earlier import wrote. What a
+project cannot hold as tscat had it is said in the result's notes, never dropped quietly.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import subprocess
+import sys
+import tempfile
+import warnings
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+
+from .tscat_dump import NO_DATABASE
+
+DUMP_SCRIPT = Path(__file__).with_name("tscat_dump.py")
+# A project keeps a time as nanoseconds since 1970 in 64 bits.
+EARLIEST, LATEST = datetime(1677, 9, 21, 0, 12, 44), datetime(2262, 4, 11, 23, 47, 16)
+# The keys cocat-rs reads as its own, with the type it expects: tscat's attribute of that name
+# and another type would stop the whole import, so it comes in under the second name.
+RESERVED = {"events": ("shape", list, "tscat_shape"), "catalogues": ("shape_axis", dict, "tscat_shape_axis")}
+
+
+class TscatUnreadable(Exception):
+    """tscat could not read its database."""
+
+
+@dataclass(frozen=True)
+class Imported:
+    catalogues: int = 0
+    events: int = 0
+    unlisted: int = 0             # events no catalogue lists: imported all the same
+    notes: tuple[str, ...] = ()   # what did not come across as tscat had it
+
+    def __bool__(self) -> bool:
+        return bool(self.catalogues or self.events)
+
+    def summary(self, destination: str) -> str:
+        text = (f"{self.catalogues} catalogue(s) and {self.events} event(s) imported from tscat into "
+                f"{destination}.")
+        if self.unlisted:
+            text += f" {self.unlisted} event(s) are in no catalogue."
+        if self.notes:
+            text += (f" {len(self.notes)} thing(s) did not come across as they were (all are in the log): "
+                     + "; ".join(self.notes[:3]) + ("…" if len(self.notes) > 3 else ""))
+        return text
+
+
+def tscat_database() -> Path | None:
+    """Where tscat keeps its database, None without tscat."""
+    try:
+        from tscat.orm_sqlalchemy import user_data_dir
+    except ImportError:
+        return None
+    return Path(user_data_dir("tscat")) / "backend.sqlite"
+
+
+def _dump(database: Path | None) -> str | None:
+    database = database or tscat_database()
+    if database is None:
+        return None
+    with tempfile.TemporaryDirectory() as folder:
+        output = Path(folder) / "tscat.json"
+        done = subprocess.run([sys.executable, str(DUMP_SCRIPT), str(output), str(database)],
+                              capture_output=True, text=True,
+                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        if done.returncode == NO_DATABASE:
+            return None
+        if done.returncode != 0:
+            raise TscatUnreadable((done.stderr.strip().splitlines() or ["no reason given"])[-1])
+        return output.read_text(encoding="utf-8")
+
+
+async def read_tscat_database(database: Path | None = None) -> str | None:
+    """The tscat database as the JSON text cocat-rs imports; None when there is no database."""
+    return await asyncio.to_thread(_dump, database)
+
+
+def _in_range(text: str) -> bool:
+    time = datetime.fromisoformat(text)
+    if time.tzinfo is not None:
+        time = time.astimezone(timezone.utc).replace(tzinfo=None)
+    return EARLIEST <= time <= LATEST
+
+
+def _event_in_range(event: dict) -> bool:
+    return _in_range(event["start"]) and _in_range(event["stop"])
+
+
+def _without(uuids: list[str], gone: dict) -> list[str]:
+    return [uuid for uuid in uuids if uuid not in gone]
+
+
+def _without_out_of_range_events(data: dict) -> tuple[dict, list[str]]:
+    gone = {e["uuid"]: e for e in data["events"] if not _event_in_range(e)}
+    if not gone:
+        return data, []
+    names = {uuid: [c["name"] for c in data["catalogues"] if uuid in c["events"]] for uuid in gone}
+    notes = [f"event {e['start']} to {e['stop']} of {', '.join(names[uuid]) or 'no catalogue'} is left out: "
+             f"a project holds the years 1677 to 2262" for uuid, e in gone.items()]
+    return {**data,
+            "events": [e for e in data["events"] if e["uuid"] not in gone],
+            "catalogues": [{**c, "events": _without(c["events"], gone)} for c in data["catalogues"]],
+            "members": {c: _without(uuids, gone) for c, uuids in data.get("members", {}).items()},
+            "removed": _without(data.get("removed", []), gone)}, notes
+
+
+def _renamed(item: dict, key: str, expected: type, new_key: str) -> dict:
+    if key not in item or isinstance(item[key], expected):
+        return item
+    return {new_key if k == key else k: v for k, v in item.items()}
+
+
+def _without_reserved_keys(data: dict) -> tuple[dict, list[str]]:
+    notes = []
+    for kind, (key, expected, new_key) in RESERVED.items():
+        renamed = [_renamed(item, key, expected, new_key) for item in data[kind]]
+        count = sum(new is not old for new, old in zip(renamed, data[kind]))
+        if count:
+            notes.append(f"the attribute '{key}' of {count} {kind[:-1]}(s) is imported as '{new_key}': "
+                         f"CoCat keeps '{key}' for its own use")
+            data = {**data, kind: renamed}
+    return data, notes
+
+
+def _unlisted(data: dict) -> int:
+    """The events no catalogue lists, the trash aside. (A dynamic catalogue may still select them.)"""
+    accounted_for = {uuid for c in data["catalogues"] for uuid in c["events"]} | set(data.get("removed", []))
+    return sum(1 for e in data["events"] if e["uuid"] not in accounted_for)
+
+
+def import_tscat_text(project, text: str) -> Imported:
+    """Writes what `read_tscat_database` read into the project."""
+    data, left_out = _without_out_of_range_events(json.loads(text))
+    data, renamed = _without_reserved_keys(data)
+    with warnings.catch_warnings(record=True) as said:
+        warnings.simplefilter("always")
+        catalogues = project.import_tscat_json(json.dumps(data))
+    notes = [*left_out, *renamed, *dict.fromkeys(str(warning.message) for warning in said)]
+    return Imported(len(catalogues), len(data["events"]), _unlisted(data), tuple(notes))
