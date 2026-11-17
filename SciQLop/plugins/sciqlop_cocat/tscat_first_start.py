@@ -13,7 +13,7 @@ from SciQLop.components.sciqlop_logging import getLogger
 
 from .locks import lock_on
 from .sharing_dialog import describe
-from .tscat_import import Imported, tscat_content
+from .tscat_import import Imported, TscatBusy, tscat_content
 
 log = getLogger(__name__)
 
@@ -40,9 +40,19 @@ class ImportingTscat:
             return
         try:
             await self._bring_tscat_in(None)
+        except TscatBusy as error:
+            return self._held_elsewhere(error)
         except Exception as error:
             return self._cannot_import_tscat(describe(error))
         self._local.note_tscat_imported()
+
+    def _held_elsewhere(self, error: TscatBusy) -> None:
+        """Said once: it lasts as long as the other program runs, and is tried again at each start."""
+        if self._local.tscat_busy_told:
+            log.info("tscat import postponed: %s", error)
+            return
+        self._local.note_tscat_busy_told()
+        self._cannot_import_tscat(describe(error))
 
     async def import_tscat_into(self, room_id: str) -> None:
         try:

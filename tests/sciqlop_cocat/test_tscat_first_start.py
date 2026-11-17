@@ -9,7 +9,7 @@ from SciQLop.components.catalogs import CatalogRegistry
 from SciQLop.plugins.sciqlop_cocat import provider as provider_module
 from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
 from SciQLop.plugins.sciqlop_cocat.remembered import Remembered
-from SciQLop.plugins.sciqlop_cocat.tscat_import import TscatUnreadable, read_tscat_database
+from SciQLop.plugins.sciqlop_cocat.tscat_import import TscatBusy, TscatUnreadable, read_tscat_database
 from .test_provider_rooms import ROOMS, FakeSession, _call_and_settle, opened, run  # noqa: F401
 from .tscat_databases import build, edge_cases
 
@@ -110,6 +110,31 @@ def test_a_database_that_cannot_be_read_is_said_and_tried_again_at_the_next_star
     run(p.close())
     again = start(tscat)
     assert shown(again) == [("My catalogues (default)", "Shocks")] and again.errors == []
+
+
+def test_a_database_another_program_holds_is_said_once_and_tried_again_quietly(start):
+    """Only an older SciQLop, or another tscat tool, holds it now: no reason to say it at every start."""
+    tscat = Tscat(TscatBusy(), TscatBusy(), SHOCKS)
+    first = start(tscat)
+    [error] = first.errors
+    assert "older SciQLop" in error
+    run(first.close())
+
+    second = start(tscat)
+
+    assert second.errors == [] and shown(second) == [] and tscat.reads == 2
+    run(second.close())
+    third = start(tscat)
+    assert shown(third) == [("My catalogues (default)", "Shocks")] and third.errors == []
+
+
+def test_the_menu_entry_always_says_that_the_database_is_held(start):
+    tscat = Tscat(TscatBusy())
+    p = start(tscat)
+    [local_id] = p._room_infos
+    [entry] = [a for a in p.folder_actions([local_id]) if a.name == "Import tscat catalogues"]
+    run(_call_and_settle(entry.callback, [local_id]))
+    assert len(p.errors) == 2 and p.errors[0] == p.errors[1]
 
 
 def test_what_did_not_come_across_is_told(start):

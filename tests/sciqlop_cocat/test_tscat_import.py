@@ -294,14 +294,14 @@ def test_a_file_tscat_cannot_read_is_an_error_that_says_why(tmp_path):
 
 
 def test_a_database_another_program_keeps_to_itself_is_said_and_not_waited_for(tmp_path):
-    """tscat begins every transaction with BEGIN EXCLUSIVE and keeps one open: while the old tscat
-    plugin runs, in this SciQLop or another, nothing else can read the database."""
+    """tscat begins every transaction with BEGIN EXCLUSIVE and keeps one open: while an older SciQLop
+    (with its tscat catalogues) or another tscat tool runs, nothing else can read the database."""
     database, _ = build(tmp_path / "tscat", edge_cases)
     before = fingerprint(database.parent)
     with closing(sqlite3.connect(database)) as tscat_at_work:
         tscat_at_work.execute("BEGIN EXCLUSIVE")
         started = time.monotonic()
-        with pytest.raises(TscatBusy, match="Tscat Catalogs"):
+        with pytest.raises(TscatBusy, match="older SciQLop"):
             read(database)
         assert time.monotonic() - started < 30
         tscat_at_work.rollback()

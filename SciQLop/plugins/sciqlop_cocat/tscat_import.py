@@ -35,9 +35,9 @@ class TscatBusy(TscatUnreadable):
     """Another program keeps the database to itself: tscat does, for as long as it has it open."""
 
     def __init__(self):
-        super().__init__('another program is using the tscat database. The old "Tscat Catalogs" plugin '
-                         "keeps it to itself while it is on: turn it off in Settings › Plugins and restart "
-                         "SciQLop. The import is tried again at each start")
+        super().__init__("another program is using the tscat database: an older SciQLop, or another "
+                         "tscat tool, keeps it to itself while it runs. Close it: SciQLop tries again "
+                         "at each start")
 
 
 _reading: set[subprocess.Popen] = set()  # the reads under way, so that closing SciQLop can stop them

@@ -141,6 +141,14 @@ class Remembered:
         self._set("tscat_imported", True)
 
     @property
+    def tscat_busy_told(self) -> bool:
+        """The person was told that another program holds the tscat database."""
+        return self._read().get("tscat_busy_told", False)
+
+    def note_tscat_busy_told(self) -> None:
+        self._set("tscat_busy_told", True)
+
+    @property
     def followed(self) -> list[dict]:
         """The public catalogues followed live, as the server listed them."""
         return list(self._read().get("followed", []))
