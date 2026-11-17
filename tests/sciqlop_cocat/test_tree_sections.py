@@ -11,6 +11,8 @@ from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
 from SciQLop.plugins.sciqlop_cocat.public import PUBLIC
 from .test_provider_rooms import ROOMS, FakeSession, opened, run  # noqa: F401
 
+pytestmark = pytest.mark.usefixtures("only_this_test_s_catalog_providers")
+
 TEAM_EDITOR = __import__("cocat_rs").ProjectInfo("c", "Lab", "editor")
 
 

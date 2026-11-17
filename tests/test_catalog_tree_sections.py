@@ -7,6 +7,8 @@ from PySide6.QtCore import QModelIndex, Qt
 
 from .fixtures import *  # noqa: F401,F403
 
+pytestmark = pytest.mark.usefixtures("only_this_test_s_catalog_providers")
+
 
 def _tree(qapp):
     from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel

@@ -118,3 +118,15 @@ def simple_vp_callback():
 def plot_panel(main_window):
     from SciQLop.user_api.plot import create_plot_panel
     return create_plot_panel()
+
+
+@pytest.fixture
+def only_this_test_s_catalog_providers(qapp, monkeypatch):
+    """A catalogue tree made in the test sees only the providers the test makes: in a full run the
+    shared main window has its own (Catalogs (cocat-rs), Remote...)."""
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    registry = CatalogRegistry.instance()
+    before = {id(p) for p in registry.providers()}
+    everyone = type(registry).providers
+    monkeypatch.setattr(type(registry), "providers",
+                        lambda self: [p for p in everyone(self) if id(p) not in before])
