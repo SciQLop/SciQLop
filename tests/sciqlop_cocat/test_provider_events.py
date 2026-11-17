@@ -226,3 +226,33 @@ def test_re_reading_it_does_not_raise(one_unreadable):
     provider, catalogs = one_unreadable
     provider.reload_catalog(catalogs["bad"])
     assert provider.events(catalogs["bad"]) == []
+
+
+# ---- moved from the tscat provider's tests: the generic drop and meta paths, on a real project ----
+
+def test_a_dropped_event_linked_into_another_catalogue_is_in_both(attached, room):
+    source, wrapper = _catalog_with_event(attached)
+    target = attached.create_catalog("target", ["r"])
+
+    attached.handle_event_drop(target_catalog=target, events=[wrapper], action="link", source_catalog=source)
+
+    assert [e.uuid for e in attached.events(source)] == [wrapper.uuid]
+    assert [e.uuid for e in attached.events(target)] == [wrapper.uuid]
+    assert len(room.catalogue(target.uuid).events) == 1
+
+
+def test_a_dropped_event_moved_changes_catalogue_and_keeps_the_event(attached, room):
+    source, wrapper = _catalog_with_event(attached)
+    target = attached.create_catalog("target", ["r"])
+
+    attached.handle_event_drop(target_catalog=target, events=[wrapper], action="move", source_catalog=source)
+
+    assert attached.events(source) == [] and [e.uuid for e in attached.events(target)] == [wrapper.uuid]
+    assert room.event(wrapper.uuid).status != "deleted"
+
+
+def test_setting_an_absent_key_to_none_is_a_change(attached, qtbot):
+    c, wrapper = _catalog_with_event(attached)
+    with qtbot.waitSignal(attached.event_meta_changed):
+        attached.set_event_meta(c, wrapper, "note", None)
+    assert "note" in wrapper.meta and wrapper.meta["note"] is None

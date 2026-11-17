@@ -29,14 +29,18 @@ def test_attribute_spec_can_be_overridden_to_return_intknob(qapp):
     assert provider.attribute_spec(cat, "other") is None
 
 
-def test_tscat_attribute_spec_rating_is_intknob_1_10(qapp):
-    # tscat itself accepts ratings 1-10; a narrower editor range clamped
-    # events rated above 5 by other tscat tools as soon as they were edited.
-    from SciQLop.plugins.tscat_catalogs.tscat_provider import TscatCatalogProvider
+def _a_catalogue_of_a_provider():
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=1)
+    return provider, provider.catalogs()[0]
+
+
+def test_default_attribute_spec_rating_is_intknob_1_10(qapp):
+    # tscat accepted ratings 1-10, and catalogues imported from it keep them; a narrower
+    # editor range clamped events rated above 5 by other tools as soon as they were edited.
     from SciQLop.core.knobs import IntKnob
 
-    provider = TscatCatalogProvider()
-    cat = next(iter(provider.catalogs()), None)
+    provider, cat = _a_catalogue_of_a_provider()
     spec = provider.attribute_spec(cat, "rating")
     assert isinstance(spec, IntKnob)
     assert spec.min == 1
@@ -44,22 +48,17 @@ def test_tscat_attribute_spec_rating_is_intknob_1_10(qapp):
     assert spec.name == "rating"
 
 
-def test_tscat_attribute_spec_author_is_stringknob(qapp):
-    from SciQLop.plugins.tscat_catalogs.tscat_provider import TscatCatalogProvider
+def test_default_attribute_spec_author_is_stringknob(qapp):
     from SciQLop.core.knobs import StringKnob
 
-    provider = TscatCatalogProvider()
-    cat = next(iter(provider.catalogs()), None)
+    provider, cat = _a_catalogue_of_a_provider()
     spec = provider.attribute_spec(cat, "author")
     assert isinstance(spec, StringKnob)
     assert spec.name == "author"
 
 
-def test_tscat_attribute_spec_unknown_key_returns_none(qapp):
-    from SciQLop.plugins.tscat_catalogs.tscat_provider import TscatCatalogProvider
-
-    provider = TscatCatalogProvider()
-    cat = next(iter(provider.catalogs()), None)
+def test_default_attribute_spec_unknown_key_returns_none(qapp):
+    provider, cat = _a_catalogue_of_a_provider()
     assert provider.attribute_spec(cat, "free_form_key_xyz") is None
 
 

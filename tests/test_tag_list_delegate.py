@@ -237,20 +237,22 @@ def test_inferred_list_column_falls_back_to_tag_list_delegate(qapp):
     assert isinstance(editor, TagListDelegate)
 
 
-def test_tscat_attribute_spec_tags_is_stringlistknob(qapp):
-    from SciQLop.plugins.tscat_catalogs.tscat_provider import TscatCatalogProvider
+def test_default_attribute_spec_tags_is_stringlistknob(qapp):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
     from SciQLop.core.knobs import StringListKnob
 
-    provider = TscatCatalogProvider()
-    cat = next(iter(provider.catalogs()), None)
-    spec = provider.attribute_spec(cat, "tags")
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=1)
+    spec = provider.attribute_spec(provider.catalogs()[0], "tags")
     assert isinstance(spec, StringListKnob)
 
 
-def test_cocat_attribute_spec_tags_is_stringlistknob(qapp):
-    from SciQLop.plugins.collaborative_catalogs.cocat_provider import CocatCatalogProvider
+def test_cocat_rs_attribute_spec_tags_is_stringlistknob(qapp):
+    from SciQLop.components.catalogs import CatalogRegistry
+    from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
     from SciQLop.core.knobs import StringListKnob
 
-    provider = CocatCatalogProvider()
-    spec = provider.attribute_spec(None, "tags")
-    assert isinstance(spec, StringListKnob)
+    provider = CocatRsProvider(author="me")
+    try:
+        assert isinstance(provider.attribute_spec(None, "tags"), StringListKnob)
+    finally:
+        CatalogRegistry.instance()._forget_for_tests(provider)
