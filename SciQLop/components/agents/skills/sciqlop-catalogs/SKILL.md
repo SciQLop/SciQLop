@@ -34,6 +34,10 @@ for e in cat:
   projects. Write to the default project unless the user names another one;
   a project shared with the user may be read-only. `Remote` (Speasy/AMDA
   catalogs) is read-only.
+- **The Catalogs panel** groups them differently from paths: "My catalogues"
+  (the default project's catalogs, shown directly), "Shared" (projects shared
+  with others) and "Reference" (public catalogues, AMDA, plugin lists). A
+  path still starts with the provider's name, never with a section's.
 - **Write events** as a list of `(start, stop)` or `(start, stop, meta)`
   tuples, or a speasy `Catalog`:
   - `catalogs.create(path, events)` makes a new catalog; it raises

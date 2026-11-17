@@ -95,8 +95,8 @@ Dedicated IPython magics make common operations one-liners:
 
 SciQLop provides a powerful catalog system for labeling and browsing events in your data:
 
-- **Multiple providers**: your own and shared catalogs (cocat-rs), and read-only speasy catalogs, all appear in a
-  unified tree browser
+- **One tree, three sections**: My catalogues (your own), Shared (projects shared with others) and Reference
+  (public catalogues, AMDA, plugin lists), whichever provider they come from
 - **Visual overlays**: catalogs are displayed as color-coded vertical spans on your plots
 - **Color mapping**: color events by any metadata column (categorical or continuous with matplotlib colormaps)
 - **Graphical editing**: Shift+drag to create new events, drag span edges to resize, click to jump to an event

@@ -63,7 +63,7 @@ DOT = '<circle cx="{x}" cy="{y}" r="4" fill="var(--{c})"/>'
 ROWS = "".join([kit.tree_row(106, 0, "My catalogues", "open"),
                 DOT.format(x=84, y=130, c="c4"), kit.tree_row(134, 1, "MMS crossings"),
                 DOT.format(x=84, y=158, c="c2"), kit.tree_row(162, 1, "Flux ropes", cls="dim"),
-                kit.tree_row(190, 0, "Public catalogues", "closed", cls="dim")])
+                kit.tree_row(190, 0, "Reference", "closed", cls="dim")])
 
 BODY = f"""{kit.window(P, active="catalogue", tab_class="tabhot a")}
 {kit.panel_frame()}
