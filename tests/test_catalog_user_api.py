@@ -707,3 +707,28 @@ class TestCatalogInputTypeErrors:
         with pytest.raises(TypeError, match="meta must be a dict"):
             catalog_service.save("IsolatedDummy//meta",
                                  [("2020-01-01", "2020-01-02", "not_a_dict")])
+
+
+def test_a_path_without_a_folder_means_the_provider_s_default_folder(qapp):
+    """A provider that keeps every catalogue in a folder (cocat-rs: a project) names the one a
+    notebook path without a folder means."""
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    from SciQLop.user_api.catalogs._service import CatalogService
+
+    class InFolders(DummyProvider):
+        def __init__(self):
+            super().__init__(num_catalogs=0, events_per_catalog=0, name="In folders")
+
+        def default_folder(self):
+            return ["home"]
+
+    provider = InFolders()
+    try:
+        service = CatalogService()
+        service.create("In folders//x", [("2020-01-01", "2020-01-02")])
+        assert [c.path for c in provider.catalogs() if c.name == "x"] == [["home"]]
+        assert len(service.get("In folders//x")) == 1
+        assert len(service.get("In folders//home//x")) == 1
+    finally:
+        CatalogRegistry.instance()._forget_for_tests(provider)

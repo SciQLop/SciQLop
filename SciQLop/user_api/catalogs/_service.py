@@ -150,9 +150,14 @@ class CatalogService:
         provider.events(catalog)  # starts the background load if needed
         return provider.is_loading(catalog)
 
-    def _resolve(self, path: str) -> tuple[CatalogProvider, Catalog]:
+    def _target(self, path: str) -> tuple[CatalogProvider, list[str], str]:
+        """The provider, folder and name a path means; no folder means the provider's default one."""
         provider_name, segments, name = _parse_path(path)
         provider = self._find_provider(provider_name)
+        return provider, segments or provider.default_folder(), name
+
+    def _resolve(self, path: str) -> tuple[CatalogProvider, Catalog]:
+        provider, segments, name = self._target(path)
         catalog = self._find_catalog(provider, segments, name)
         if catalog is None:
             raise KeyError(f"Catalog not found: {path!r}")
@@ -284,13 +289,12 @@ class CatalogService:
         """
         speasy_cat = _normalize_input(data)
         new_events = [_event_to_internal(e) for e in speasy_cat]
-        provider_name, segments, name = _parse_path(path)
-        provider = self._find_provider(provider_name)
+        provider, segments, name = self._target(path)
 
         existing = self._find_catalog(provider, segments, name)
         if existing is None:
             if Capability.CREATE_CATALOGS not in provider.capabilities():
-                raise PermissionError(f"Provider {provider_name!r} cannot create catalogs")
+                raise PermissionError(f"Provider {provider.name!r} cannot create catalogs")
             existing = provider.create_catalog(name, path=segments)
 
         self._persist(provider, existing, new_events)
@@ -372,13 +376,12 @@ class CatalogService:
         PermissionError
             If the provider doesn't support catalog creation.
         """
-        provider_name, segments, name = _parse_path(path)
-        provider = self._find_provider(provider_name)
+        provider, segments, name = self._target(path)
 
         if self._find_catalog(provider, segments, name) is not None:
             raise ValueError(f"Catalog already exists: {path!r}")
         if Capability.CREATE_CATALOGS not in provider.capabilities():
-            raise PermissionError(f"Provider {provider_name!r} cannot create catalogs")
+            raise PermissionError(f"Provider {provider.name!r} cannot create catalogs")
 
         catalog = provider.create_catalog(name, path=segments)
         speasy_cat = _normalize_input(data)

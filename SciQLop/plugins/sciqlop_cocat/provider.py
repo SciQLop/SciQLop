@@ -1134,6 +1134,14 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
             raise PermissionError("No project you can edit is joined")
         return self._default_room_id if self._default_room_id in writable else writable[0]
 
+    def default_folder(self) -> list[str]:
+        """Every catalogue is in a project: a notebook path without one means where new
+        catalogues go (the account's own project, or My catalogues signed out)."""
+        try:
+            return [self._room_for_new_catalog(None)]
+        except (RuntimeError, PermissionError):
+            return []
+
     def create_catalog(self, name: str, path: list[str] | None = None) -> Catalog:
         room_id = self._room_for_new_catalog(path)
         sub_path = list(path[1:]) if path else []

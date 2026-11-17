@@ -10,14 +10,15 @@ from .test_provider_rooms import FakeSession, run
 PROVIDER = "Catalogs under test"  # the shared test main window has a "Catalogs (cocat-rs)" too
 
 
-class _UnderTest(CocatRsProvider):
-    NAME = PROVIDER
+def under_test(session, tmp_path) -> CocatRsProvider:
+    p = CocatRsProvider(author="me", session=session, cache_dir=tmp_path / "cache", local_dir=tmp_path / "local")
+    p._name = PROVIDER
+    return p
 
 
 @pytest.fixture
 def provider(qapp, tmp_path):
-    p = _UnderTest(author="me", session=FakeSession(signed_in=False), cache_dir=tmp_path / "cache",
-                   local_dir=tmp_path / "local")
+    p = under_test(FakeSession(signed_in=False), tmp_path)
     run(p.show_signed_out())
     yield p
     run(p.close())
@@ -98,3 +99,34 @@ def test_persist_needs_no_save(catalogs, path, provider):
     catalogs.persist(path("t"))
     [catalog] = provider.catalogs()
     assert not provider.is_dirty(catalog)
+
+
+# ---- a path without a project: the default one ----
+
+def test_a_path_without_a_project_means_the_default_one(catalogs, path, provider):
+    catalogs.create(f"{PROVIDER}//shocks", TWO)
+
+    assert len(catalogs.get(f"{PROVIDER}//shocks")) == 2
+    assert catalogs.list(PROVIDER) == [path("shocks")]  # listed with its project
+    catalogs.add_events(f"{PROVIDER}//shocks", [("2021-01-01", "2021-01-02")])
+    assert len(catalogs.get(path("shocks"))) == 3
+
+
+def test_save_and_remove_without_a_project(catalogs, path):
+    catalogs.save(f"{PROVIDER}//shocks", TWO)
+    assert len(catalogs.get(path("shocks"))) == 2
+    catalogs.remove(f"{PROVIDER}//shocks")
+    assert catalogs.list(PROVIDER) == []
+
+
+def test_without_a_project_it_is_the_default_one_signed_in(qapp, tmp_path):
+    from .test_provider_rooms import ROOMS
+    p = under_test(FakeSession(rooms=ROOMS), tmp_path)
+    try:
+        run(p.connect())
+        CatalogService().create(f"{PROVIDER}//shocks", TWO)
+        [catalog] = p.catalogs()
+        assert catalog.path == ["a"]  # the account's own project, not the read-only "Team"
+    finally:
+        run(p.close())
+        CatalogRegistry.instance()._forget_for_tests(p)

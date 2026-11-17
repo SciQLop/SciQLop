@@ -307,6 +307,11 @@ class CatalogProvider(QObject):
         """Custom display name for an explicit folder. Return None to use the default."""
         return None
 
+    def default_folder(self) -> list[str]:
+        """The folder a notebook path naming none means (``"provider//name"``). The root by
+        default; a provider that keeps every catalogue in a folder names its usual one."""
+        return []
+
     def node_icon(self, node_type: NodeType, path: list[str] | None = None) -> QIcon | None:
         """Return a custom icon for a node type, or None for default."""
         return None
