@@ -1,6 +1,9 @@
 """The cocat-rs plugin as a built-in SciQLop plugin: found in the plugins folder, loaded under its
-one module name, and off until the user enables it."""
+one module name, and on for a new installation."""
 import os
+from types import SimpleNamespace
+
+import cocat_rs
 
 from SciQLop.components.plugins.backend.loader import loader
 from SciQLop.components.plugins.backend.loader.plugin_desc import PluginDesc
@@ -32,6 +35,17 @@ def test_it_asks_for_cocat_rs_and_not_for_sciqlop_itself():
     assert not sciqlop_specifier(dependencies)
 
 
-def test_it_is_off_until_enabled():
-    """Moving it in must not give every user a second catalogue root, nor change the default provider."""
-    assert _descriptor().disabled
+def test_it_is_on_for_a_new_installation():
+    assert not _descriptor().disabled
+    enabled = loader._enabled_plugins(SimpleNamespace(plugins={}, extra_plugins_folders=[]), {})
+    assert NAME in [name for _, name in enabled]
+
+
+def test_the_tests_never_see_the_sign_in_of_the_person_running_them():
+    """The shared test main window loads the plugin: with the system keyring it would connect to
+    the real server as the developer."""
+    import keyring
+    from keyring.backends.null import Keyring
+
+    assert isinstance(keyring.get_keyring(), Keyring)
+    assert cocat_rs.Client("https://sciqlop.lpp.polytechnique.fr/cocat-dev").session is None

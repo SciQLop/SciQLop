@@ -142,6 +142,9 @@ def pytest_configure(config):
     # provider then downloads master CDFs to build its inventory, which blew the 120 s
     # test timeout on a slow CI network. No test uses archive products.
     os.environ.setdefault("SPEASY_CORE_DISABLED_PROVIDERS", "archive")
+    # The cocat plugin, loaded by the shared main window, keeps its sign-in in the system
+    # keyring: with the real one, the tests would connect to the server as the developer.
+    os.environ["PYTHON_KEYRING_BACKEND"] = "keyring.backends.null.Keyring"
     os.environ["SCIQLOP_DEBUG"] = "1"
     os.environ["INSIDE_SCIQLOP"] = "1"
     # Browser-free test sessions: WebChannelPage (welcome/appstore) skips the
