@@ -672,7 +672,7 @@ class PlotPanel(GuardedImpl):
         Parameters
         ----------
         catalog_path : str
-            Fully-qualified catalog path, e.g. ``"My Catalogs//events"``.
+            Fully-qualified catalog path, e.g. ``"Catalogs (cocat-rs)//events"``.
         override_color : str, optional
             Display color for the overlay spans.
         show_spans : bool, optional

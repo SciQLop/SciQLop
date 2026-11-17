@@ -18,7 +18,7 @@ class CatalogOverlay:
     Attributes
     ----------
     catalog_path : str
-        Fully-qualified catalog path, e.g. ``"My Catalogs//events"``.
+        Fully-qualified catalog path, e.g. ``"Catalogs (cocat-rs)//events"``.
     override_color : str or None
         Optional color override for the overlay spans.
     show_spans : bool
@@ -89,7 +89,7 @@ def add_catalog_overlay(
     panel : PlotPanel
         Target plot panel.
     catalog_path : str
-        Fully-qualified catalog path, e.g. ``"My Catalogs//events"``.
+        Fully-qualified catalog path, e.g. ``"Catalogs (cocat-rs)//events"``.
     override_color : str, optional
         Display color for the overlay spans.
     show_spans : bool, optional
@@ -108,7 +108,7 @@ def add_catalog_overlay(
 
     Examples
     --------
-    >>> overlay = add_catalog_overlay(panel, "My Catalogs//events", override_color="red")
+    >>> overlay = add_catalog_overlay(panel, "Catalogs (cocat-rs)//events", override_color="red")
     """
     provider, catalog = _resolve_catalog(catalog_path)
     impl = panel._get_impl_or_raise()

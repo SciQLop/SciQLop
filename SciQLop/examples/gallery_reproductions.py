@@ -126,7 +126,7 @@ def catalog_overlay_panel(panel: PlotPanel) -> None:
     # Catalog overlays attach to the panel manager; use a local catalog path
     # if one exists, otherwise the function documents the API usage.
     try:
-        add_catalog_overlay(panel, "My Catalogs//events", override_color="red")
+        add_catalog_overlay(panel, "Catalogs (cocat-rs)//events", override_color="red")
     except Exception:
         pass  # catalog may not exist in all test environments
 

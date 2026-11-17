@@ -94,7 +94,7 @@ STYLE = STYLE.replace(kit.keyframes(f"{P}-click", []), "") \
 
 DOT = '<circle cx="{x}" cy="{y}" r="4" fill="var(--c4)"/>'
 EVENT_ROWS = "".join(DOT.format(x=70, y=y - 4) + f'<text x="82" y="{y}" class="small">2019-03-01 {start}</text>' for y, (_, _, start) in zip(ROW_Y, EVENTS))
-ROWS = (kit.tree_row(106, 0, "My Catalogs", "open") + '<rect x="55" y="118" width="180" height="24" rx="6" fill="var(--accent-soft)"/>'
+ROWS = (kit.tree_row(106, 0, "My catalogues", "open") + '<rect x="55" y="118" width="180" height="24" rx="6" fill="var(--accent-soft)"/>'
         + DOT.format(x=84, y=130) + kit.tree_row(134, 1, "MMS crossings") + kit.tree_row(162, 1, "Flux ropes", cls="dim")
         + '<line x1="57" y1="196" x2="233" y2="196" stroke="var(--line)"/>'
         + '<text x="62" y="222" class="small dim">Start (UTC)</text>'

@@ -60,10 +60,10 @@ STYLE = kit.base_style(P, f"{T:g}s") + f"""
     + kit.keyframes(f"{P}-s1", lit(0.5, 3.2)) + kit.keyframes(f"{P}-s2", lit(3.5, RELEASE)) + kit.keyframes(f"{P}-s3", lit(RELEASE + 0.3, RESET - 0.3))
 
 DOT = '<circle cx="{x}" cy="{y}" r="4" fill="var(--{c})"/>'
-ROWS = "".join([kit.tree_row(106, 0, "My Catalogs", "open"),
+ROWS = "".join([kit.tree_row(106, 0, "My catalogues", "open"),
                 DOT.format(x=84, y=130, c="c4"), kit.tree_row(134, 1, "MMS crossings"),
                 DOT.format(x=84, y=158, c="c2"), kit.tree_row(162, 1, "Flux ropes", cls="dim"),
-                kit.tree_row(190, 0, "Shared", "closed", cls="dim")])
+                kit.tree_row(190, 0, "Public catalogues", "closed", cls="dim")])
 
 BODY = f"""{kit.window(P, active="catalogue", tab_class="tabhot a")}
 {kit.panel_frame()}

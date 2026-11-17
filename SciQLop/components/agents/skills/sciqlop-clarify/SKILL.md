@@ -45,9 +45,9 @@ question up front is cheaper.
 
 **Event detection and catalogs**
 - The criterion: threshold, duration, how close two events must be to merge.
-- Which catalog to write to, new or existing, and whether to save it to disk
-  (`catalogs.persist`). Saving `My Catalogs` also saves the user's own
-  pending edits.
+- Which catalog to write to, new or existing, and in which project (the
+  default one unless the user says). A catalog is stored, and synced to the
+  user's account, as soon as it is written.
 
 **Deliverable**
 - A plot on the current panel, a new panel, a virtual product reusable from

@@ -95,13 +95,13 @@ Dedicated IPython magics make common operations one-liners:
 
 SciQLop provides a powerful catalog system for labeling and browsing events in your data:
 
-- **Multiple providers**: local catalogs (tscat/SQLite), collaborative catalogs (cocat), and read-only speasy catalogs
-  all appear in a unified tree browser
+- **Multiple providers**: your own and shared catalogs (cocat-rs), and read-only speasy catalogs, all appear in a
+  unified tree browser
 - **Visual overlays**: catalogs are displayed as color-coded vertical spans on your plots
 - **Color mapping**: color events by any metadata column (categorical or continuous with matplotlib colormaps)
 - **Graphical editing**: Shift+drag to create new events, drag span edges to resize, click to jump to an event
 - **Full API from notebooks**: `catalogs.list()`, `catalogs.get()`, `catalogs.create()`, `catalogs.save()`,
-  `catalogs.add_events()`, `catalogs.remove_events()`, and `catalogs.persist()` to write the changes to disk
+  `catalogs.add_events()`, `catalogs.remove_events()` and `catalogs.remove()`
 
 <p align="center">
 <img src="pictures/sciqlop_catalogs.png" alt="SciQLop catalogs" width="80%"/>
@@ -109,9 +109,12 @@ SciQLop provides a powerful catalog system for labeling and browsing events in y
 
 ## Collaborative Catalog Editing
 
-Multiple users can co-edit catalogs in real time via [cocat](https://github.com/SciQLop/cocat) (CRDT-based
-synchronization over WebSocket). Create, edit and delete events simultaneously — all changes are merged
-conflict-free across all connected clients.
+Sign in to a CoCat server and your catalogs follow you, and you can share projects: multiple users co-edit
+catalogs in real time via [cocat-rs](https://github.com/SciQLop/cocat-rs) (CRDT-based synchronization). Create,
+edit and delete events simultaneously — all changes are merged conflict-free across all connected clients.
+Signed out, your catalogs stay on your computer.
+
+Catalogs from older SciQLop versions (tscat, "My Catalogs") are imported at the first start.
 
 ## AI Assistant
 
@@ -281,23 +284,19 @@ def b_mag(start: float, stop: float) -> "Scalar":
 from datetime import datetime, timezone
 from SciQLop.user_api.catalogs import catalogs
 
-# Create a new catalog with events
-catalogs.create("My Catalogs//my_events", [
+# Create a new catalog with events, in your default project; it is stored at once
+catalogs.create("Catalogs (cocat-rs)//my_events", [
     (datetime(2015, 10, 22, 6, 0, tzinfo=timezone.utc),
      datetime(2015, 10, 22, 7, 0, tzinfo=timezone.utc),
      {"type": "magnetopause_crossing"}),
 ])
-
-# Write it to disk, like the catalog browser's Save.
-# Until then the catalog only exists in memory and is lost when SciQLop closes.
-catalogs.persist("My Catalogs//my_events")
 
 # List all catalogs
 for c in catalogs.list():
     print(c)
 
 # Get the catalog back
-cat = catalogs.get("My Catalogs//my_events")
+cat = catalogs.get("Catalogs (cocat-rs)//my_events")
 ```
 
 More examples can be found in the [examples](SciQLop/examples) folder — they are also available from the welcome screen.
@@ -314,9 +313,7 @@ SciQLop
 │   ├── CDFpp         — High-performance CDF file reader (C++)
 │   ├── SciQLop-cache — High-performance caching backend
 │   └── speasy_proxy  — Caching proxy server for shared Speasy data access
-├── cocat             — Collaborative catalogs via CRDT
-├── tscat             — Time series catalog Python library
-└── tscat_gui         — Qt GUI components for tscat catalogs
+└── cocat-rs          — Collaborative catalogs via CRDT (Rust, with Python bindings)
 ```
 
 | Repository | Description | Language |
@@ -327,9 +324,8 @@ SciQLop
 | [CDFpp](https://github.com/SciQLop/CDFpp) | Fast CDF (Common Data Format) reader/writer | C++ |
 | [SciQLop-cache](https://github.com/SciQLop/SciQLop-cache) | High-performance caching layer for data requests | C++/Python |
 | [speasy_proxy](https://github.com/SciQLop/speasy_proxy) | Caching proxy server for shared Speasy data access | Python |
-| [cocat](https://github.com/SciQLop/cocat) | Collaborative catalog editing via CRDT/WebSocket | Python |
-| [tscat](https://github.com/SciQLop/tscat) | Time series catalog library (events, catalogs, attributes) | Python |
-| [tscat_gui](https://github.com/SciQLop/tscat_gui) | Qt GUI components for browsing and editing tscat catalogs | Python |
+| [cocat-rs](https://github.com/SciQLop/cocat-rs) | Collaborative catalog editing via CRDT, with a server | Rust/Python |
+| [tscat](https://github.com/SciQLop/tscat) | The catalog library of older SciQLop versions, read once to import their catalogs | Python |
 
 # Citing SciQLop
 

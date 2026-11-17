@@ -89,10 +89,9 @@ def _event_to_internal(event: SpeasyEvent) -> CatalogEvent:
 
 
 def _reject_inverted_events(catalog: SpeasyCatalog) -> SpeasyCatalog:
-    """Mirror tscat's rule (start > stop raises, start == stop is fine) at the
-    API boundary: tscat enforces it asynchronously on its driver thread, so
-    without this check the user-api cache stores events the backing store
-    silently rejected."""
+    """Start > stop raises, start == stop is fine, whatever the provider: a store
+    that rejects such an event later, or on another thread, would leave the
+    user-api cache holding events the store does not have."""
     for event in catalog:
         if event.start_time > event.stop_time:
             raise ValueError(
@@ -215,7 +214,7 @@ class CatalogService:
         ----------
         prefix : str, optional
             If given, only catalogs whose path starts with this prefix are
-            returned.  E.g. ``"My Catalogs"`` lists all local catalogs,
+            returned.  E.g. ``"Catalogs (cocat-rs)"`` lists your own catalogs,
             ``"cocat//room_id"`` lists catalogs in a specific cocat room.
 
         Returns
@@ -244,7 +243,7 @@ class CatalogService:
         Parameters
         ----------
         path : str
-            Fully-qualified catalog path (e.g. ``"My Catalogs//my_catalog"``).
+            Fully-qualified catalog path (e.g. ``"Catalogs (cocat-rs)//my_catalog"``).
 
         Returns
         -------
@@ -269,9 +268,9 @@ class CatalogService:
         Existing events are replaced in bulk. UUIDs embedded in
         ``event.meta["__sciqlop_uuid__"]`` are preserved on round-trip.
 
-        The change is in memory only: call :meth:`persist` to write it to
-        disk, like the catalog browser's Save. Without it the change is lost
-        when SciQLop closes.
+        "Catalogs (cocat-rs)" stores the change at once. Other providers may
+        keep it in memory until :meth:`persist`, like the catalog browser's
+        Save.
 
         Parameters
         ----------
@@ -325,12 +324,11 @@ class CatalogService:
         """Write a catalog's pending changes to storage, like the catalog
         browser's Save.
 
-        Writing events (``create``, ``add_events``, ``save``, ...) only changes
-        them in memory; they are lost when SciQLop closes unless saved. Where
-        the provider can only save as a whole (the local "My Catalogs" store),
-        this saves every pending change of that provider, as the browser does.
-        Providers that store each change as it happens ("Shared") need no save,
-        and this does nothing for them.
+        Providers that store each change as it happens ("Catalogs (cocat-rs)")
+        need no save, and this does nothing for them. Others keep written
+        events (``create``, ``add_events``, ``save``, ...) in memory until
+        saved; where such a provider can only save as a whole, this saves
+        every pending change of that provider, as the browser does.
 
         Parameters
         ----------
@@ -357,9 +355,9 @@ class CatalogService:
     def create(self, path: str, data) -> None:
         """Create a new catalog with the given events (strict — fails if exists).
 
-        The change is in memory only: call :meth:`persist` to write it to
-        disk, like the catalog browser's Save. Without it the change is lost
-        when SciQLop closes.
+        "Catalogs (cocat-rs)" stores the change at once. Other providers may
+        keep it in memory until :meth:`persist`, like the catalog browser's
+        Save.
 
         Parameters
         ----------
@@ -393,9 +391,9 @@ class CatalogService:
     def add_events(self, path: str, data) -> None:
         """Append events to an existing catalog.
 
-        The change is in memory only: call :meth:`persist` to write it to
-        disk, like the catalog browser's Save. Without it the change is lost
-        when SciQLop closes.
+        "Catalogs (cocat-rs)" stores the change at once. Other providers may
+        keep it in memory until :meth:`persist`, like the catalog browser's
+        Save.
 
         Parameters
         ----------
@@ -424,9 +422,9 @@ class CatalogService:
         (present on events returned by :meth:`get`). Raw UUID strings are
         also accepted.
 
-        The change is in memory only: call :meth:`persist` to write it to
-        disk, like the catalog browser's Save. Without it the change is lost
-        when SciQLop closes.
+        "Catalogs (cocat-rs)" stores the change at once. Other providers may
+        keep it in memory until :meth:`persist`, like the catalog browser's
+        Save.
 
         Parameters
         ----------

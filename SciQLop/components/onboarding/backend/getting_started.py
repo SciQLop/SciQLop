@@ -116,10 +116,11 @@ GETTING_STARTED = Tour(
             step_id="catalog_sources",
             title="Where catalogs come from",
             body=(
-                "'My Catalogs' is your own library: right-click it to create "
-                "one. 'Remote' mirrors read-only catalogs from AMDA and other "
-                "services, and 'Shared' catalogs are edited live with "
-                "collaborators."
+                "'Catalogs (cocat-rs)' holds your own catalogs, in 'My "
+                "catalogues': right-click it to create one. Signed in, they "
+                "follow you, and you share projects with collaborators. "
+                "'Remote' mirrors read-only catalogs from AMDA and other "
+                "services."
             ),
             resolver=targets.in_dock("Catalogs", targets.resolve_catalog_tree),
         ),
