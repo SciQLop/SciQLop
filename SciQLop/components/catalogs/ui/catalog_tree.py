@@ -20,6 +20,7 @@ from ..backend.registry import CatalogRegistry
 
 DIRTY_PROVIDER_ROLE = Qt.ItemDataRole.UserRole + 1
 LOADING_ROLE = Qt.ItemDataRole.UserRole + 2
+SECONDARY_ROLE = Qt.ItemDataRole.UserRole + 3  # grey text after the name: the provider, on a name clash
 
 SECTION_ORDER = (Section.MINE, Section.SHARED, Section.REFERENCE)
 SECTION_LABELS = {Section.MINE: "My catalogues", Section.SHARED: "Shared", Section.REFERENCE: "Reference"}
@@ -634,7 +635,20 @@ class CatalogTreeModel(QAbstractItemModel):
                     and node.provider.is_dirty())
         if role == LOADING_ROLE:
             return node.catalog is not None and node.catalog.uuid in self._loading_uuids
+        if role == SECONDARY_ROLE:
+            return self._secondary(node)
         return None
+
+    def _secondary(self, node: _Node) -> str | None:
+        """The provider's name, when a row next to this one has the same name and another provider:
+        otherwise it shows only in the tooltip."""
+        if node.provider is None or node.kind == _Kind.NOTE or node.parent is None:
+            return None
+        name = self._display(node)
+        clash = any(other.provider is not None and other.provider is not node.provider
+                    and other.kind != _Kind.NOTE and self._display(other) == name
+                    for other in node.parent.children)
+        return node.provider.name if clash else None
 
     def setData(self, index: QModelIndex, value, role: int = Qt.ItemDataRole.EditRole) -> bool:
         if not index.isValid() or role != Qt.ItemDataRole.EditRole:

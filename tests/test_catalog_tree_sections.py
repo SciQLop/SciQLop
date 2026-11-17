@@ -258,3 +258,47 @@ def test_a_provider_that_moves_a_folder_to_another_section_says_so_and_the_tree_
     p.sections_changed.emit()
     assert "Shared" not in rows(model)
     assert rows(model, child(model, "Reference", "Team")) == [p.catalogs()[1].name]
+
+
+def _two_lists_named_alike(made):
+    from SciQLop.components.catalogs.backend.provider import Placement, Section
+    a, _ = Placed.make(made, {"me": Placement(Section.MINE, inline=True)}, [["me"]], name="Catalogs (cocat-rs)")
+    b, _ = Placed.make(made, {"me": Placement(Section.MINE, inline=True)}, [["me"]], name="MSA lists")
+    return a, b
+
+
+def test_rows_named_alike_from_two_providers_name_their_provider_in_grey(made, qapp):
+    from SciQLop.components.catalogs.ui.catalog_tree import SECONDARY_ROLE
+    _two_lists_named_alike(made)
+    model = _tree(qapp)
+    mine = child(model, "My catalogues")
+    named = [model.index(r, 0, mine) for r in range(model.rowCount(mine))
+             if model.data(model.index(r, 0, mine)) == "Catalog-0"]
+    assert sorted(model.data(i, SECONDARY_ROLE) for i in named) == ["Catalogs (cocat-rs)", "MSA lists"]
+
+
+def test_a_name_no_other_provider_uses_has_no_grey_text(made, qapp):
+    from SciQLop.components.catalogs.ui.catalog_tree import SECONDARY_ROLE
+    from SciQLop.components.catalogs.backend.provider import Placement, Section
+    Placed.make(made, {"me": Placement(Section.MINE, inline=True)}, [["me"]])
+    model = _tree(qapp)
+    mine = child(model, "My catalogues")
+    assert [model.data(model.index(r, 0, mine), SECONDARY_ROLE) for r in range(model.rowCount(mine))] \
+        == [None] * model.rowCount(mine)
+
+
+def test_the_browser_draws_the_provider_name_after_the_row_name(made, qtbot, qapp):
+    from PySide6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    _two_lists_named_alike(made)
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    proxy, delegate = browser._proxy_model, browser._save_delegate
+    mine = proxy.index(0, 0)
+    rows_ = [proxy.index(r, 0, mine) for r in range(proxy.rowCount(mine))]
+    alike = next(i for i in rows_ if i.data() == "Catalog-0")
+    option = QStyleOptionViewItem()
+    option.initFrom(browser._catalog_tree)
+    plain_width = QStyledItemDelegate.sizeHint(delegate, option, alike).width()
+    assert delegate.sizeHint(option, alike).width() > plain_width  # room made for the grey name
+    assert delegate.secondary_text(alike) in ("Catalogs (cocat-rs)", "MSA lists")

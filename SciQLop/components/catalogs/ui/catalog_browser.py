@@ -16,9 +16,12 @@ from PySide6.QtWidgets import (
     QWidget,
     QHeaderView,
     QMenu,
+    QApplication,
+    QStyle,
+    QStyleOptionViewItem,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QKeySequence, QPen, QColor, QShortcut
+from PySide6.QtGui import QAction, QKeySequence, QPalette, QPen, QColor, QShortcut
 from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components.command_palette.arg_types import catalog_arg_value
 from SciQLop.components.command_palette.menu_entries import add_menu_entries
@@ -30,7 +33,7 @@ from datetime import datetime, timezone, timedelta
 import uuid as _uuid
 from SciQLop.core.ui import Metrics
 from ..backend.provider import Capability, CatalogProvider, Catalog, CatalogEvent
-from .catalog_tree import CatalogTreeModel, DIRTY_PROVIDER_ROLE, LOADING_ROLE
+from .catalog_tree import CatalogTreeModel, DIRTY_PROVIDER_ROLE, LOADING_ROLE, SECONDARY_ROLE
 from .event_table import EventTableModel, EventSortProxy
 from .link_text import first_url
 
@@ -93,8 +96,17 @@ class _SaveButtonDelegate(QStyledItemDelegate):
             self._spinner_timer.stop()
         self._has_loading = False
 
+    _SECONDARY_GAP = 6
+
+    @staticmethod
+    def secondary_text(index) -> str | None:
+        return index.data(SECONDARY_ROLE)
+
     def paint(self, painter, option, index):
         super().paint(painter, option, index)
+        secondary = self.secondary_text(index)
+        if secondary:
+            self._paint_secondary(painter, option, index, secondary)
         if index.data(LOADING_ROLE):
             self._paint_spinner(painter, option)
             self._has_loading = True
@@ -102,6 +114,24 @@ class _SaveButtonDelegate(QStyledItemDelegate):
                 self._spinner_timer.start()
         if index.data(DIRTY_PROVIDER_ROLE):
             self._get_icon().paint(painter, self._icon_rect(option))
+
+    def _paint_secondary(self, painter, option, index, text: str) -> None:
+        """In grey right after the row's own name, cut to the room left."""
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        style = opt.widget.style() if opt.widget is not None else QApplication.style()
+        name_rect = style.subElementRect(QStyle.SubElement.SE_ItemViewItemText, opt, opt.widget)
+        metrics = opt.fontMetrics
+        left = name_rect.left() + metrics.horizontalAdvance(opt.text) + self._SECONDARY_GAP
+        room = option.rect.right() - left
+        if room <= 0:
+            return
+        painter.save()
+        painter.setPen(opt.palette.color(QPalette.ColorRole.PlaceholderText))
+        painter.drawText(QRect(left, name_rect.top(), room, name_rect.height()),
+                         int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
+                         metrics.elidedText(text, Qt.TextElideMode.ElideRight, room))
+        painter.restore()
 
     def _paint_spinner(self, painter, option):
         s = self._ICON_SIZE
@@ -127,6 +157,9 @@ class _SaveButtonDelegate(QStyledItemDelegate):
 
     def sizeHint(self, option, index):
         size = super().sizeHint(option, index)
+        secondary = self.secondary_text(index)
+        if secondary:
+            size.setWidth(size.width() + self._SECONDARY_GAP + option.fontMetrics.horizontalAdvance(secondary))
         if index.data(DIRTY_PROVIDER_ROLE) or index.data(LOADING_ROLE):
             size.setWidth(size.width() + self._ICON_SIZE + 4)
         return size
