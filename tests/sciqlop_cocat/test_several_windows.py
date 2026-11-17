@@ -13,6 +13,7 @@ from SciQLop.plugins.sciqlop_cocat.locks import lock_on
 from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
 from .conftest import HOUR, T0
 from .test_provider_rooms import ROOMS, FakeSession, opened, run  # noqa: F401
+from .test_tscat_first_start import SHOCKS, Tscat
 
 ELSEWHERE = "My catalogues (open in another SciQLop window)"
 
@@ -23,13 +24,15 @@ def window(qapp, tmp_path, monkeypatch):
     made = []
     monkeypatch.setattr(provider_module.questions, "ask_move", lambda names, target: False)
 
-    def window(session=None):
+    def window(session=None, tscat=None, start=True):
         p = CocatRsProvider(author="me", session=session or FakeSession(signed_in=False),
-                            cache_dir=tmp_path / "cache", local_dir=tmp_path / "local")
+                            cache_dir=tmp_path / "cache", local_dir=tmp_path / "local", read_tscat=tscat)
         made.append(p)
-        p.errors = []
+        p.errors, p.notices = [], []
         p.error_occurred.connect(p.errors.append)
-        run(p._start())
+        p.notice.connect(p.notices.append)
+        if start:
+            run(p._start())
         return p
 
     yield window
@@ -153,3 +156,45 @@ def test_a_window_that_crashed_frees_its_lock(tmp_path):
         holder.wait()
     assert lock.tryLock(0)
     lock.unlock()
+
+
+# ---- the tscat catalogues, brought in at the first start ----
+
+def test_two_windows_starting_at_once_import_tscat_once(window, tmp_path):
+    second = window(tscat=Tscat(SHOCKS), start=False)
+
+    async def read_while_the_other_window_starts():
+        await second._start()
+        return SHOCKS
+
+    first = window(tscat=read_while_the_other_window_starts)
+
+    assert second._read_tscat.reads == 0 and second.notices == [] and second.errors == []
+    [told] = first.notices
+    assert "1 catalogue(s) and 1 event(s) imported from tscat" in told
+    assert [c.name for c in first.catalogs()] == ["Shocks"]
+    project = project_of(first)
+    assert not lock_on(tmp_path / "local" / f"{project}.lock").tryLock(0)  # written while holding it
+
+
+def test_a_window_started_after_the_import_does_not_read_tscat_again(window):
+    window(tscat=Tscat(SHOCKS))
+
+    second = window(tscat=Tscat(SHOCKS))
+
+    assert second._read_tscat.reads == 0 and second.notices == []
+
+
+def test_tscat_is_not_written_into_a_project_open_in_another_window(window):
+    first = window()  # holds My catalogues, and did not import
+    project = project_of(first)
+
+    second = window(tscat=Tscat(SHOCKS))
+
+    [error] = second.errors
+    assert error == ("Cannot import your tscat catalogues: My catalogues is open in another "
+                     "SciQLop window")
+    assert list(second._room_infos) == [project] and first.catalogs() == []
+    run(first.close())
+    third = window(tscat=Tscat(SHOCKS))  # tried again at the next start
+    assert [c.name for c in third.catalogs()] == ["Shocks"]

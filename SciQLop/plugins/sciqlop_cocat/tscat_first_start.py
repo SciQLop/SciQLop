@@ -5,22 +5,38 @@ catalogues brings them to the account at the next sign-in."""
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 
 import cocat_rs
 
 from SciQLop.components.sciqlop_logging import getLogger
 
+from .locks import lock_on
 from .sharing_dialog import describe
 from .tscat_import import Imported, tscat_content
 
 log = getLogger(__name__)
 
 TSCAT_CATALOGUES = "tscat catalogues"  # the project made for them when none is kept on this computer
+IMPORT_LOCK = "tscat_import.lock"  # held by the window bringing the tscat catalogues in at its start
 
 
 class ImportingTscat:
     async def import_tscat_once(self) -> None:
-        if self._read_tscat is None or self._local is None or self._local.tscat_imported:
+        """Once for the person, not once per window: two windows starting together share the
+        folders, and the one that finds the other at it leaves it the work."""
+        if self._read_tscat is None or self._local is None:
+            return
+        only_one_window = lock_on(Path(self._local_dir) / IMPORT_LOCK)
+        if not only_one_window.tryLock(0):
+            return
+        try:
+            await self._import_tscat_unless_done()
+        finally:
+            only_one_window.unlock()
+
+    async def _import_tscat_unless_done(self) -> None:
+        if self._local.tscat_imported:
             return
         try:
             await self._bring_tscat_in(None)
@@ -63,6 +79,8 @@ class ImportingTscat:
         if room_id is None:
             room_id = self._show_new_local_project(TSCAT_CATALOGUES)
         await self.join_room(room_id)
+        if room_id in self._elsewhere:
+            raise RuntimeError(f"{self._room_infos[room_id].name} is open in another SciQLop window")
         if room_id not in self._rooms:
             raise RuntimeError("the project kept on this computer cannot be opened")
         return room_id
