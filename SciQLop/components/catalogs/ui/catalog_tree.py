@@ -352,13 +352,14 @@ class CatalogTreeModel(QAbstractItemModel):
         on_caps = lambda cat, p=provider: self._on_capabilities_changed(p)
         on_load_start = lambda cat, p=provider: self._on_loading_changed(p, cat, True)
         on_load_end = lambda cat, p=provider: self._on_loading_changed(p, cat, False)
+        on_sections = lambda p=provider: self._place_again(p)
         connections = [
             (provider.catalog_added, on_added), (provider.catalog_removed, on_removed),
             (provider.dirty_changed, on_dirty), (provider.catalog_renamed, on_renamed),
             (provider.catalog_moved, on_moved), (provider.folder_added, on_folder_added),
             (provider.folder_removed, on_folder_removed), (provider.status_changed, on_status),
             (provider.capabilities_changed, on_caps), (provider.loading_started, on_load_start),
-            (provider.loading_finished, on_load_end),
+            (provider.loading_finished, on_load_end), (provider.sections_changed, on_sections),
         ]
         for signal, slot in connections:
             signal.connect(slot)
@@ -488,15 +489,18 @@ class CatalogTreeModel(QAbstractItemModel):
         for child in node.children:
             self._repaint(child)
 
+    def _place_again(self, provider: CatalogProvider) -> None:
+        self._clear(provider)
+        self._populate(provider)
+        self._on_provider_status_changed(provider)
+
     def _on_capabilities_changed(self, provider: CatalogProvider) -> None:
         """A role change can move a project to another section, or take its creation rows away."""
         moved = any(self._placement(provider, group) != placement
                     for (pid, group), placement in self._placements.items() if pid is provider)
         if moved:
-            self._clear(provider)
-            self._populate(provider)
-        else:
-            self._sync_all_placeholders(provider)
+            return self._place_again(provider)
+        self._sync_all_placeholders(provider)
         self._on_provider_status_changed(provider)
 
     # ---- QAbstractItemModel interface ----

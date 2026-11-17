@@ -139,3 +139,12 @@ def test_the_own_project_s_tooltip_names_the_account(make):
     p = signed_in(make)
     assert "me@h" in p.node_tooltip(__import__("SciQLop.components.catalogs.backend.provider",
                                                fromlist=["NodeType"]).NodeType.FOLDER, path=["a"])
+
+
+def test_a_new_role_places_the_project_again(make, opened):
+    p = signed_in(make)
+    said = []
+    p.sections_changed.connect(lambda: said.append(True))
+    p.room_role_changed("b", "editor")
+    assert said == [True]
+    assert p.placement("b") == Placement(Section.SHARED)

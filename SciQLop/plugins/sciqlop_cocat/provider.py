@@ -281,6 +281,7 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
                 info.id, info.name, role, personal=info.personal,
                 editors_can_share=info.editors_can_share)
         self.capabilities_changed.emit(None)
+        self.sections_changed.emit()  # a viewer made editor gets creation rows, and the reverse
         self.status_changed.emit()
 
     def _tell(self, text: str) -> None:

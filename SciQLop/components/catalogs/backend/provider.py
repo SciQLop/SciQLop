@@ -143,6 +143,7 @@ class CatalogProvider(QObject):
     attribute_spec_changed = Signal(object, str)  # (catalog, key)
     capabilities_changed = Signal(object)  # a catalog, or None for all of this provider's (and the provider itself)
     notice = Signal(str)  # information for the user that is not an error
+    sections_changed = Signal()  # placement() answers differently: the tree places everything again
 
     def __init__(self, name: str, parent: QObject | None = None, description: str = ""):
         super().__init__(parent)

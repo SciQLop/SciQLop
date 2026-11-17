@@ -247,3 +247,14 @@ def test_a_section_still_draws_when_its_provider_left_the_registry_without_a_wor
     model.flags(mine)
     model.data(mine, Qt.ItemDataRole.DecorationRole)
     model.data(mine, Qt.ItemDataRole.ToolTipRole)
+
+
+def test_a_provider_that_moves_a_folder_to_another_section_says_so_and_the_tree_follows(made, qapp):
+    from SciQLop.components.catalogs.backend.provider import Placement, Section
+    placements = {"me": Placement(Section.MINE, inline=True), "team": Placement(Section.SHARED)}
+    p, _ = Placed.make(made, placements, [["me"], ["team"]])
+    model = _tree(qapp)
+    placements["team"] = Placement(Section.REFERENCE, can_create=False)
+    p.sections_changed.emit()
+    assert "Shared" not in rows(model)
+    assert rows(model, child(model, "Reference", "Team")) == [p.catalogs()[1].name]
