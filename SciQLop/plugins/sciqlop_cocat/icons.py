@@ -9,7 +9,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
 from PySide6.QtWidgets import QApplication
 
-GREEN, AMBER, RED, GREY, BLUE = "#3fa34d", "#e0a526", "#d0453a", "#9a9a9a", "#4a7fc1"
+GREEN, AMBER, RED, GREY, BLUE, SLATE = "#3fa34d", "#e0a526", "#d0453a", "#9a9a9a", "#4a7fc1", "#55606e"
 BADGES = {  # state -> (shape, colour)
     "synced": ("dot", GREEN),
     "connecting": ("ring", AMBER),
@@ -18,7 +18,7 @@ BADGES = {  # state -> (shape, colour)
     "no_access": ("cross", RED),
     "not joined": ("ring", GREY),
     "read-only": ("lock", BLUE),
-    "on this computer": ("screen", GREY),
+    "on this computer": ("screen", SLATE),
     "released": ("square", GREY),
     "elsewhere": ("square", AMBER),
 }
@@ -95,9 +95,9 @@ def _lock(painter, box, colour):
 
 
 def _screen(painter, box, colour):
-    _stroked(painter, colour)
+    _filled(painter, colour)
     painter.drawRect(QRectF(box.left(), box.top(), box.width(), box.height() * 0.65))
-    painter.drawLine(QPointF(box.left() + 1.5, box.bottom()), QPointF(box.right() - 1.5, box.bottom()))
+    painter.drawRect(QRectF(box.left() + 1.5, box.bottom() - 1.5, box.width() - 3, 1.5))
 
 
 _SHAPES = {"dot": _dot, "ring": _ring, "triangle": _triangle, "cross": _cross, "square": _square,
