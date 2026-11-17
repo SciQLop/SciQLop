@@ -330,6 +330,11 @@ class CatalogProvider(QObject):
         instead (cocat-rs places each project), and its catalogues at the root go to Reference."""
         return Placement(Section.REFERENCE) if folder is None else None
 
+    def folders(self) -> list[list[str]]:
+        """The folders announced with ``folder_added`` that still stand: a tree made later shows
+        them too, even empty."""
+        return []
+
     def section_note(self, section: Section) -> str | None:
         """A line of text the tree shows in *section*, e.g. why it is empty. Re-read on
         ``status_changed``."""

@@ -133,8 +133,8 @@ def test_connect_lists_rooms_with_personal_first(make_provider):
     p.folder_added.connect(folders.append)
     assert run(p.connect()) is True
     assert folders == [["a"], ["b"]]
-    assert p.folder_display_name(["a"]) == "My catalogues (default)"
-    assert p.folder_display_name(["b"]) == "Team (read-only)"
+    assert p.folder_display_name(["a"]) == "My catalogues"
+    assert p.folder_display_name(["b"]) == "Team"
     assert [a.name for a in p.actions()] == CONNECTED_ACTIONS
     assert [a.name for a in p.folder_actions(["a"])] == PROJECT_ACTIONS
 
@@ -143,7 +143,7 @@ def test_the_own_project_is_the_default_whatever_its_name(make_provider):
     p = make_provider(FakeSession(rooms=[cocat_rs.ProjectInfo("b", "Personal", "owner"),
                                          cocat_rs.ProjectInfo("a", "Renamed", "owner", personal=True)]))
     run(p.connect())
-    assert p.folder_display_name(["a"]) == "Renamed (default)"
+    assert p.folder_display_name(["a"]) == "Renamed"
     assert p.folder_display_name(["b"]) == "Personal"
 
 
@@ -151,7 +151,7 @@ def test_without_an_own_project_the_first_one_is_the_default(make_provider):
     p = make_provider(FakeSession(rooms=[cocat_rs.ProjectInfo("b", "Team", "editor"),
                                          cocat_rs.ProjectInfo("c", "Other", "editor")]))
     run(p.connect())
-    assert p.folder_display_name(["b"]) == "Team (default)"
+    assert p.folder_display_name(["b"]) == "Team"
     assert p.folder_display_name(["c"]) == "Other"
 
 
@@ -269,7 +269,7 @@ def test_a_role_change_makes_the_project_read_only(make_provider, opened):
     run(go())
     [catalog] = p.catalogs()
     assert catalog.name == "kept" and p.capabilities(catalog) == set()
-    assert p.folder_display_name(["a"]) == "Mine (read-only)"
+    assert p.folder_display_name(["a"]) == "Mine"
     assert session.sign_outs == 0 and [a.name for a in p.actions()] == CONNECTED_ACTIONS
 
 
@@ -295,7 +295,7 @@ def test_the_listener_passes_a_new_role_on(make_provider, opened):
         await p.join_room("a")
         RoomListener(p, "a").role("viewer")
     run(go())
-    assert p.folder_display_name(["a"]) == "My catalogues (read-only)"
+    assert p.folder_display_name(["a"]) == "My catalogues"
 
 
 def test_a_project_you_were_removed_from_leaves_the_tree(make_provider, opened):
@@ -537,7 +537,7 @@ def test_an_unreachable_server_shows_the_projects_of_the_last_session(make_provi
     p.notice.connect(notices.append)
     assert run(p.connect()) is True
     assert sorted(p._rooms) == ["a", "b"]
-    assert p.folder_display_name(["b"]) == "Team (read-only)"
+    assert p.folder_display_name(["b"]) == "Team"
     assert len(notices) == 1 and "last session" in notices[0]
     assert [a.name for a in p.actions()][0] == "Reconnect"
 

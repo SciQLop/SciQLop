@@ -18,7 +18,6 @@ from .conftest import HOUR, T0
 from .test_provider_rooms import ROOMS, FakeSession, RecordingRoom, opened, run  # noqa: F401
 from .test_tscat_first_start import SHOCKS, Tscat
 
-ELSEWHERE = "My catalogues (open in another SciQLop window)"
 
 
 @pytest.fixture
@@ -62,10 +61,10 @@ def test_the_window_that_opens_a_local_project_holds_it(window):
 
     assert project_of(second) == project and project not in second._rooms
     assert second.catalogs() == [] and second.errors == []
-    assert second.folder_display_name([project]) == ELSEWHERE
+    assert second.project_state(project) == "elsewhere"
     assert names(second.folder_actions([project])) == ["Open here"]
     assert "another SciQLop window" in second.node_tooltip(NodeType.FOLDER, [project])
-    assert first.folder_display_name([project]) == "My catalogues (default)"
+    assert first.project_state(project) == "on this computer"
     assert names(first.folder_actions([project]))[-1] == "Release"
 
 
@@ -89,17 +88,17 @@ def test_a_released_project_can_be_opened_in_another_window(window):
     release.callback([project])
 
     assert project not in first._rooms and first.catalogs() == []
-    assert first.folder_display_name([project]) == "My catalogues (not open)"
+    assert first.project_state(project) == "released"
     assert names(first.folder_actions([project])) == ["Open here"]
 
     run(second.open_here(project))
 
     assert second.errors == [] and [c.name for c in second.catalogs()] == ["shocks"]
-    assert second.folder_display_name([project]) == "My catalogues (default)"
+    assert second.project_state(project) == "on this computer"
 
     run(first.open_here(project))
 
-    assert project not in first._rooms and first.folder_display_name([project]) == ELSEWHERE
+    assert project not in first._rooms and first.project_state(project) == "elsewhere"
 
 
 def test_closing_a_window_frees_its_projects(window):
@@ -132,7 +131,7 @@ def test_signing_in_does_not_drop_a_project_open_in_another_window(window, tmp_p
     second = window(FakeSession(rooms=ROOMS))
 
     assert project in second._room_infos and project not in second._rooms
-    assert second.folder_display_name([project]) == ELSEWHERE
+    assert second.project_state(project) == "elsewhere"
     assert project in first._rooms
     first.create_catalog("shocks")
     run(first.close())
@@ -231,7 +230,7 @@ def test_a_later_window_keeps_the_server_projects_in_a_folder_of_its_own(window,
     [(_, own), (_, same)] = folders[2:]
     assert own == same and Path(own).parent == Path("cache/other_windows")
     assert sorted(first._rooms) == sorted(second._rooms) == ["a", "b"]  # live in both
-    assert second.folder_display_name(["a"]) == "My catalogues (default)"
+    assert second.project_state("a") == "synced" or second.project_state("a") in ("connecting", "offline")
     assert second._rooms["a"].connected_with == ("https://h", "token")
 
 
@@ -281,7 +280,7 @@ def test_a_later_window_without_the_server_does_not_open_the_account_s_copy(wind
 
     assert list(second._room_infos) == ["a"] and second._rooms == {}
     assert folders[2:] == [] and second.errors == []
-    assert second.folder_display_name(["a"]) == "My catalogues (open in another SciQLop window)"
+    assert second.project_state("a") == "elsewhere"
     assert "a" in first._rooms
     [join] = [a for a in second.folder_actions(["a"]) if a.name == "Join"]
     run(second._choose_to_join("a"))

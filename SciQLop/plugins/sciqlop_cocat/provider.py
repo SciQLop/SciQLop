@@ -40,6 +40,7 @@ from .public import PUBLIC, PUBLIC_FOLDER, Following, as_info
 from .links import Linking
 from .submission import Submitting
 from .tscat_first_start import ImportingTscat
+from .sections import Placing
 from .sharing_dialog import describe, show_sharing_dialog
 from .convert import (
     SCHEMA_ATTR_PREFIX,
@@ -138,7 +139,7 @@ def _default_project(infos) -> str | None:
     return next((i.id for i in infos if i.personal), infos[0].id if infos else None)
 
 
-class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogProvider):
+class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, CatalogProvider):
     NAME = PROVIDER_NAME
     DESCRIPTION = "Your catalogues, and the projects shared with you, through cocat-rs."
 
@@ -896,24 +897,6 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         except Exception as error:
             self.error_occurred.emit(f"Cannot export '{catalog.name}' to {path.name}: {describe(error)}")
 
-    def folder_display_name(self, path: list[str]) -> str | None:
-        if path == [PUBLIC]:
-            return PUBLIC_FOLDER
-        info = self._room_infos.get(path[0]) if len(path) == 1 else None
-        if info is None:
-            return None
-        if info.id in self._elsewhere:
-            return f"{info.name} (open in another SciQLop window)"
-        if info.id in self._local_ids and info.id not in self._rooms:
-            return f"{info.name} (not open)"
-        if info.id in self._local_ids and self._connected:
-            return f"{info.name} (on this computer)"
-        if info.id in self._public_ids:
-            return f"{info.name} (public)"
-        if info.role not in WRITE_ROLES:
-            return f"{info.name} (read-only)"
-        return f"{info.name} (default)" if info.id == self._default_room_id else info.name
-
     def node_tooltip(self, node_type, path=None, catalog=None) -> str | None:
         if node_type == NodeType.PROVIDER:
             signed_in = self._session is not None and self._session.signed_in
@@ -943,11 +926,19 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
             return tips.closed_local_tip(self._room_infos[room_id].name, room_id in self._elsewhere)
         catalogs = self._catalogs_of(room_id)
         own = [c for c in catalogs if c.uuid not in self._links]
-        return tips.project_tip(self._room_infos[room_id], state=self.room_status(room_id) if joined else None,
-                                local=room_id in self._local_ids, default=room_id == self._default_room_id,
-                                catalogues=len(catalogs), smart=sum(c.uuid in self._smart for c in own),
-                                linked=len(catalogs) - len(own),
-                                events=len({e.uuid for c in own for e in self._events.get(c.uuid, [])}))
+        tip = tips.project_tip(self._room_infos[room_id], state=self.room_status(room_id) if joined else None,
+                               local=room_id in self._local_ids, default=room_id == self._default_room_id,
+                               catalogues=len(catalogs), smart=sum(c.uuid in self._smart for c in own),
+                               linked=len(catalogs) - len(own),
+                               events=len({e.uuid for c in own for e in self._events.get(c.uuid, [])}))
+        return tip + self._account_tip() if self._is_my_catalogues(room_id) else tip
+
+    def _account_tip(self) -> str:
+        """My catalogues is where the account shows: there is no provider node any more."""
+        signed_in = self._session is not None and self._session.signed_in
+        return "<hr>" + tips.provider_tip(self.DESCRIPTION, self._author if signed_in else None, self._offline,
+                                          server=getattr(self._session, "url", "") or "",
+                                          projects=len(set(self._room_infos) - self._public_ids))
 
     def node_icon(self, node_type, path=None):
         if node_type == NodeType.FOLDER:
@@ -959,9 +950,9 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         return get_icon("link" if synced else "link_off")
 
     def _project_icon(self, path):
-        if not path or len(path) != 1 or path[0] not in self._room_infos or path[0] in self._local_ids:
-            return None  # SciQLop's own: no server to show the state of
-        return status_badge(self.room_status(path[0]) if path[0] in self._rooms else "not joined")
+        if not path or len(path) != 1 or path[0] not in self._room_infos:
+            return None
+        return status_badge(self.project_state(path[0]))
 
     @contextmanager
     def remote_changes(self):
@@ -1164,6 +1155,13 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
             return self._warn_unavailable("remove", catalog)
         cocat_cat.delete()
         self._forget_catalog(catalog)
+
+    def can_move_catalog(self, catalog: Catalog, path: list[str]) -> bool:
+        """Within a project, onto Public catalogues (a submission), or a public catalogue into a
+        project (a copy): all through move_catalog. Across projects, the tree copies."""
+        if catalog.uuid in self._public_views or (path and path[0] == PUBLIC):
+            return True
+        return bool(path) and bool(catalog.path) and path[0] == catalog.path[0]
 
     def move_catalog(self, catalog: Catalog, new_path: list[str]) -> None:
         """SciQLop's tree calls it for every drop inside this provider: a public catalogue dropped

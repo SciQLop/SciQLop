@@ -367,7 +367,8 @@ class CatalogTreeModel(QAbstractItemModel):
     def _populate(self, provider: CatalogProvider) -> None:
         if not self._splits(provider):
             self._container(provider, None)  # its node shows even before it has catalogues
-        for path in sorted(self._explicit.get(id(provider), ())):
+        announced = self._explicit.get(id(provider), set()) | {tuple(f) for f in provider.folders()}
+        for path in sorted(announced):
             self._walk(provider, list(path), explicit=True)
         for catalog in provider.catalogs():
             self._place_catalog(provider, catalog)

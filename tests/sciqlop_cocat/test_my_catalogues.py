@@ -58,11 +58,11 @@ def test_a_first_start_signed_out_has_my_catalogues_on_this_computer(make, opene
     run(p.show_signed_out())
     [project] = p._room_infos.values()
     assert project.name == "My catalogues"
-    assert p.folder_display_name([project.id]) == "My catalogues (default)"
+    assert p.folder_display_name([project.id]) == "My catalogues"
     assert p.create_catalog("shocks").path == [project.id]
     assert opened[project.id].connected_with is None
     assert [a.name for a in p.actions()] == SIGNED_OUT_ACTIONS
-    assert p.node_icon(NodeType.FOLDER, [project.id]) is None
+    assert p.project_state(project.id) == "on this computer"  # its icon says so
     assert p.name == "Catalogs (cocat-rs)"
 
 
@@ -96,7 +96,7 @@ def test_declined_local_catalogues_stay_and_can_move_later(make, answers):
     p, local_id, catalog = local_with_shocks(make)
     p._session.signed_in = True
     run(p.connect())
-    assert p.folder_display_name([local_id]) == "My catalogues (on this computer)"
+    assert p.folder_display_name([local_id]) == "On this computer"
     assert [a.name for a in p.folder_actions([local_id])][0] == "Move into My catalogues"
     run(p.reconnect())
     assert len(asked) == 1
@@ -122,7 +122,7 @@ def test_signing_out_keeps_the_account_copy_offline(make, opened):
     catalog = p.create_catalog("kept", ["a"])
     run(p.sign_out())
     assert list(p._room_infos) == ["a"]
-    assert p.folder_display_name(["a"]) == "My catalogues (default)"
+    assert p.folder_display_name(["a"]) == "My catalogues"
     assert [c.uuid for c in p.catalogs()] == [catalog.uuid]
     assert [a.name for a in p.actions()] == SIGNED_OUT_ACTIONS
     assert p.create_catalog("offline").path == ["a"]

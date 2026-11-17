@@ -73,6 +73,18 @@ def test_the_sections_are_my_catalogues_shared_and_reference_in_that_order(made,
     assert rows(model)[:3] == ["My catalogues", "Shared", "Reference"]
 
 
+def test_folders_a_provider_announced_before_the_tree_existed_show(made, qapp):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    class Announced(DummyProvider):
+        def folders(self):
+            return [["empty project"]]
+
+    made.append(Announced(num_catalogs=0, events_per_catalog=0, name="Announced"))
+    model = _tree(qapp)
+    assert "empty project" in rows(model, child(model, "Reference", "Announced"))
+
+
 def test_my_catalogues_is_always_shown_and_the_others_only_when_they_hold_something(made, qapp):
     model = _tree(qapp)
     assert rows(model)[0] == "My catalogues"
