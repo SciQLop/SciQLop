@@ -99,9 +99,9 @@ class CatalogTreeModel(QAbstractItemModel):
         self._root = _Node(name="root", kind=_Kind.ROOT)
         self._provider_connections: dict[int, list[tuple]] = {}
         self._loading_uuids: set[str] = set()
-        self._containers: dict[tuple[int, str | None], _Node] = {}   # group -> where its content goes
-        self._placements: dict[tuple[int, str | None], Placement] = {}
-        self._explicit: dict[int, set[tuple[str, ...]]] = {}         # folders a provider announced
+        self._containers: dict[tuple[CatalogProvider, str | None], _Node] = {}  # group -> where its content goes
+        self._placements: dict[tuple[CatalogProvider, str | None], Placement] = {}
+        self._explicit: dict[CatalogProvider, set[tuple[str, ...]]] = {}  # folders a provider announced
         self._registry = CatalogRegistry.instance()
         self._insert_section(Section.MINE)  # always shown: where new catalogues go
 
@@ -167,7 +167,7 @@ class CatalogTreeModel(QAbstractItemModel):
         return found if found is not None else FALLBACK
 
     def _container(self, provider: CatalogProvider, group: str | None) -> _Node:
-        key = (id(provider), group)
+        key = (provider, group)
         if key in self._containers:
             return self._containers[key]
         placement = self._placement(provider, group)
@@ -204,7 +204,7 @@ class CatalogTreeModel(QAbstractItemModel):
                     len(node.children))
 
     def _drop_group(self, provider: CatalogProvider, group: str | None) -> None:
-        key = (id(provider), group)
+        key = (provider, group)
         container = self._containers.pop(key, None)
         self._placements.pop(key, None)
         if container is None:
@@ -220,7 +220,7 @@ class CatalogTreeModel(QAbstractItemModel):
             self._hide_if_empty(section)
 
     def _group_placeholders_allowed(self, provider: CatalogProvider, path: list[str]) -> bool:
-        placement = self._placements.get((id(provider), self._group_of(provider, path)))
+        placement = self._placements.get((provider, self._group_of(provider, path)))
         return (placement is not None and placement.can_create
                 and Capability.CREATE_CATALOGS in provider.capabilities())
 
@@ -312,7 +312,7 @@ class CatalogTreeModel(QAbstractItemModel):
 
     def _sync_all_placeholders(self, provider: CatalogProvider) -> None:
         for (pid, group), container in list(self._containers.items()):
-            if pid != id(provider):
+            if pid is not provider:
                 continue
             prefix = [] if group is None else [group]
             self._sync_placeholders(container, provider, prefix)
@@ -367,7 +367,7 @@ class CatalogTreeModel(QAbstractItemModel):
     def _populate(self, provider: CatalogProvider) -> None:
         if not self._splits(provider):
             self._container(provider, None)  # its node shows even before it has catalogues
-        announced = self._explicit.get(id(provider), set()) | {tuple(f) for f in provider.folders()}
+        announced = self._explicit.get(provider, set()) | {tuple(f) for f in provider.folders()}
         for path in sorted(announced):
             self._walk(provider, list(path), explicit=True)
         for catalog in provider.catalogs():
@@ -375,7 +375,7 @@ class CatalogTreeModel(QAbstractItemModel):
         self._sync_notes(provider)
 
     def _clear(self, provider: CatalogProvider) -> None:
-        for pid, group in [k for k in self._containers if k[0] == id(provider)]:
+        for pid, group in [k for k in self._containers if k[0] is provider]:
             self._drop_group(provider, group)
         for node in self._nodes_of(provider):
             if node.parent is not None and node in node.parent.children:
@@ -385,7 +385,7 @@ class CatalogTreeModel(QAbstractItemModel):
 
     def _provider_node(self, provider: CatalogProvider) -> _Node | None:
         """The provider's own node, when it is placed as a whole."""
-        return self._containers.get((id(provider), None)) if not self._splits(provider) else None
+        return self._containers.get((provider, None)) if not self._splits(provider) else None
 
     def creation_placeholder(self, provider: CatalogProvider) -> _Node | None:
         """The "New catalog…" row where the provider's new catalogues go: My catalogues first."""
@@ -407,13 +407,13 @@ class CatalogTreeModel(QAbstractItemModel):
         self._add_provider(provider)
 
     def _on_provider_unregistered(self, provider: object) -> None:
-        for signal, slot in self._provider_connections.pop(id(provider), []):
+        for signal, slot in self._provider_connections.pop(provider, []):
             try:
                 signal.disconnect(slot)
             except (RuntimeError, TypeError):
                 pass
         self._clear(provider)
-        self._explicit.pop(id(provider), None)
+        self._explicit.pop(provider, None)
 
     def _emit_changed(self, node: _Node, roles: list[int]) -> None:
         index = self._index_of(node)
@@ -453,13 +453,13 @@ class CatalogTreeModel(QAbstractItemModel):
             self._remove_catalog_node(node)
 
     def _on_folder_added(self, provider: CatalogProvider, path: list) -> None:
-        self._explicit.setdefault(id(provider), set()).add(tuple(path))
+        self._explicit.setdefault(provider, set()).add(tuple(path))
         node = self._walk(provider, list(path), explicit=True)
         self._sync_placeholders(node, provider, list(path))  # announced again once it can create
 
     def _on_folder_removed(self, provider: CatalogProvider, path: list) -> None:
         path = list(path)
-        self._explicit.get(id(provider), set()).discard(tuple(path))
+        self._explicit.get(provider, set()).discard(tuple(path))
         if len(path) == 1 and self._splits(provider):
             return self._drop_group(provider, path[0])
         node = self._find(self._root, lambda n: n.kind == _Kind.FOLDER and n.provider is provider and n.path == path)
@@ -476,7 +476,7 @@ class CatalogTreeModel(QAbstractItemModel):
         """Names, icons and notes may follow the provider's state (signed in, synced...)."""
         self._sync_notes(provider)
         for (pid, group), container in self._containers.items():
-            if pid == id(provider) and container.kind == _Kind.GROUP:
+            if pid is provider and container.kind == _Kind.GROUP:
                 container.name = self._group_label(provider, group)
         self._repaint(self._root)
 
@@ -491,7 +491,7 @@ class CatalogTreeModel(QAbstractItemModel):
     def _on_capabilities_changed(self, provider: CatalogProvider) -> None:
         """A role change can move a project to another section, or take its creation rows away."""
         moved = any(self._placement(provider, group) != placement
-                    for (pid, group), placement in self._placements.items() if pid == id(provider))
+                    for (pid, group), placement in self._placements.items() if pid is provider)
         if moved:
             self._clear(provider)
             self._populate(provider)
@@ -529,8 +529,8 @@ class CatalogTreeModel(QAbstractItemModel):
 
     def inline_groups(self, section_node: _Node) -> list[tuple[CatalogProvider, list[str]]]:
         """The groups shown directly in a section: (provider, path of the group)."""
-        return [(self._provider_by_id(pid), [] if group is None else [group])
-                for (pid, group), container in self._containers.items() if container is section_node]
+        return [(provider, [] if group is None else [group])
+                for (provider, group), container in self._containers.items() if container is section_node]
 
     @staticmethod
     def is_section(node: _Node) -> bool:
@@ -547,9 +547,6 @@ class CatalogTreeModel(QAbstractItemModel):
             if provider not in found:
                 found.append(provider)
         return found
-
-    def _provider_by_id(self, pid: int) -> CatalogProvider:
-        return next(p for p in self._registry.providers() if id(p) == pid)
 
     def _node_type(self, node: _Node) -> NodeType:
         if node.catalog is not None:

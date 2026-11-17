@@ -231,3 +231,17 @@ def test_the_browser_opens_the_sections(made, qtbot, qapp):
     dummy(made, num_catalogs=1, events_per_catalog=1, name="After")
     proxy, tree = browser._proxy_model, browser._catalog_tree
     assert all(tree.isExpanded(proxy.index(r, 0)) for r in range(proxy.rowCount()))
+
+
+def test_a_section_still_draws_when_its_provider_left_the_registry_without_a_word(made, qapp):
+    """Seen on screenshots: a provider forgotten by the registry (tests do it) left its group in the
+    tree, and asking the section about it raised in flags() and data()."""
+    from SciQLop.components.catalogs import CatalogRegistry
+    from SciQLop.components.catalogs.backend.provider import Placement, Section
+    p, _ = Placed.make(made, {"me": Placement(Section.MINE, inline=True)}, [["me"]])
+    model = _tree(qapp)
+    CatalogRegistry.instance()._forget_for_tests(p)
+    mine = child(model, "My catalogues")
+    model.flags(mine)
+    model.data(mine, Qt.ItemDataRole.DecorationRole)
+    model.data(mine, Qt.ItemDataRole.ToolTipRole)
