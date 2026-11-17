@@ -172,20 +172,11 @@ def pytest_configure(config):
     if platform.system() == "Linux":
         os.environ["QT_QPA_PLATFORM"] = "xcb"
 
-    # Pre-initialize tscat's sqlite backend on the main thread so its alembic
-    # migration runs exactly once. tscat.base.backend() is a lazy unsynchronized
-    # singleton; the tscat_gui driver QThread races the test thread on first
-    # access and re-runs the migration ("table alembic_version already exists"
-    # / "not an error" on retry). Touching it here pins the init to one thread.
-    #
-    # tscat finds its database with appdirs, which ignores XDG_DATA_HOME on
-    # macOS: there every test process (and the developer's own catalogs)
-    # shared ~/Library/Application Support/tscat, and a test holding a read
-    # lock made other processes fail with "database is locked".
+    # tscat (read by the cocat plugin's first-start import) finds its database with appdirs,
+    # which ignores XDG_DATA_HOME on macOS: there the tests would read the developer's own
+    # catalogues.
     import tscat.orm_sqlalchemy as _tscat_orm
     _tscat_orm.user_data_dir = lambda appname: str(_data_dir / appname)
-    from tscat.base import backend as _tscat_backend
-    _tscat_backend()
 
     # Create the QApplication here (as SciQLopApp, not a plain QApplication)
     # so module-level imports of SciQLop user_api (which transitively import
@@ -478,8 +469,7 @@ def _isolate_catalog_registry():
     """Snapshot/restore the global CatalogRegistry around each test.
 
     Catalog providers self-register in their __init__. Tests that instantiate
-    a provider ad-hoc (e.g. ``TscatCatalogProvider()`` in
-    ``test_catalog_attribute_spec.py``) leave the instance in the singleton
+    a provider ad-hoc leave the instance in the singleton
     registry forever, and ``CatalogService._find_provider`` returns the FIRST
     provider matching the name — so later tests using a freshly-built provider
     end up routing through the leaked one and miss the expected signals.
@@ -502,7 +492,7 @@ def _isolate_catalog_registry():
 
 
 def _forget_dirty_state(providers):
-    """A test that edits a shared provider (e.g. the main window's "My Catalogs")
+    """A test that edits a shared provider (e.g. the main window's catalogues)
     and never saves leaves it dirty; every later ``mw.close()`` then pops the
     "Unsaved catalog changes" dialog."""
     for p in providers:
@@ -534,24 +524,7 @@ def pytest_runtest_teardown(item):
                     f"after {item.nodeid}", returncode=3)
 
 
-def _stop_tscat_driver_worker():
-    """tscat_gui starts a QThread at import and its own stop() only calls
-    quit() *after* a failed 1s wait, without waiting again: the thread is still
-    running when Qt tears down, and the interpreter aborts with exit 134 after
-    an otherwise green run."""
-    import sys
-    driver_mod = sys.modules.get("tscat_gui.tscat_driver.driver")
-    if driver_mod is None:
-        return
-    worker = getattr(getattr(driver_mod, "tscat_driver", None), "_worker", None)
-    if worker is None:
-        return
-    worker.quit()
-    worker.wait(5000)
-
-
 def pytest_sessionfinish(session):
-    _stop_tscat_driver_worker()
     if _RSS_LOG:
         import collections
         from PySide6.QtWidgets import QApplication

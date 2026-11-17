@@ -29,8 +29,8 @@ def test_old_style_plugin_json_still_validates(tmp_path):
     desc = PluginDesc.from_json(_write(tmp_path, {
         "name": "Old", "version": "1.0", "description": "x",
         "authors": [{"name": "a", "email": "a@b.c", "organization": "o"}], "license": "MIT",
-        "python_dependencies": ["numpy"], "dependencies": ["tscat_catalogs"]}))
-    assert desc.dependencies == ["tscat_catalogs"]
+        "python_dependencies": ["numpy"], "dependencies": ["another_plugin"]}))
+    assert desc.dependencies == ["another_plugin"]
 
 
 def test_unknown_keys_are_reported_not_silently_dropped(tmp_path, monkeypatch):

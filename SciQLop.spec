@@ -75,7 +75,7 @@ icon = None
 datas = [('SciQLop/resources/*','SciQLop/resources'),('SciQLop/plugins/*','SciQLop/plugins')]
 binaries = [(sys.executable, '.')]
 
-hiddenimports = ['site', 'notebook','markupsafe', 'tscat_gui', 'SciQLop.widgets.plots.time_span', 'SciQLop.widgets.plots.time_span_controller', 'SciQLop.plugins.catalogs.lightweight_manager', 'SciQLop.backend.pipelines_model.easy_provider']
+hiddenimports = ['site', 'notebook','markupsafe', 'SciQLop.widgets.plots.time_span', 'SciQLop.widgets.plots.time_span_controller', 'SciQLop.plugins.catalogs.lightweight_manager', 'SciQLop.backend.pipelines_model.easy_provider']
 
 for lib in glob(f"{sysconfig.get_paths()['stdlib']}/*"):
     if os.path.isdir(lib) and not lib.startswith('_') and 'site-packages' not in lib and not lib.startswith('config-'):

@@ -49,3 +49,28 @@ def test_the_tests_never_see_the_sign_in_of_the_person_running_them():
 
     assert isinstance(keyring.get_keyring(), Keyring)
     assert cocat_rs.Client("https://sciqlop.lpp.polytechnique.fr/cocat-dev").session is None
+
+
+OLD_PLUGINS = ("tscat_catalogs", "collaborative_catalogs")
+
+
+def test_the_old_catalogue_plugins_are_gone():
+    """Whoever wants the tscat catalogues plugin downgrades SciQLop; its catalogues come into
+    this plugin at its first start."""
+    bundled = loader.list_plugins(loader._bundled_plugins_dir())
+    assert not set(OLD_PLUGINS) & set(bundled)
+
+
+def test_someone_who_had_them_on_starts_without_them():
+    from SciQLop.components.plugins.backend.settings import PluginConfig
+    settings = SimpleNamespace(plugins={name: PluginConfig(enabled=True) for name in OLD_PLUGINS},
+                               extra_plugins_folders=[])
+    enabled = [name for _, name in loader._enabled_plugins(settings, {})]
+    assert NAME in enabled and not set(OLD_PLUGINS) & set(enabled)
+
+
+def test_nothing_in_sciqlop_needs_tscat_gui():
+    import pathlib
+    import SciQLop
+    root = pathlib.Path(SciQLop.__file__).parent
+    assert [p for p in root.rglob("*.py") if "tscat_gui" in p.read_text(encoding="utf-8")] == []
