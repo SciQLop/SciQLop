@@ -500,7 +500,7 @@ def test_catalog_tree_model_dynamic_add(qtbot, qapp):
     # may have been skipped since _catalogs wasn't ready.
     # Force a refresh by checking that at least we can find it via the init path.
     model2 = CatalogTreeModel()
-    assert model2.rowCount() >= initial_rows + 1
+    assert provider_index(model2, provider).isValid()  # rows are sections now: count its own row
 
 
 # --- Task 7: EventTableModel tests ---

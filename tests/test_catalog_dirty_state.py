@@ -111,7 +111,7 @@ def test_tree_shows_dirty_indicator(qtbot, qapp):
     model = CatalogTreeModel()
 
     # Find the catalog node
-    provider_idx = list(provider_indexes(model))[-1]  # last provider added
+    provider_idx = provider_index(model, provider)
     cat_idx = model.index(0, 0, provider_idx)
 
     # Before marking dirty
@@ -138,7 +138,7 @@ def test_tree_clears_dirty_on_save(qtbot, qapp):
     cat = provider.catalogs()[0]
     model = CatalogTreeModel()
 
-    provider_idx = list(provider_indexes(model))[-1]
+    provider_idx = provider_index(model, provider)
     cat_idx = model.index(0, 0, provider_idx)
 
     provider.mark_dirty(cat)
@@ -206,7 +206,7 @@ def test_tree_shows_dirty_after_remove_catalog(qtbot, qapp):
     cat = provider.catalogs()[0]
     model = CatalogTreeModel()
 
-    provider_idx = list(provider_indexes(model))[-1]
+    provider_idx = provider_index(model, provider)
     assert not model.data(provider_idx, Qt.ItemDataRole.DisplayRole).endswith(" *")
 
     provider.remove_catalog(cat)
