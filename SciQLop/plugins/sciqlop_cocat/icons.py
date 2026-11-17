@@ -10,17 +10,17 @@ from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap, 
 from PySide6.QtWidgets import QApplication
 
 GREEN, AMBER, RED, GREY, BLUE, SLATE = "#3fa34d", "#e0a526", "#d0453a", "#9a9a9a", "#4a7fc1", "#55606e"
-BADGES = {  # state -> (shape, colour)
-    "synced": ("dot", GREEN),
-    "connecting": ("ring", AMBER),
-    "offline": ("triangle", AMBER),
-    "unauthorized": ("cross", RED),
-    "no_access": ("cross", RED),
-    "not joined": ("ring", GREY),
+BADGES = {  # state -> (shape, colour): one shape per state, the colour only a second cue
+    "synced": ("dot", GREEN),                 # all sent and received
+    "connecting": ("ring", AMBER),            # on its way
+    "offline": ("triangle", AMBER),           # server unreachable: changes wait
+    "unauthorized": ("cross", RED),           # the sign-in ended
+    "no_access": ("no entry", RED),           # the person was removed from the project
+    "not joined": ("plus", GREY),             # listed, Join loads it
     "read-only": ("lock", BLUE),
-    "on this computer": ("screen", SLATE),
-    "released": ("square", GREY),
-    "elsewhere": ("square", AMBER),
+    "on this computer": ("screen", SLATE),    # kept here only, never synced
+    "released": ("hollow square", GREY),      # kept here, closed in this window
+    "elsewhere": ("two windows", AMBER),      # kept here, open in another SciQLop window
 }
 SIZE = 16
 BADGE = 8
@@ -41,9 +41,14 @@ def _badge(shape: str, colour: str, background: str) -> QIcon:
     painter.setPen(QPen(QColor(background), 1))
     painter.setBrush(QColor(background))
     painter.drawEllipse(box.adjusted(-1, -1, 1, 1))
-    _SHAPES[shape](painter, box, QColor(colour))
+    _SHAPES[shape](painter, box, _readable(QColor(colour), QColor(background)))
     painter.end()
     return QIcon(pixmap)
+
+
+def _readable(colour: QColor, background: QColor) -> QColor:
+    """Dark themes: the same hue, lighter, so slate and grey badges stand out on the folder."""
+    return colour.lighter(160) if background.lightness() < 128 else colour
 
 
 def _filled(painter: QPainter, colour: QColor) -> None:
@@ -78,9 +83,31 @@ def _cross(painter, box, colour):
     painter.drawLine(inner.topRight(), inner.bottomLeft())
 
 
-def _square(painter, box, colour):
+def _no_entry(painter, box, colour):
     _filled(painter, colour)
+    painter.drawEllipse(box)
+    painter.setBrush(QColor("white"))
+    painter.drawRect(QRectF(box.left() + 1.5, box.center().y() - 0.9, box.width() - 3, 1.8))
+
+
+def _plus(painter, box, colour):
+    _stroked(painter, colour)
+    inner = box.adjusted(1, 1, -1, -1)
+    painter.drawLine(QPointF(inner.center().x(), inner.top()), QPointF(inner.center().x(), inner.bottom()))
+    painter.drawLine(QPointF(inner.left(), inner.center().y()), QPointF(inner.right(), inner.center().y()))
+
+
+def _hollow_square(painter, box, colour):
+    _stroked(painter, colour)
     painter.drawRect(box.adjusted(1, 1, -1, -1))
+
+
+def _two_windows(painter, box, colour):
+    side = box.width() * 0.62
+    _stroked(painter, colour)
+    painter.drawRect(QRectF(box.left(), box.top(), side, side))
+    _filled(painter, colour)
+    painter.drawRect(QRectF(box.right() - side, box.bottom() - side, side, side))
 
 
 def _lock(painter, box, colour):
@@ -100,8 +127,9 @@ def _screen(painter, box, colour):
     painter.drawRect(QRectF(box.left() + 1.5, box.bottom() - 1.5, box.width() - 3, 1.5))
 
 
-_SHAPES = {"dot": _dot, "ring": _ring, "triangle": _triangle, "cross": _cross, "square": _square,
-           "lock": _lock, "screen": _screen}
+_SHAPES = {"dot": _dot, "ring": _ring, "triangle": _triangle, "cross": _cross, "no entry": _no_entry,
+           "plus": _plus, "lock": _lock, "screen": _screen, "hollow square": _hollow_square,
+           "two windows": _two_windows}
 
 
 @cache

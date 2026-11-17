@@ -11,10 +11,14 @@ def test_every_state_has_a_badge(qapp):
     assert all(not status_badge(state).isNull() for state in STATES)
 
 
-def test_the_states_people_must_tell_apart_have_different_shapes(qapp):
-    shapes = {BADGES[s][0] for s in ("synced", "connecting", "offline", "unauthorized", "on this computer",
-                                     "read-only", "elsewhere")}
-    assert len(shapes) == 7
+def test_every_state_has_a_shape_of_its_own(qapp):
+    """Colour is only a second cue."""
+    assert len({BADGES[s][0] for s in STATES}) == len(STATES)
+
+
+def test_every_state_draws_a_different_icon(qapp):
+    images = {bytes(status_badge(s).pixmap(16, 16).toImage().constBits()) for s in STATES}
+    assert len(images) == len(STATES)
 
 
 def test_an_unknown_state_still_draws(qapp):
