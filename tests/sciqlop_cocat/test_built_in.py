@@ -74,3 +74,26 @@ def test_nothing_in_sciqlop_needs_tscat_gui():
     import SciQLop
     root = pathlib.Path(SciQLop.__file__).parent
     assert [p for p in root.rglob("*.py") if "tscat_gui" in p.read_text(encoding="utf-8")] == []
+
+
+def test_settings_forget_the_old_plugins_so_no_dead_checkbox_is_shown():
+    from SciQLop.components.plugins.backend.settings import PluginConfig
+    settings = SimpleNamespace(plugins={name: PluginConfig(enabled=True) for name in OLD_PLUGINS},
+                               extra_plugins_folders=[])
+    loader._enabled_plugins(settings, {})
+    assert not set(OLD_PLUGINS) & set(settings.plugins)
+
+
+def test_a_plugin_of_the_person_s_own_with_an_old_name_is_kept(tmp_path):
+    import json
+    from SciQLop.components.plugins.backend.settings import PluginConfig
+    own = tmp_path / "tscat_catalogs"
+    own.mkdir()
+    (own / "__init__.py").write_text("def load(main_window):\n    return None\n")
+    (own / "plugin.json").write_text(json.dumps({"name": "mine", "version": "1", "description": "",
+                                                 "authors": [], "license": "MIT",
+                                                 "python_dependencies": [], "dependencies": []}))
+    settings = SimpleNamespace(plugins={"tscat_catalogs": PluginConfig(enabled=True)},
+                               extra_plugins_folders=[str(tmp_path)])
+    loader._enabled_plugins(settings, {})
+    assert "tscat_catalogs" in settings.plugins

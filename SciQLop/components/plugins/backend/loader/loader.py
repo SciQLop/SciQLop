@@ -155,15 +155,27 @@ def entry_point_host_compatible(ep: importlib.metadata.EntryPoint) -> bool:
 _attempted: set = set()
 
 
+# Built-in plugins SciQLop no longer ships: their settings entry would show as a checkbox that does nothing.
+RETIRED_PLUGINS = frozenset({"tscat_catalogs", "collaborative_catalogs"})
+
+
+def _forget_retired(settings, found: set) -> None:
+    """A plugin of the person's own that reuses an old name is kept."""
+    for name in RETIRED_PLUGINS - found:
+        settings.plugins.pop(name, None)
+
+
 def _enabled_plugins(settings, ep_plugins) -> list:
     """(folder, name) of every enabled, host-compatible plugin; folder is None
     for an entry-point plugin. Registers newly found plugins in *settings*."""
     from .plugin_desc import PluginDesc
     from SciQLop.components.plugins.backend.settings import PluginConfig
     plugin_list = []
+    found = set(ep_plugins)
     for folder in plugins_folders(settings):
         plugins = list_plugins(folder)
         log.info(f"Plugins found: {plugins}")
+        found.update(plugins)
         for plugin in plugins:
             if plugin not in settings.plugins:
                 try:
@@ -187,6 +199,7 @@ def _enabled_plugins(settings, ep_plugins) -> list:
             continue
         if entry_point_host_compatible(ep):
             plugin_list.append((None, name))
+    _forget_retired(settings, found)
     return plugin_list
 
 
