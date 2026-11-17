@@ -3,7 +3,8 @@
 Each joined room is a folder (``path[0]`` is the room id). Signed out, it shows "My catalogues": the
 last account's own project from its cache, else a project kept on this computer only. The first sign-in
 that finds catalogues on this computer offers to move them into the account's own project. A project
-kept on this computer is open in one SciQLop window at a time: the window holds its lock. Local edits are written to the room by
+kept on this computer is open in one SciQLop window at a time: the window holds its lock. The caches
+of the server's projects belong to the first window; a later one keeps its own while it runs. Local edits are written to the room by
 uuid; they do not come back from the room, so every edit updates the SciQLop side itself too.
 Remote changes are applied by ``remote.RoomListener`` inside :meth:`remote_changes`.
 """
@@ -11,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shutil
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
@@ -59,6 +61,9 @@ SYNC_STALL_MS = 30_000  # a joined room not synced by then is reported once
 SAVE_TIMEOUT_S = 10  # how long a version waits for local changes to reach the server
 SMART_REFRESH_MS = 200  # smart catalogues are re-read this long after the last edit in their room
 LOCK_SUFFIX = ".lock"  # next to a project kept on this computer: held by the window that has it open
+CACHE_LOCK = "sciqlop_cache.lock"  # held by the window that uses the shared caches of the server's projects
+OTHER_WINDOWS = "other_windows"  # in the cache folder: one folder per later window
+LEAVE_SAVE_S = 2  # how long a later window waits, per project it closes, for the server to have its changes
 
 open_room = cocat_rs.Project.open  # module-level so tests can keep projects off the network
 
@@ -166,7 +171,10 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         self._local = Remembered(local_dir) if local_dir is not None else None
         self._local_ids: set[str] = set()      # the shown projects that are kept on this computer
         self._held: dict = {}                  # room id -> the lock of a project kept on this computer, open here
-        self._elsewhere: set[str] = set()      # the ones another SciQLop window was holding when last tried
+        self._elsewhere: set[str] = set()      # the projects only another SciQLop window could open when last tried
+        self._cache_lock = None                # taken, or found held, when the first server project is opened
+        self._own_cache: Path | None = None    # a later window's folder for the server projects' caches
+        self._unsent: set[str] = set()         # projects closed from it before the server had their changes
         self._read_tscat = read_tscat          # tscat_import.read_tscat_database; None: tscat is left alone
         self._public_ids: set[str] = set()     # the joined projects that are followed public catalogues
         self._public_views: dict[str, dict] = {}  # a listed public catalogue's uuid in SciQLop -> its row
@@ -437,6 +445,48 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         finally:
             self._let_go(room_id)
 
+    def _server_cache(self) -> Path | None:
+        """Where this window keeps the caches of the server's projects. Two windows writing one
+        cache file cut each other's records, so only the first window has the shared folder."""
+        if self._cache_dir is None:
+            return None
+        if self._cache_lock is None:
+            self._cache_lock = lock_on(Path(self._cache_dir) / CACHE_LOCK)
+            if not self._cache_lock.tryLock(0):
+                self._own_cache = Path(self._cache_dir) / OTHER_WINDOWS / str(uuid.uuid4())
+        return self._own_cache or Path(self._cache_dir)
+
+    def _give_cache_back(self) -> None:
+        if self._own_cache is not None and self._unsent:
+            log.warning("Changes to %s did not reach the CoCat server: they are kept in %s",
+                        ", ".join(sorted(self._unsent)), self._own_cache)
+        elif self._own_cache is not None:
+            shutil.rmtree(self._own_cache, ignore_errors=True)
+        if self._cache_lock is not None:
+            self._cache_lock.unlock()
+        self._cache_lock = self._own_cache = None
+
+    def _check_sent(self, room_id: str, room) -> None:
+        """A later window's cache goes when it closes: what the server does not have yet must stay."""
+        try:
+            room.save(LEAVE_SAVE_S)
+        except Exception as error:
+            self._unsent.add(room_id)
+            log.warning("Project %s closed before the CoCat server had its changes: %s", room_id, describe(error))
+        else:
+            self._unsent.discard(room_id)
+
+    def _may_open(self, room_id: str) -> bool:
+        """False for a project that only another SciQLop window can have open now."""
+        if room_id in self._local_ids:
+            return self._hold(room_id)
+        self._server_cache()
+        if self._own_cache is not None and not self._online():  # no copy of its own without the server
+            self._elsewhere.add(room_id)
+            return False
+        self._elsewhere.discard(room_id)
+        return True
+
     def _hold(self, room_id: str) -> bool:
         """Takes the lock of a project kept on this computer; False while another window holds it."""
         lock = lock_on(Path(self._local_dir) / f"{room_id}{LOCK_SUFFIX}")
@@ -511,6 +561,9 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
     async def _choose_to_join(self, room_id: str) -> None:
         self._remembered.set_left(room_id, False)
         await self.join_room(room_id)
+        if room_id in self._elsewhere:
+            self._tell(f"{self._room_infos[room_id].name} is open in another SciQLop window, and this "
+                       f"window is not connected to the CoCat server: it cannot be shown here for now.")
         self.show_links()
         self.status_changed.emit()
 
@@ -534,10 +587,10 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         self._default_room_id = None
 
     async def join_room(self, room_id: str) -> None:
-        if room_id in self._rooms or (room_id in self._local_ids and not self._hold(room_id)):
+        if room_id in self._rooms or not self._may_open(room_id):
             return
         try:
-            room = open_room(str(self._local_dir if room_id in self._local_ids else self._cache_dir), room_id)
+            room = open_room(str(self._local_dir if room_id in self._local_ids else self._server_cache()), room_id)
         except Exception as error:
             self._let_go(room_id)
             self.error_occurred.emit(f"Cannot open project '{room_id}': {error}")
@@ -568,8 +621,11 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
             self._watch_for_stall(room_id)
 
     def leave_room(self, room_id: str) -> None:
+        only_copy = self._own_cache is not None and room_id not in self._local_ids and self._can_write(room_id)
         room = self.detach_room(room_id)
         if room is not None:
+            if only_copy:
+                self._check_sent(room_id, room)
             room.close()
         self._let_go(room_id)
 
@@ -595,6 +651,7 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
             await self._versions_provider.close()
         for room_id in list(self._rooms):
             self.leave_room(room_id)
+        self._give_cache_back()
 
     # ---- tree decorations and actions ----
 
@@ -836,9 +893,10 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         info = self._room_infos.get(path[0]) if len(path) == 1 else None
         if info is None:
             return None
+        if info.id in self._elsewhere:
+            return f"{info.name} (open in another SciQLop window)"
         if info.id in self._local_ids and info.id not in self._rooms:
-            where = "open in another SciQLop window" if info.id in self._elsewhere else "not open"
-            return f"{info.name} ({where})"
+            return f"{info.name} (not open)"
         if info.id in self._local_ids and self._connected:
             return f"{info.name} (on this computer)"
         if info.id in self._public_ids:

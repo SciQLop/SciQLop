@@ -521,8 +521,15 @@ async def _call_and_settle(callback, *args):
     await _settle()
 
 
+def an_earlier_session(make_provider) -> None:
+    """Signed in, then closed: a SciQLop still open would be another window, not the last session."""
+    earlier = make_provider(FakeSession(rooms=ROOMS))
+    run(earlier.connect())
+    run(earlier.close())
+
+
 def test_an_unreachable_server_shows_the_projects_of_the_last_session(make_provider, opened):
-    run(make_provider(FakeSession(rooms=ROOMS)).connect())
+    an_earlier_session(make_provider)
     session = FakeSession(rooms=ROOMS)
     session.reachable = False
     p = make_provider(session)
@@ -566,7 +573,7 @@ def test_each_project_shows_its_sync_state(make_provider, opened):
 
 
 def test_offline_only_local_actions_are_offered(make_provider, opened):
-    run(make_provider(FakeSession(rooms=ROOMS)).connect())
+    an_earlier_session(make_provider)
     session = FakeSession(rooms=ROOMS)
     session.reachable = False
     p = make_provider(session)

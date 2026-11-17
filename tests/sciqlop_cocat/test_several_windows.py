@@ -3,6 +3,9 @@ is open in one window at a time: the window that opens it holds its lock, the ot
 open in another window and can take it once it is released."""
 import subprocess
 import sys
+from pathlib import Path
+
+import cocat_rs
 
 import pytest
 
@@ -12,7 +15,7 @@ from SciQLop.plugins.sciqlop_cocat import provider as provider_module
 from SciQLop.plugins.sciqlop_cocat.locks import lock_on
 from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
 from .conftest import HOUR, T0
-from .test_provider_rooms import ROOMS, FakeSession, opened, run  # noqa: F401
+from .test_provider_rooms import ROOMS, FakeSession, RecordingRoom, opened, run  # noqa: F401
 from .test_tscat_first_start import SHOCKS, Tscat
 
 ELSEWHERE = "My catalogues (open in another SciQLop window)"
@@ -198,3 +201,102 @@ def test_tscat_is_not_written_into_a_project_open_in_another_window(window):
     run(first.close())
     third = window(tscat=Tscat(SHOCKS))  # tried again at the next start
     assert [c.name for c in third.catalogs()] == ["Shocks"]
+
+
+# ---- the caches of the projects on the server ----
+
+@pytest.fixture
+def folders(monkeypatch, tmp_path):
+    """Where each project was opened from, in order, relative to the person's folders."""
+    used = []
+
+    def open_room(folder, room_id):
+        used.append((room_id, str(Path(folder).relative_to(tmp_path))))
+        return RecordingRoom(cocat_rs.Project.open(folder, room_id))
+
+    monkeypatch.setattr(provider_module, "open_room", open_room)
+    return used
+
+
+def signed_in():
+    return FakeSession(rooms=ROOMS)
+
+
+def test_a_later_window_keeps_the_server_projects_in_a_folder_of_its_own(window, folders, tmp_path):
+    first = window(signed_in())
+    assert folders == [("a", "cache"), ("b", "cache")]
+
+    second = window(signed_in())
+
+    [(_, own), (_, same)] = folders[2:]
+    assert own == same and Path(own).parent == Path("cache/other_windows")
+    assert sorted(first._rooms) == sorted(second._rooms) == ["a", "b"]  # live in both
+    assert second.folder_display_name(["a"]) == "My catalogues (default)"
+    assert second._rooms["a"].connected_with == ("https://h", "token")
+
+
+def test_a_later_window_s_folder_goes_when_it_closes(window, folders, tmp_path):
+    window(signed_in())
+    second = window(signed_in())
+    second.create_catalog("shocks")
+    own = tmp_path / folders[-1][1]
+    assert own.is_dir()
+
+    run(second.close())
+
+    assert not own.exists()
+
+
+def test_changes_that_did_not_reach_the_server_are_not_deleted_with_the_folder(window, folders, tmp_path,
+                                                                             monkeypatch):
+    window(signed_in())
+    second = window(signed_in())
+    second.create_catalog("shocks")
+    own = tmp_path / folders[-1][1]
+
+    def unreachable(room, timeout=None):
+        raise RuntimeError("the room is not connected")
+
+    monkeypatch.setattr(RecordingRoom, "save", unreachable)
+
+    run(second.close())
+
+    assert (own / "a.y").exists()
+
+
+def test_once_the_first_window_closed_a_new_one_has_the_shared_cache(window, folders):
+    first = window(signed_in())
+    run(first.close())
+
+    window(signed_in())
+
+    assert folders[2:] == [("a", "cache"), ("b", "cache")]
+
+
+def test_a_later_window_without_the_server_does_not_open_the_account_s_copy(window, folders):
+    """It has no copy of its own to show, and the shared one is the first window's."""
+    first = window(signed_in())
+
+    second = window()  # signed out: the last account's own project is listed from what was remembered
+
+    assert list(second._room_infos) == ["a"] and second._rooms == {}
+    assert folders[2:] == [] and second.errors == []
+    assert second.folder_display_name(["a"]) == "My catalogues (open in another SciQLop window)"
+    assert "a" in first._rooms
+    [join] = [a for a in second.folder_actions(["a"]) if a.name == "Join"]
+    run(second._choose_to_join("a"))
+    assert second._rooms == {}
+    assert "open in another SciQLop window" in second.notices[-1]
+
+
+def test_unfollowing_in_a_later_window_leaves_the_first_window_s_copy(window, folders, tmp_path):
+    public = {"id": "public.cmes", "name": "CMEs", "folder": "", "source": "", "description": "",
+              "role": "viewer", "changed": "", "count": 1}
+    first, second = window(signed_in()), window(signed_in())
+    run(first.follow(public))
+    run(second.follow(public))
+
+    second.unfollow("public.cmes")
+
+    assert (tmp_path / "cache" / "public.cmes.y").exists()
+    assert not (tmp_path / folders[-1][1] / "public.cmes.y").exists()

@@ -139,7 +139,7 @@ class Following:
         """Listed again afresh: a view left selected would be re-read, and so downloaded again."""
         self.leave_room(room_id)
         self._forget_followed(room_id)
-        for path in Path(self._cache_dir).glob(f"{room_id}.*"):
+        for path in Path(self._server_cache()).glob(f"{room_id}.*"):
             path.unlink()
         for catalog in self._public_views_of(room_id):
             row = self._drop_view(catalog)
