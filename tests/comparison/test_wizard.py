@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pytest
+from ..helpers import provider_indexes
 from PySide6.QtCore import QItemSelectionModel, QModelIndex, Qt
 
 from ..fixtures import *  # noqa: F401, F403
@@ -187,8 +188,7 @@ def test_events_arg_lists_catalog_events(qapp):
 
 def _select_catalog(browser, catalog):
     model = browser._tree_model
-    for row in range(model.rowCount(QModelIndex())):
-        prov_idx = model.index(row, 0, QModelIndex())
+    for prov_idx in provider_indexes(model):
         if model.node_from_index(prov_idx).provider is catalog.provider:
             for crow in range(model.rowCount(prov_idx)):
                 cat_idx = model.index(crow, 0, prov_idx)
