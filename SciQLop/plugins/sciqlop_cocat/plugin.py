@@ -9,7 +9,7 @@ from SciQLop.components.storage import user_data_dir
 from .provider import CocatRsProvider
 from .session import Session
 from .settings import CocatRsSettings
-from .tscat_import import read_tscat_database
+from .tscat_import import read_tscat_database, stop_reading
 
 log = getLogger(__name__)
 
@@ -34,8 +34,11 @@ class Plugin(QObject):
                         "(cocat-rs)' are enabled. They run side by side as 'Shared' and 'Catalogs "
                         "(cocat-rs)'; disable one in Settings > Plugins if this is not intended.")
 
-    async def close(self):
-        await self.provider.close()
+    def close(self):
+        """The read is stopped before anything is awaited: without a running loop, SciQLop closes
+        the returned coroutine without running it."""
+        stop_reading()
+        return self.provider.close()
 
 
 def load(main_window):

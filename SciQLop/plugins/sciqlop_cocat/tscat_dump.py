@@ -14,6 +14,8 @@ from contextlib import closing
 from pathlib import Path
 
 NO_DATABASE = 3  # exit code: there is no tscat database
+BUSY = 4  # exit code: another program keeps the database to itself
+BUSY_WAIT_S = 2
 
 
 def default_database() -> Path:
@@ -22,11 +24,14 @@ def default_database() -> Path:
 
 
 def snapshot(database: Path, folder: Path) -> Path:
-    """sqlite's own backup through a read-only connection: a consistent copy, even of a database
-    SciQLop is writing to."""
+    """sqlite's own backup through a read-only connection: a consistent copy. tscat keeps the
+    database locked while it has it open; the first read then fails after BUSY_WAIT_S, where the
+    backup itself would wait for ever."""
     copy = folder / database.name
-    with closing(sqlite3.connect(f"{database.resolve().as_uri()}?mode=ro", uri=True)) as source, \
+    with closing(sqlite3.connect(f"{database.resolve().as_uri()}?mode=ro", uri=True,
+                                 timeout=BUSY_WAIT_S)) as source, \
             closing(sqlite3.connect(copy)) as target:
+        source.execute("SELECT count(*) FROM sqlite_master").fetchone()
         source.backup(target)
     return copy
 
@@ -84,7 +89,12 @@ def main(output: str, database: str | None = None) -> int:
     if not source.exists():
         return NO_DATABASE
     with tempfile.TemporaryDirectory() as folder:
-        copy = snapshot(source, Path(folder))
+        try:
+            copy = snapshot(source, Path(folder))
+        except sqlite3.OperationalError as error:
+            if "locked" in str(error):
+                return BUSY
+            raise
         drop_superseded_versions(copy)
         Path(output).write_text(as_json(copy), encoding="utf-8")
     return 0

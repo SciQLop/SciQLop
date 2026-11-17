@@ -4,6 +4,8 @@ import asyncio
 import hashlib
 import shutil
 import sqlite3
+import threading
+import time
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,8 +13,9 @@ from pathlib import Path
 import cocat_rs
 import pytest
 
+from SciQLop.plugins.sciqlop_cocat import tscat_import
 from SciQLop.plugins.sciqlop_cocat.tscat_import import (
-    TscatUnreadable, import_tscat_text, read_tscat_database,
+    TscatBusy, TscatUnreadable, import_tscat_text, read_tscat_database, stop_reading,
 )
 from .tscat_databases import LISTS, PAPER_LIST_SIZES, PAPER_LISTS, build, edge_cases, hours
 
@@ -288,3 +291,45 @@ def test_a_file_tscat_cannot_read_is_an_error_that_says_why(tmp_path):
     (tmp_path / "backend.sqlite").write_text("not a database")
     with pytest.raises(TscatUnreadable, match="not a database"):
         read(tmp_path / "backend.sqlite")
+
+
+def test_a_database_another_program_keeps_to_itself_is_said_and_not_waited_for(tmp_path):
+    """tscat begins every transaction with BEGIN EXCLUSIVE and keeps one open: while the old tscat
+    plugin runs, in this SciQLop or another, nothing else can read the database."""
+    database, _ = build(tmp_path / "tscat", edge_cases)
+    before = fingerprint(database.parent)
+    with closing(sqlite3.connect(database)) as tscat_at_work:
+        tscat_at_work.execute("BEGIN EXCLUSIVE")
+        started = time.monotonic()
+        with pytest.raises(TscatBusy, match="Tscat Catalogs"):
+            read(database)
+        assert time.monotonic() - started < 30
+        tscat_at_work.rollback()
+    assert fingerprint(database.parent) == before
+    assert read(database) is not None
+
+
+def test_a_read_under_way_is_stopped_when_sciqlop_closes(tmp_path, monkeypatch):
+    """SciQLop waits for its threads at exit: a read that hangs must not keep it open."""
+    hangs = tmp_path / "hangs.py"
+    hangs.write_text("import time\ntime.sleep(120)\n")
+    monkeypatch.setattr(tscat_import, "DUMP_SCRIPT", hangs)
+    (tmp_path / "backend.sqlite").write_text("")
+    outcome = []
+
+    def reading():
+        try:
+            read(tmp_path / "backend.sqlite")
+        except Exception as error:
+            outcome.append(error)
+
+    thread = threading.Thread(target=reading)
+    thread.start()
+    while not tscat_import._reading and thread.is_alive():
+        time.sleep(0.01)
+
+    stop_reading()
+    thread.join(timeout=20)
+
+    assert not thread.is_alive()
+    assert len(outcome) == 1 and isinstance(outcome[0], TscatUnreadable)

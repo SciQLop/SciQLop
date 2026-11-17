@@ -39,7 +39,9 @@ def loaded(qapp, monkeypatch, tmp_path):
 
 def test_load_registers_provider_by_name(loaded):
     plugin = loaded(False)
-    assert CatalogRegistry.instance().provider_by_name("Catalogs (cocat-rs)") is plugin.provider
+    # not provider_by_name: the shared test main window loads the plugin too, under the same name
+    assert plugin.provider in CatalogRegistry.instance().providers()
+    assert plugin.provider.name == "Catalogs (cocat-rs)"
     assert plugin.provider._author == "SciQLop"
     assert plugin.provider._session.url == "https://h"
 
@@ -84,3 +86,15 @@ def test_one_provider_keeps_local_projects_apart_from_the_account_caches(loaded,
 def test_the_provider_is_given_the_reader_of_the_tscat_database(loaded):
     from SciQLop.plugins.sciqlop_cocat.tscat_import import read_tscat_database
     assert loaded(False).provider._read_tscat is read_tscat_database
+
+
+def test_closing_stops_a_tscat_read_at_once_even_when_nothing_awaits_the_close(loaded, monkeypatch):
+    """Without a running loop, SciQLop closes the coroutine a plugin's close() returns, unrun."""
+    stopped = []
+    monkeypatch.setattr(plugin_module, "stop_reading", lambda: stopped.append(True))
+    plugin = loaded(False)
+
+    closing = plugin.close()
+
+    assert stopped == [True]
+    asyncio.run(closing)

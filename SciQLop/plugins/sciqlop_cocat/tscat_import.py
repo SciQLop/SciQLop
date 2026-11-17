@@ -16,9 +16,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .tscat_dump import NO_DATABASE
+from .tscat_dump import BUSY, NO_DATABASE
 
 DUMP_SCRIPT = Path(__file__).with_name("tscat_dump.py")
+DUMP_TIMEOUT_S = 120  # 116 000 events are read in 2 s
 # A project keeps a time as nanoseconds since 1970 in 64 bits.
 EARLIEST, LATEST = datetime(1677, 9, 21, 0, 12, 44), datetime(2262, 4, 11, 23, 47, 16)
 # The keys cocat-rs reads as its own, with the type it expects: tscat's attribute of that name
@@ -28,6 +29,40 @@ RESERVED = {"events": ("shape", list, "tscat_shape"), "catalogues": ("shape_axis
 
 class TscatUnreadable(Exception):
     """tscat could not read its database."""
+
+
+class TscatBusy(TscatUnreadable):
+    """Another program keeps the database to itself: tscat does, for as long as it has it open."""
+
+    def __init__(self):
+        super().__init__('another program is using the tscat database. The old "Tscat Catalogs" plugin '
+                         "keeps it to itself while it is on: turn it off in Settings › Plugins and restart "
+                         "SciQLop. The import is tried again at each start")
+
+
+_reading: set[subprocess.Popen] = set()  # the reads under way, so that closing SciQLop can stop them
+
+
+def stop_reading() -> None:
+    """SciQLop waits for its threads at exit: a read still running must not keep it open."""
+    for process in list(_reading):
+        process.kill()
+
+
+def _run_dump(output: Path, database: Path) -> subprocess.CompletedProcess:
+    process = subprocess.Popen([sys.executable, str(DUMP_SCRIPT), str(output), str(database)],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    _reading.add(process)
+    try:
+        _, errors = process.communicate(timeout=DUMP_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.communicate()
+        raise TscatUnreadable(f"reading it took more than {DUMP_TIMEOUT_S} s")
+    finally:
+        _reading.discard(process)
+    return subprocess.CompletedProcess(process.args, process.returncode, "", errors)
 
 
 @dataclass(frozen=True)
@@ -66,11 +101,13 @@ def _dump(database: Path | None) -> str | None:
         return None
     with tempfile.TemporaryDirectory() as folder:
         output = Path(folder) / "tscat.json"
-        done = subprocess.run([sys.executable, str(DUMP_SCRIPT), str(output), str(database)],
-                              capture_output=True, text=True,
-                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        done = _run_dump(output, database)
         if done.returncode == NO_DATABASE:
             return None
+        if done.returncode == BUSY:
+            raise TscatBusy()
+        if done.returncode < 0:
+            raise TscatUnreadable("the read was stopped")
         if done.returncode != 0:
             raise TscatUnreadable((done.stderr.strip().splitlines() or ["no reason given"])[-1])
         return output.read_text(encoding="utf-8")
