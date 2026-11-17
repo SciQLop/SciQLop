@@ -162,6 +162,7 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         self._roles: dict[str, str] = {}       # room id -> the user's role in it
         self._windows: dict = {}               # (kind, room id or uuid) -> its open window, kept alive here
         self._sign_in = None                   # the browser sign-in under way, cancelled on close
+        self._starting = None                  # the start under way, cancelled on close
         self._stall_timers: dict[str, QTimer] = {}
         self._smart: set[str] = set()          # uuids of catalogues that have a rule
         self._unreadable: dict[str, str] = {}  # uuid -> why this cocat-rs cannot read it (a newer rule form)
@@ -342,7 +343,14 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
 
     def start(self) -> None:
         """At SciQLop start: connect when a sign-in from an earlier session is still kept."""
-        asyncio.ensure_future(self._start())
+        self._starting = asyncio.ensure_future(self._start())
+
+    async def _stop_starting(self) -> None:
+        """A start still under way (the tscat catalogues being read) ends with SciQLop."""
+        if self._starting is not None and not self._starting.done():
+            self._starting.cancel()
+            await asyncio.wait([self._starting])
+        self._starting = None
 
     async def _start(self) -> None:
         if not (self._session is not None and self._session.signed_in and await self.connect()):
@@ -645,6 +653,7 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         self.status_changed.emit()
 
     async def close(self) -> None:
+        await self._stop_starting()
         if self._sign_in is not None:
             self._sign_in.cancel()
         if self._versions_provider is not None:

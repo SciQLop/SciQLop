@@ -1,5 +1,6 @@
 """At the first start, the person's tscat catalogues come into their account's own project, or signed
 out into the project kept on this computer."""
+import asyncio
 import json
 
 import pytest
@@ -207,3 +208,25 @@ def test_a_real_tscat_database_comes_in_at_the_first_start(start, tmp_path):
     [a] = [c for c in p.catalogs() if c.name == "Catalogue A"]
     assert len(p.events(a)) == len(held.catalogue("Catalogue A")["members"])
     assert p.errors == []
+
+
+def test_closing_sciqlop_while_tscat_is_read_leaves_no_start_half_done(qapp, tmp_path):
+    """Seen in batch mode: SciQLop quit before the read ended, and the start was destroyed pending."""
+    async def never_ends():
+        await asyncio.Event().wait()
+
+    p = CocatRsProvider(author="me", session=FakeSession(signed_in=False), cache_dir=tmp_path / "cache",
+                        local_dir=tmp_path / "local", read_tscat=never_ends)
+
+    async def start_then_close():
+        p.start()
+        await asyncio.sleep(0.05)
+        starting = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        await p.close()
+        return [task.done() for task in starting]  # asked here: asyncio.run ends what is left itself
+
+    try:
+        assert run(start_then_close()) == [True]
+        assert not Remembered(tmp_path / "local").tscat_imported  # tried again at the next start
+    finally:
+        CatalogRegistry.instance()._forget_for_tests(p)
