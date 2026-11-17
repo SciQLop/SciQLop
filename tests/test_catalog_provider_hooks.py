@@ -40,8 +40,8 @@ def _child(model, parent, predicate):
 
 
 def _provider_index(model, provider):
-    from PySide6.QtCore import QModelIndex
-    return _child(model, QModelIndex(), lambda n: n.provider is provider)
+    from .helpers import provider_index
+    return provider_index(model, provider)
 
 
 def _tooltip(model, idx):

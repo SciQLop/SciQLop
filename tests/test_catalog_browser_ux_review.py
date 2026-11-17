@@ -3,6 +3,7 @@ on any non-alphanumeric character, Enter on "Delete Catalog?" destroyed the
 catalog, column Reset ignored order and left the popover stale, Rename was
 double-click-only, and "Color by..." only sampled the first 200 events.
 """
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from datetime import datetime, timezone
 
 from .fixtures import *
@@ -21,8 +22,7 @@ def _ev(uuid, meta):
 def _catalog_tree_index(browser, catalog):
     from PySide6.QtCore import QModelIndex
     model = browser._tree_model
-    for row in range(model.rowCount(QModelIndex())):
-        prov_idx = model.index(row, 0, QModelIndex())
+    for prov_idx in provider_indexes(model):
         if model.node_from_index(prov_idx).provider is catalog.provider:
             for crow in range(model.rowCount(prov_idx)):
                 cat_idx = model.index(crow, 0, prov_idx)
@@ -63,13 +63,8 @@ def test_tree_filter_matches_names_with_punctuation(qtbot, qapp):
 
     browser._filter_bar.setText("2024-01")
     assert browser._proxy_model.rowCount() >= 1
-    prov_proxy = None
-    for row in range(browser._proxy_model.rowCount()):
-        idx = browser._proxy_model.index(row, 0)
-        if browser._tree_model.node_from_index(
-                browser._proxy_model.mapToSource(idx)).provider is provider:
-            prov_proxy = idx
-    assert prov_proxy is not None, "provider node dropped by the filter"
+    prov_proxy = provider_index(browser._proxy_model, provider)
+    assert prov_proxy.isValid(), "provider node dropped by the filter"
     names = [browser._proxy_model.index(r, 0, prov_proxy).data()
              for r in range(browser._proxy_model.rowCount(prov_proxy))]
     assert names == ["mms 1 2024-01"]

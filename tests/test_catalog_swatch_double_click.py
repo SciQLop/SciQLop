@@ -1,6 +1,7 @@
 """Double-clicking the color swatch of a catalog row opens the color picker;
 double-clicking the name still renames (2026-09-08).
 """
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from .fixtures import *
 import pytest
 from PySide6.QtCore import Qt, QModelIndex, QPoint
@@ -27,8 +28,7 @@ def setup(qtbot, qapp, tmp_path, monkeypatch):
 
 def _catalog_proxy_index(browser, catalog):
     model = browser._tree_model
-    for row in range(model.rowCount(QModelIndex())):
-        prov_idx = model.index(row, 0, QModelIndex())
+    for prov_idx in provider_indexes(model):
         if model.node_from_index(prov_idx).provider is catalog.provider:
             for crow in range(model.rowCount(prov_idx)):
                 cat_idx = model.index(crow, 0, prov_idx)

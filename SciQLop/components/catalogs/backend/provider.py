@@ -93,6 +93,21 @@ class NodeType(str, Enum):
     CATALOG = "catalog"
 
 
+class Section(str, Enum):
+    """The catalogue tree's top level: what a catalogue is to the person, whoever provides it."""
+    MINE = "mine"            # their own catalogues, where new ones go
+    SHARED = "shared"        # projects shared with others, theirs or not
+    REFERENCE = "reference"  # read-only lists from outside: public catalogues, AMDA, plugin lists
+
+
+@dataclass(frozen=True)
+class Placement:
+    """Where a provider's catalogues, or one of its top folders, show in the tree."""
+    section: Section
+    inline: bool = False      # shown directly in the section, under no node of their own
+    can_create: bool = True   # offers "New catalog…" (if the provider can create at all)
+
+
 @dataclass
 class Catalog:
     uuid: str
@@ -306,6 +321,23 @@ class CatalogProvider(QObject):
     def folder_display_name(self, path: list[str]) -> str | None:
         """Custom display name for an explicit folder. Return None to use the default."""
         return None
+
+    def placement(self, folder: str | None) -> Placement | None:
+        """Where this provider shows in the catalogue tree.
+
+        Asked with None for the provider as a whole: the default is one node named after it, in
+        Reference. A provider that answers None there is asked for each of its top-level folders
+        instead (cocat-rs places each project), and its catalogues at the root go to Reference."""
+        return Placement(Section.REFERENCE) if folder is None else None
+
+    def section_note(self, section: Section) -> str | None:
+        """A line of text the tree shows in *section*, e.g. why it is empty. Re-read on
+        ``status_changed``."""
+        return None
+
+    def can_move_catalog(self, catalog: Catalog, path: list[str]) -> bool:
+        """Whether :meth:`move_catalog` can take *catalog* to *path*; otherwise a drop copies it."""
+        return Capability.MOVE_CATALOG in self.capabilities(catalog)
 
     def default_folder(self) -> list[str]:
         """The folder a notebook path naming none means (``"provider//name"``). The root by

@@ -2,6 +2,7 @@
 filter must not throw away the expansion the user built before typing, and
 column widths the user dragged must survive model resets and reselection.
 """
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from .fixtures import *
 import pytest
 from datetime import datetime, timezone
@@ -25,8 +26,7 @@ def browser(qtbot, qapp, isolated_config):
 
 def _provider_proxy_index(browser, provider):
     model = browser._tree_model
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             return browser._proxy_model.mapFromSource(idx)
     raise AssertionError("provider node not found")

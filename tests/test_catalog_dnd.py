@@ -1,3 +1,4 @@
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from .fixtures import *
 from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE
 from datetime import datetime, timezone, timedelta
@@ -81,8 +82,7 @@ def test_tree_model_exposes_drag_for_catalog_nodes(qtbot, qapp):
     assert CATALOG_LIST_MIME_TYPE in model.mimeTypes()
 
     provider_idx = None
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             provider_idx = idx

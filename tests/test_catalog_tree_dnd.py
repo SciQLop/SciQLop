@@ -1,5 +1,6 @@
 """Drag & drop within the catalog tree: cross-provider import (copy) and
 same-provider reorganization (move)."""
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from .fixtures import *
 from datetime import datetime, timezone
 import uuid as _uuid
@@ -30,8 +31,7 @@ def _rw_provider(name="RW", num_catalogs=0, events_per_catalog=0):
 def _drop_index_for_catalog(model, catalog):
     """Find the QModelIndex of catalog's parent (provider/folder)."""
     from PySide6.QtCore import QModelIndex
-    for row in range(model.rowCount(QModelIndex())):
-        prov_idx = model.index(row, 0, QModelIndex())
+    for prov_idx in provider_indexes(model):
         node = model.node_from_index(prov_idx)
         if node.provider is catalog.provider:
             return prov_idx
@@ -53,8 +53,7 @@ def test_cross_provider_drop_copies_catalog_with_events(qtbot, qapp):
     model = CatalogTreeModel()
     # Drop on the destination provider node
     dst_idx = None
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is dst:
             dst_idx = idx
             break
@@ -95,8 +94,7 @@ def test_cross_provider_drop_resolves_name_collision(qtbot, qapp):
 
     model = CatalogTreeModel()
     dst_idx = None
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is dst:
             dst_idx = idx
             break
@@ -123,8 +121,7 @@ def test_same_provider_drop_moves_catalog_into_folder(qtbot, qapp):
     model = CatalogTreeModel()
     # Find the folder_a node under p
     prov_idx = None
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is p:
             prov_idx = idx
             break
@@ -156,8 +153,7 @@ def test_drop_on_read_only_provider_is_rejected(qtbot, qapp):
     src_cat = src.catalogs()[0]
     model = CatalogTreeModel()
     ro_idx = None
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is ro:
             ro_idx = idx
             break
@@ -185,8 +181,7 @@ def test_drop_on_catalog_routes_to_parent_folder(qtbot, qapp):
 
     # Find dst_existing's index
     dst_idx = None
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is dst:
             dst_idx = idx
             break
@@ -221,8 +216,7 @@ def test_catalog_drop_failure_emits_operation_failed(qtbot, qapp, monkeypatch):
 
     model = CatalogTreeModel()
     dst_idx = None
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is dst:
             dst_idx = idx
             break
@@ -260,8 +254,7 @@ def test_event_drop_failure_emits_operation_failed(qtbot, qapp):
 
     model = CatalogTreeModel()
     dst_idx = None
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is dst:
             for crow in range(model.rowCount(idx)):
                 cidx = model.index(crow, 0, idx)

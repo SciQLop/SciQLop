@@ -7,6 +7,7 @@ user-facing feedback. `CatalogBrowser.provider_error` is the single surface
 mainwindow listens to (status bar); this file only checks that surface fires
 correctly, not the status bar wiring itself (manual/UI concern).
 """
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from .fixtures import *
 
 
@@ -40,8 +41,7 @@ def test_future_provider_error_occurred_surfaces(qtbot, qapp):
 def _select_first_catalog(browser, provider):
     from PySide6.QtCore import QModelIndex
     model = browser._tree_model
-    for row in range(model.rowCount(QModelIndex())):
-        prov_idx = model.index(row, 0, QModelIndex())
+    for prov_idx in provider_indexes(model):
         node = model.node_from_index(prov_idx)
         if node.provider is provider:
             for crow in range(model.rowCount(prov_idx)):
@@ -233,8 +233,7 @@ def test_save_failure_reports_instead_of_raising(qtbot, qapp, monkeypatch):
 
     model = browser._tree_model
     prov_idx = None
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             prov_idx = idx
             break

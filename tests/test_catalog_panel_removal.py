@@ -3,6 +3,7 @@
 the panel's Catalogs menu lists the loaded ones first, flat; the tree's
 context menu offers add/remove for the panel the user is working in.
 """
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from .fixtures import *
 import pytest
 from datetime import datetime, timezone, timedelta
@@ -102,8 +103,7 @@ def test_panel_menu_has_no_loaded_section_when_empty(panel, provider):
 def _catalog_proxy_index(browser, catalog):
     from PySide6.QtCore import QModelIndex
     model = browser._tree_model
-    for row in range(model.rowCount(QModelIndex())):
-        prov_idx = model.index(row, 0, QModelIndex())
+    for prov_idx in provider_indexes(model):
         if model.node_from_index(prov_idx).provider is catalog.provider:
             for crow in range(model.rowCount(prov_idx)):
                 cat_idx = model.index(crow, 0, prov_idx)

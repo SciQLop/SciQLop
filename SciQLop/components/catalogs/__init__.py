@@ -1,4 +1,4 @@
-from .backend.provider import CatalogEvent, Catalog, CatalogProvider, Capability, ProviderAction
+from .backend.provider import CatalogEvent, Catalog, CatalogProvider, Capability, Placement, ProviderAction, Section
 from .backend.registry import CatalogRegistry
 from .backend.overlay import CatalogOverlay
 from .backend.panel_manager import PanelCatalogManager, InteractionMode
@@ -11,6 +11,8 @@ __all__ = [
     "Catalog",
     "CatalogProvider",
     "Capability",
+    "Placement",
+    "Section",
     "ProviderAction",
     "CatalogRegistry",
     "CatalogOverlay",

@@ -5,6 +5,7 @@ Before this: the event toolbar was a mix of QPushButton/QToolButton with no
 shared QAction, so the table had zero keyboard access (Delete did nothing)
 and zero right-click menu -- both present on the sibling catalog tree.
 """
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from PySide6.QtCore import Qt, QItemSelectionModel
 from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import QMessageBox
@@ -335,8 +336,7 @@ def test_event_actions_hidden_when_selection_moves_off_the_catalog(qtbot, qapp):
 
     model = browser._tree_model
     prov_source_idx = None
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             prov_source_idx = idx
             break

@@ -90,3 +90,26 @@ def ipython_shell_for_a_test():
     shell = InteractiveShell(config=Config(HistoryManager={"enabled": False}))
     atexit.unregister(shell.atexit_operations)
     return shell
+
+
+def provider_indexes(model):
+    """The catalogue tree rows of the providers placed as a whole (the default), in every section."""
+    from PySide6.QtCore import QModelIndex
+    for s in range(model.rowCount(QModelIndex())):
+        section = model.index(s, 0, QModelIndex())
+        for r in range(model.rowCount(section)):
+            index = model.index(r, 0, section)
+            if _node(model, index).is_provider_node:
+                yield index
+
+
+def _node(model, index):
+    """The tree node behind an index of the tree model or of a proxy over it."""
+    if hasattr(model, "mapToSource"):
+        return model.sourceModel().node_from_index(model.mapToSource(index))
+    return model.node_from_index(index)
+
+
+def provider_index(model, provider):
+    from PySide6.QtCore import QModelIndex
+    return next((i for i in provider_indexes(model) if _node(model, i).provider is provider), QModelIndex())

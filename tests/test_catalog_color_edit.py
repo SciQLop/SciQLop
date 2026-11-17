@@ -4,6 +4,7 @@ state (like column visibility), stored outside the catalog so read-only
 providers (speasy) get it too, and propagated live to the tree and to every
 panel overlay through a module-level signal.
 """
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from .fixtures import *
 import pytest
 from datetime import datetime, timezone, timedelta
@@ -61,8 +62,7 @@ def test_swatch_icon_follows_custom_color(qapp, palette):
 
 def _tree_index(model, catalog):
     from PySide6.QtCore import QModelIndex
-    for row in range(model.rowCount(QModelIndex())):
-        prov_idx = model.index(row, 0, QModelIndex())
+    for prov_idx in provider_indexes(model):
         if model.node_from_index(prov_idx).provider is catalog.provider:
             for crow in range(model.rowCount(prov_idx)):
                 cat_idx = model.index(crow, 0, prov_idx)

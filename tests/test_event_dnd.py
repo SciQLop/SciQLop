@@ -1,4 +1,5 @@
 # tests/test_event_dnd.py
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from datetime import datetime, timezone
 import pytest
 
@@ -99,8 +100,7 @@ def test_cross_provider_drop_always_duplicates(qapp):
 
 def _find_catalog_index(model, provider, catalog):
     from PySide6.QtCore import QModelIndex
-    for row in range(model.rowCount()):
-        prov_idx = model.index(row, 0)
+    for prov_idx in provider_indexes(model):
         if prov_idx.internalPointer().provider is provider:
             for r in range(model.rowCount(prov_idx)):
                 cidx = model.index(r, 0, prov_idx)

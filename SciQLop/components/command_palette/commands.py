@@ -61,17 +61,12 @@ def _do_create_catalog(provider: str = ""):
     right-clicking the provider in the browser, just reached from the
     palette."""
     from SciQLop.components.catalogs.backend.registry import CatalogRegistry
-    from SciQLop.components.catalogs.ui.catalog_tree import _PlaceholderType
     target = CatalogRegistry.instance().provider_by_name(provider)
     if target is None:
         return
     win = _get_win()
     browser = _reveal_catalogs_browser(win)
-    node = browser._tree_model._provider_node(target)
-    if node is None:
-        return
-    placeholder = next(
-        (c for c in node.children if c.placeholder_type == _PlaceholderType.CATALOG), None)
+    placeholder = browser._tree_model.creation_placeholder(target)
     if placeholder is None:
         return
     browser._trigger_placeholder_edit(placeholder)
@@ -85,10 +80,7 @@ def _do_open_catalog(catalog: str = ""):
     win = _get_win()
     browser = _reveal_catalogs_browser(win)
     tree_model = browser._tree_model
-    provider_node = tree_model._provider_node(cat.provider)
-    if provider_node is None:
-        return
-    cat_node = tree_model._find_catalog_node(provider_node, cat)
+    cat_node = tree_model._find_catalog_node(cat.provider, cat)
     if cat_node is None:
         return
     browser._filter_bar.clear()

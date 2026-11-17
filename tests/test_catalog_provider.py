@@ -1,3 +1,4 @@
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from .fixtures import *
 import pytest
 from datetime import datetime, timezone, timedelta
@@ -275,8 +276,7 @@ def test_tree_model_folder_nodes(qtbot, qapp):
 
     # Find our provider node
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             provider_idx = idx
@@ -323,8 +323,7 @@ def test_tree_model_folder_not_selectable_for_events(qtbot, qapp):
     model = CatalogTreeModel()
 
     # Find folder "A" under our provider
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             for j in range(model.rowCount(idx)):
@@ -347,8 +346,7 @@ def test_catalog_tree_model_structure(qtbot, qapp):
 
     # Find the provider node that has exactly 3 catalogs + 2 placeholders (our provider)
     found = False
-    for i in range(model.rowCount()):
-        provider_index = model.index(i, 0)
+    for provider_index in provider_indexes(model):
         if model.data(provider_index) == "DummyProvider" and model.rowCount(provider_index) == 5:
             found = True
             cat_index = model.index(0, 0, provider_index)
@@ -371,8 +369,7 @@ def test_catalog_tree_model_node_from_index(qtbot, qapp):
 
     # Find the provider node matching our specific provider instance
     found = False
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         n = model.node_from_index(idx)
         if n.provider is provider:
             found = True
@@ -411,8 +408,7 @@ def test_tree_model_dynamic_add_with_path(qtbot, qapp):
 
     # Find provider node
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             provider_idx = idx
@@ -463,8 +459,7 @@ def test_tree_model_placeholders_added_on_late_folder_event(qtbot, qapp):
     model = CatalogTreeModel()
 
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             provider_idx = idx
             break
@@ -642,8 +637,7 @@ def test_catalog_filter_collapses_tree_when_cleared(qtbot, qapp):
 
     def _provider_proxy_idx():
         model = browser._tree_model
-        for row in range(model.rowCount(QModelIndex())):
-            idx = model.index(row, 0, QModelIndex())
+        for idx in provider_indexes(model):
             if model.node_from_index(idx).provider is provider:
                 return browser._proxy_model.mapFromSource(idx)
         raise AssertionError("provider node not found")
@@ -697,8 +691,7 @@ def test_catalog_browser_toolbar_visibility(qtbot, qapp):
     # Find the ReadOnly provider in the tree and select its catalog
     tree = browser._catalog_tree
     model = tree.model()
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         if model.data(idx) == "ReadOnly":
             cat_idx = model.index(0, 0, idx)
             tree.setCurrentIndex(cat_idx)
@@ -739,8 +732,7 @@ def test_tree_model_prune_empty_folders(qtbot, qapp):
 
     # Find provider node
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             provider_idx = idx
@@ -825,8 +817,7 @@ def test_catalog_browser_filter_hides_non_matching(qtbot, qapp):
 
     # Find our provider's index in the proxy model
     def find_provider_idx():
-        for i in range(proxy.rowCount()):
-            idx = proxy.index(i, 0)
+        for idx in provider_indexes(proxy):
             src = proxy.mapToSource(idx)
             node = browser._tree_model.node_from_index(src)
             if node.provider is provider:
@@ -938,8 +929,7 @@ def test_tree_model_placeholder_node(qtbot, qapp):
     provider = DummyProvider(num_catalogs=1)
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             assert model.rowCount(idx) == 3  # 1 catalog + 2 placeholders
@@ -959,8 +949,7 @@ def test_tree_model_placeholder_is_editable(qtbot, qapp):
     provider = DummyProvider(num_catalogs=0)
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             placeholder_idx = model.index(0, 0, idx)
@@ -978,8 +967,7 @@ def test_tree_model_setdata_placeholder_creates_catalog(qtbot, qapp):
     provider = DummyProvider(num_catalogs=0)
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             assert model.rowCount(idx) == 2  # 2 placeholders
@@ -1021,8 +1009,7 @@ def test_tree_model_setdata_renames_catalog(qtbot, qapp):
     provider = RenamableProvider()
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             cat_idx = model.index(0, 0, idx)
@@ -1044,8 +1031,7 @@ def test_tree_model_setdata_rejects_empty_name(qtbot, qapp):
     provider = DummyProvider(num_catalogs=0)
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             placeholder_idx = model.index(0, 0, idx)
@@ -1091,8 +1077,7 @@ def test_tree_model_no_placeholder_for_readonly_provider(qtbot, qapp):
     provider = ReadOnlyProvider()
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             # Should have only the catalog, no placeholder
@@ -1112,8 +1097,7 @@ def test_tree_model_placeholder_italic(qtbot, qapp):
     provider = DummyProvider(num_catalogs=0)
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             placeholder_idx = model.index(0, 0, idx)
@@ -1143,19 +1127,18 @@ def test_folder_added_creates_explicit_folder(qtbot, qapp):
     model = CatalogTreeModel()
 
     pnode = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             pnode = node
             break
     assert pnode is not None
-    assert model.rowCount(model.index(pnode.row(), 0)) == 0
+    assert model.rowCount(model._index_of(pnode)) == 0
 
     # Emit folder_added
     provider.folder_added.emit(["room-1"])
 
-    pidx = model.index(pnode.row(), 0)
+    pidx = model._index_of(pnode)
     assert model.rowCount(pidx) == 1
     folder_idx = model.index(0, 0, pidx)
     folder_node = model.node_from_index(folder_idx)
@@ -1190,13 +1173,12 @@ def test_explicit_folder_not_pruned(qtbot, qapp):
     provider.catalog_added.emit(cat)
 
     pnode = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             pnode = node
             break
-    pidx = model.index(pnode.row(), 0)
+    pidx = model._index_of(pnode)
 
     # Folder should have 1 child (the catalog)
     folder_idx = model.index(0, 0, pidx)
@@ -1233,13 +1215,12 @@ def test_folder_removed_removes_folder(qtbot, qapp):
     provider.folder_added.emit(["room-B"])
 
     pnode = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             pnode = node
             break
-    pidx = model.index(pnode.row(), 0)
+    pidx = model._index_of(pnode)
     assert model.rowCount(pidx) == 2
 
     # Remove room-A
@@ -1274,13 +1255,12 @@ def test_folder_display_name(qtbot, qapp):
     provider.folder_added.emit(["other-room"])
 
     pnode = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             pnode = node
             break
-    pidx = model.index(pnode.row(), 0)
+    pidx = model._index_of(pnode)
 
     # default-room should show custom display name
     default_idx = model.index(0, 0, pidx)
@@ -1399,8 +1379,7 @@ def test_tree_icon_provider_node(qtbot, qapp):
     provider = DummyProvider(num_catalogs=1)
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             icon = model.data(idx, Qt.ItemDataRole.DecorationRole)
@@ -1419,8 +1398,7 @@ def test_tree_icon_catalog_node(qtbot, qapp):
     provider = DummyProvider(num_catalogs=1)
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             cat_idx = model.index(0, 0, idx)
@@ -1446,8 +1424,7 @@ def test_tree_catalog_icon_is_the_color_swatch(qtbot, qapp):
     cat = provider.catalogs()[0]
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             cat_idx = model.index(0, 0, idx)
@@ -1478,8 +1455,7 @@ def test_tree_catalog_icon_prefers_provider_custom_icon_over_swatch(qtbot, qapp)
     provider = _CustomIconProvider(num_catalogs=1, name="CustomIconProv")
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             cat_idx = model.index(0, 0, idx)
@@ -1499,8 +1475,7 @@ def test_tree_icon_folder_node(qtbot, qapp):
     provider = DummyProvider(num_catalogs=1, paths=[["FolderA"]])
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             folder_idx = model.index(0, 0, idx)
@@ -1520,8 +1495,7 @@ def test_tree_icon_placeholder_none(qtbot, qapp):
     provider = DummyProvider(num_catalogs=0)
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             last_row = model.rowCount(idx) - 1
@@ -1543,8 +1517,7 @@ def test_provider_has_two_placeholders(qtbot, qapp):
     provider = DummyProvider(num_catalogs=0)
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             assert model.rowCount(idx) == 2
@@ -1564,8 +1537,7 @@ def test_folder_has_two_placeholders(qtbot, qapp):
     provider = DummyProvider(num_catalogs=1, paths=[["FolderA"]])
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             folder_idx = model.index(0, 0, idx)
@@ -1607,8 +1579,7 @@ def test_dynamic_folder_gets_placeholders(qtbot, qapp):
     model = CatalogTreeModel()
 
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             provider_idx = idx
             break
@@ -1659,8 +1630,7 @@ def test_tree_icon_provider_override(qtbot, qapp):
     provider = IconProvider()
     model = CatalogTreeModel()
 
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         node = model.node_from_index(idx)
         if node.provider is provider:
             icon = model.data(idx, Qt.ItemDataRole.DecorationRole)
@@ -1702,8 +1672,7 @@ def test_prune_folder_with_only_placeholders(qtbot, qapp):
     model = CatalogTreeModel()
 
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             provider_idx = idx
             break
@@ -1742,8 +1711,7 @@ def test_setdata_catalog_placeholder_builds_path(qtbot, qapp):
     model = CatalogTreeModel()
 
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             provider_idx = idx
             break
@@ -1788,8 +1756,7 @@ def test_setdata_folder_placeholder_creates_folder(qtbot, qapp):
     model = CatalogTreeModel()
 
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             provider_idx = idx
             break
@@ -1832,8 +1799,7 @@ def test_setdata_nested_folder_creation(qtbot, qapp):
     model = CatalogTreeModel()
 
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             provider_idx = idx
             break
@@ -1886,8 +1852,7 @@ def test_trigger_placeholder_edit_clears_filter(qtbot, qapp):
     assert browser._filter_bar.text() == "something"
 
     provider_node = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         n = model.node_from_index(idx)
         if n.provider is provider:
             provider_node = n
@@ -1934,8 +1899,7 @@ def test_full_folder_catalog_creation_workflow(qtbot, qapp):
     model = CatalogTreeModel()
 
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             provider_idx = idx
             break
@@ -2016,8 +1980,7 @@ def test_explicit_folder_gets_placeholders(qtbot, qapp):
     provider.folder_added.emit(["room-1"])
 
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             provider_idx = idx
             break
@@ -2084,8 +2047,7 @@ def test_create_catalog_without_signal_does_not_update_tree(qtbot, qapp):
 
     # Find provider in tree
     provider_idx = None
-    for i in range(model.rowCount()):
-        idx = model.index(i, 0)
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             provider_idx = idx
             break

@@ -194,6 +194,8 @@ class CatalogBrowser(QWidget):
         self._proxy_model.setSourceModel(self._tree_model)
         self._catalog_tree = QTreeView()
         self._catalog_tree.setModel(self._proxy_model)
+        self._proxy_model.rowsInserted.connect(self._expand_new_sections)
+        self._expand_new_sections(QModelIndex(), 0, self._proxy_model.rowCount() - 1)
         self._catalog_tree.setHeaderHidden(True)
         self._catalog_tree.setDragEnabled(True)
         self._catalog_tree.setAcceptDrops(True)
@@ -382,15 +384,21 @@ class CatalogBrowser(QWidget):
         else:
             self._restore_expansion()
 
+    def _expand_new_sections(self, parent: QModelIndex, first: int, last: int) -> None:
+        """Sections (My catalogues, Shared, Reference) open as they appear."""
+        if not parent.isValid():
+            for row in range(first, last + 1):
+                self._catalog_tree.expand(self._proxy_model.index(row, 0))
+
     def _expanded_source_indexes(self) -> list[QPersistentModelIndex]:
         result = []
 
-        def walk(proxy_parent):
+        def walk(proxy_parent):  # into collapsed rows too: Qt keeps their children's state
             for row in range(self._proxy_model.rowCount(proxy_parent)):
                 idx = self._proxy_model.index(row, 0, proxy_parent)
                 if self._catalog_tree.isExpanded(idx):
                     result.append(QPersistentModelIndex(self._proxy_model.mapToSource(idx)))
-                    walk(idx)
+                walk(idx)
         walk(QModelIndex())
         return result
 
@@ -1080,6 +1088,8 @@ class CatalogBrowser(QWidget):
             return None
         source_index = self._proxy_model.mapToSource(proxy_index)
         node = self._tree_model.node_from_index(source_index)
+        if self._tree_model.is_section(node):
+            return self._section_menu(node)
         if node.provider is None:
             return None
 
@@ -1092,8 +1102,8 @@ class CatalogBrowser(QWidget):
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
 
-        # Provider-level actions (provider node = parent is root)
-        if node.parent is self._tree_model._root:
+        # Provider-level actions, on the node of a provider placed as a whole
+        if node.is_provider_node:
             for action in node.provider.actions(None) or ():
                 _add_provider_action(menu, action, lambda checked, cb=action.callback: cb(None))
 
@@ -1110,24 +1120,8 @@ class CatalogBrowser(QWidget):
             for action in node.provider.folder_actions(path):
                 _add_provider_action(menu, action, lambda checked, cb=action.callback, p=path: cb(p))
 
-        # Creation actions (folder or provider node, gated on CREATE_CATALOGS)
-        if node.catalog is None and not node.is_placeholder:
-            if Capability.CREATE_CATALOGS in caps:
-                from .catalog_tree import _PlaceholderType
-                cat_ph = next((c for c in node.children if c.placeholder_type == _PlaceholderType.CATALOG), None)
-                folder_ph = next((c for c in node.children if c.placeholder_type == _PlaceholderType.FOLDER), None)
-                if cat_ph is not None:
-                    new_cat_action = menu.addAction("New catalog…")
-                    new_cat_action.setToolTip(rich_tooltip(
-                        "New catalog…",
-                        "Create an empty catalog in this library."))
-                    new_cat_action.triggered.connect(lambda checked, ph=cat_ph: self._trigger_placeholder_edit(ph))
-                if folder_ph is not None:
-                    new_folder_action = menu.addAction("New folder…")
-                    new_folder_action.setToolTip(rich_tooltip(
-                        "New folder…",
-                        "Create an empty folder in this library."))
-                    new_folder_action.triggered.connect(lambda checked, ph=folder_ph: self._trigger_placeholder_edit(ph))
+        if node.catalog is None and not node.is_placeholder and Capability.CREATE_CATALOGS in caps:
+            self._add_creation_actions(menu, node)
 
         if Capability.SAVE in caps and node.provider.is_dirty():
             if (node.catalog is not None
@@ -1162,6 +1156,32 @@ class CatalogBrowser(QWidget):
             self._build_color_by_menu(menu, node.catalog)
 
         add_menu_entries(menu, CATALOG_TREE, self._menu_context(node))
+        return menu
+
+    def _add_creation_actions(self, menu: QMenu, node) -> None:
+        """The node's own creation rows, as menu entries: present only where creating is allowed."""
+        from .catalog_tree import _PlaceholderType
+        for kind, text, tip in ((_PlaceholderType.CATALOG, "New catalog…", "Create an empty catalog here."),
+                                (_PlaceholderType.FOLDER, "New folder…", "Create an empty folder here.")):
+            placeholder = next((c for c in node.children if c.placeholder_type == kind), None)
+            if placeholder is not None:
+                action = menu.addAction(text)
+                action.setToolTip(rich_tooltip(text, tip))
+                action.triggered.connect(lambda checked, ph=placeholder: self._trigger_placeholder_edit(ph))
+
+    def _section_menu(self, node) -> QMenu:
+        """A section header: the actions of the providers that place their folders in it (sign in,
+        new project...), those of the project shown inline in it, and its creation rows."""
+        menu = QMenu(self)
+        menu.setToolTipsVisible(True)
+        for provider in self._tree_model.providers_in(node):
+            for action in provider.actions(None) or ():
+                _add_provider_action(menu, action, lambda checked, cb=action.callback: cb(None))
+        for provider, path in self._tree_model.inline_groups(node):
+            if path:
+                for action in provider.folder_actions(path):
+                    _add_provider_action(menu, action, lambda checked, cb=action.callback, p=path: cb(p))
+        self._add_creation_actions(menu, node)
         return menu
 
     @staticmethod

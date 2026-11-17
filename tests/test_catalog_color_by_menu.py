@@ -3,14 +3,14 @@ columns, not whichever catalog happens to be open in the event table
 (2026-09-06 review): right-click catalog B while A is loaded in the table
 used to show A's columns in B's menu.
 """
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from .fixtures import *
 
 
 def _select_catalog(browser, catalog):
     from PySide6.QtCore import QModelIndex
     model = browser._tree_model
-    for row in range(model.rowCount(QModelIndex())):
-        prov_idx = model.index(row, 0, QModelIndex())
+    for prov_idx in provider_indexes(model):
         node = model.node_from_index(prov_idx)
         if node.provider is catalog.provider:
             for crow in range(model.rowCount(prov_idx)):
@@ -26,8 +26,7 @@ def _select_catalog(browser, catalog):
 def _catalog_tree_index(browser, catalog):
     from PySide6.QtCore import QModelIndex
     model = browser._tree_model
-    for row in range(model.rowCount(QModelIndex())):
-        prov_idx = model.index(row, 0, QModelIndex())
+    for prov_idx in provider_indexes(model):
         node = model.node_from_index(prov_idx)
         if node.provider is catalog.provider:
             for crow in range(model.rowCount(prov_idx)):

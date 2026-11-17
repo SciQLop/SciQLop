@@ -3,6 +3,7 @@ tree has one, the event table didn't, despite catalogs with thousands of
 events being an explicitly documented perf case (AMDA shared catalogs,
 ICME_multi_catalog).
 """
+from .helpers import provider_indexes, provider_index  # noqa: F401
 from datetime import datetime, timezone
 
 from .fixtures import *
@@ -135,8 +136,7 @@ def test_event_filter_bar_clears_when_switching_catalog(qtbot, qapp):
 
     model = browser._tree_model
     prov_idx = None
-    for row in range(model.rowCount(QModelIndex())):
-        idx = model.index(row, 0, QModelIndex())
+    for idx in provider_indexes(model):
         if model.node_from_index(idx).provider is provider:
             prov_idx = idx
             break
