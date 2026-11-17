@@ -4,19 +4,21 @@ own transaction. The worker only reads; the rows become events on the Qt thread,
 and every Qt object live. One read is in flight at a time; what is asked meanwhile waits for it."""
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Signal
 
 from SciQLop.components.catalogs import Catalog
 
-from .convert import rows_of
+from .convert import row_key, rows_of
 
 
 def read_rows(cocat_cat):
-    """(rows, None), or (None, the error): safe on any thread, it touches nothing of SciQLop's."""
+    """(rows, their keys, None), or (None, None, the error): safe on any thread, it touches nothing
+    of SciQLop's."""
     try:
-        return rows_of(cocat_cat.event_arrays(attributes=True)), None
+        rows = rows_of(cocat_cat.event_arrays(attributes=True))
     except Exception as error:  # a rule this cocat-rs cannot read: the catalogue says so
-        return None, error
+        return None, None, error
+    return rows, tuple(map(row_key, rows)), None
 
 
 class _Done(QObject):
@@ -38,6 +40,7 @@ class Rereading:
     def _start_rereading(self) -> None:
         self._reread_queue: dict[str, Catalog] = {}  # uuid -> catalogue waiting for the worker
         self._reading = None                          # the catalogues being read, None when idle
+        self._to_apply: list = []                     # results back from the worker, one per Qt turn
         self._read_pool = QThreadPool(self)
         self._read_pool.setMaxThreadCount(1)
         self._read_done = _Done(self)
@@ -83,18 +86,31 @@ class Rereading:
         try:
             self._note_rule(catalog, cocat_cat)
         except Exception as error:
-            self._show_members(catalog, self._members_from(catalog, None, error))
+            self._show_rows(catalog, None, None, error)
             return None
         return catalog, cocat_cat
 
     def _apply_reads(self, results) -> None:
-        self._reading = None
-        for catalog, rows, error in results:
+        self._to_apply.extend(results)
+        self._apply_next()
+
+    def _apply_next(self) -> None:
+        """One catalogue per turn of the Qt loop: a big one takes a while to show, and the GUI must
+        answer in between. The next read starts once all are shown.
+
+        simplify: a changed catalogue's events are all rebuilt in one turn: about 0.25 s for 33 000
+        members. Reuse the unchanged events, or build in slices, if catalogues that big are common."""
+        while self._to_apply:
+            catalog, rows, keys, error = self._to_apply.pop(0)
             if self._catalogs.get(catalog.uuid) is catalog:  # not deleted, nor its project left, meanwhile
-                self._show_members(catalog, self._members_from(catalog, rows, error))
+                self._show_rows(catalog, rows, keys, error)
+                if self._to_apply:
+                    return QTimer.singleShot(0, self, self._apply_next)
+        self._reading = None
         self._start_next_read()
 
     def _stop_rereading(self) -> None:
         """At close: the read in flight ends first; its result is then dropped with the catalogues."""
         self._reread_queue = {}
         self._read_pool.waitForDone()
+        self._to_apply = []
