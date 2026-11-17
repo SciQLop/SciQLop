@@ -102,7 +102,7 @@ def test_catalogues_searching_the_public_ones_are_known(with_public_smart):
 def test_they_are_read_again_on_a_slow_timer(with_public_smart, monkeypatch):
     p, plain, smart = with_public_smart
     reread = []
-    monkeypatch.setattr(p, "reload_catalog", lambda catalog: reread.append(catalog.name))
+    monkeypatch.setattr(p, "_queue_rereads", lambda catalogs: reread.extend(c.name for c in catalogs))
     assert p._public_timer.interval() == PUBLIC_REFRESH_MS == 5 * 60 * 1000
     assert p._public_timer.isActive()
     p._public_timer.timeout.emit()

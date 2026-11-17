@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import warnings
 from html import escape
 import shutil
 import uuid
@@ -43,6 +42,7 @@ from .links import Linking
 from .submission import Submitting
 from .tscat_first_start import ImportingTscat
 from .sections import Placing
+from .rereading import Rereading, read_rows
 from .sharing_dialog import describe, show_sharing_dialog
 from .convert import (
     SCHEMA_ATTR_PREFIX,
@@ -50,7 +50,6 @@ from .convert import (
     TSCAT_PATH_ATTR,
     subpath_of,
     encode_subpath,
-    rows_of,
     schema_specs,
     split_typed_meta,
     typed_meta,
@@ -65,6 +64,7 @@ SYNC_STALL_MS = 30_000  # a joined room not synced by then is reported once
 SAVE_TIMEOUT_S = 10  # how long a version waits for local changes to reach the server
 SMART_REFRESH_MS = 200  # smart catalogues are re-read this long after the last edit in their room
 PUBLIC_REFRESH_MS = 5 * 60 * 1000  # the public catalogues change on the server with no sign here
+SIGN_IN_TO_SEARCH = "sign in to search the public catalogues: only the events picked here show"
 LOCK_SUFFIX = ".lock"  # next to a project kept on this computer: held by the window that has it open
 CACHE_LOCK = "sciqlop_cache.lock"  # held by the window that uses the shared caches of the server's projects
 OTHER_WINDOWS = "other_windows"  # in the cache folder: one folder per later window
@@ -162,7 +162,7 @@ def _default_project(infos) -> str | None:
     return next((i.id for i in infos if i.personal), infos[0].id if infos else None)
 
 
-class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, CatalogProvider):
+class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, ImportingTscat, CatalogProvider):
     NAME = PROVIDER_NAME
     DESCRIPTION = "Your catalogues, and the projects shared with you, through cocat-rs."
 
@@ -221,6 +221,7 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
         self._public_timer = QTimer(self)
         self._public_timer.setInterval(PUBLIC_REFRESH_MS)
         self._public_timer.timeout.connect(self._reread_public_smart)
+        self._start_rereading()
 
     # ---- rooms ----
 
@@ -695,6 +696,7 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
             self._sign_in.cancel()
         if self._versions_provider is not None:
             await self._versions_provider.close()
+        self._stop_rereading()
         for room_id in list(self._rooms):
             self.leave_room(room_id)
         self._give_cache_back()
@@ -1046,22 +1048,27 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
             return kept
         return CocatRsEvent(uuid=row.uuid, start=row.start, stop=row.stop, meta=row.meta)
 
-    def _read_members(self, catalog: Catalog, cocat_cat) -> list[CocatRsEvent]:
-        """Derived rows reuse the event already shown for them, so a re-read creates only what changed."""
+    def _members_from(self, catalog: Catalog, rows, error) -> list[CocatRsEvent]:
+        """The rows of a read as events; none when this cocat-rs cannot read the catalogue: one such
+        catalogue must not close the whole project, and any rule form added later reaches older
+        clients the same way. Qt thread only: it uses _wrappers. Derived rows reuse the event
+        already shown for them, so a re-read creates only what changed."""
+        if error is not None:
+            log.warning("Cannot read catalogue '%s': %s", catalog.name, error)
+            self._unreadable[catalog.uuid] = str(error)
+            return []
+        self._unreadable.pop(catalog.uuid, None)
+        self._note_sign_in(catalog)
         shown = {e.uuid: e for e in self._events.get(catalog.uuid, [])}
         room_id = self._events_room_id(catalog)
-        with warnings.catch_warnings(record=True) as warned:
-            warnings.simplefilter("always", UserWarning)
-            arrays = cocat_cat.event_arrays(attributes=True)
-        self._note_read(catalog, [str(w.message) for w in warned if issubclass(w.category, UserWarning)])
-        return [self._row_event(room_id, r, shown) for r in rows_of(arrays)]
+        return [self._row_event(room_id, r, shown) for r in rows]
 
-    def _note_read(self, catalog: Catalog, said: list[str]) -> None:
-        """What cocat-rs warned while reading it (no server to search the public catalogues on):
-        shown in its tooltip, not only in the log."""
-        if said:
-            self._read_notes[catalog.uuid] = said[-1]
-            log.info("Catalogue '%s': %s", catalog.name, said[-1])
+    def _note_sign_in(self, catalog: Catalog) -> None:
+        """Signed out, a catalogue searching the public catalogues shows only its picked events:
+        its tooltip says why. (cocat-rs warns too, but recording warnings is not thread-safe here.)"""
+        signed_in = self._session is not None and self._session.signed_in
+        if catalog.uuid in self._public_smart and not signed_in:
+            self._read_notes[catalog.uuid] = SIGN_IN_TO_SEARCH
         else:
             self._read_notes.pop(catalog.uuid, None)
 
@@ -1078,17 +1085,12 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
         return catalog
 
     def _readable_members(self, catalog: Catalog, cocat_cat) -> list[CocatRsEvent]:
-        """Its members, or none when this cocat-rs cannot read it: one such catalogue must not close
-        the whole project, and any rule form added later reaches older clients the same way."""
+        """Read here, on the Qt thread: a project's first read, and an explicit reload."""
         try:
             self._note_rule(catalog, cocat_cat)
-            members = self._read_members(catalog, cocat_cat)
         except Exception as error:
-            log.warning("Cannot read catalogue '%s': %s", catalog.name, error)
-            self._unreadable[catalog.uuid] = str(error)
-            return []
-        self._unreadable.pop(catalog.uuid, None)
-        return members
+            return self._members_from(catalog, None, error)
+        return self._members_from(catalog, *read_rows(cocat_cat))
 
     def _note_rule(self, catalog: Catalog, cocat_cat) -> None:
         if cocat_cat.rule is None:
@@ -1107,21 +1109,18 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
         elif not self._public_smart:
             self._public_timer.stop()
 
-    def _reread_public_smart(self) -> None:
-        """cocat-rs keeps each search's answer a minute: a re-read here asks the server again,
-        usually to hear that nothing changed."""
-        for uuid in list(self._public_smart):
-            catalog = self._catalogs.get(uuid)
-            if catalog is not None:
-                self.reload_catalog(catalog)
-
     def reload_catalog(self, catalog: Catalog) -> None:
-        """Re-read a catalogue's members; signals only when they changed."""
+        """Re-read a catalogue's members now; signals only when they changed."""
         cocat_cat = self._cocat_catalogue(catalog)
         if cocat_cat is None:
             return
         shown = [_seen(e) for e in self._events.get(catalog.uuid, [])]  # before: the read updates events in place
-        members = self._readable_members(catalog, cocat_cat)
+        self._show_members(catalog, self._readable_members(catalog, cocat_cat), shown)
+
+    def _show_members(self, catalog: Catalog, members: list, shown: list | None = None) -> None:
+        """*shown* is what was shown before the read, which updates events in place."""
+        if shown is None:
+            shown = [_seen(e) for e in self._events.get(catalog.uuid, [])]
         if shown != [_seen(e) for e in members]:
             with self.remote_changes():
                 self._set_events(catalog, members)
@@ -1131,22 +1130,6 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
         """After a sync or a batch of remote changes: what cocat-rs does not report one by one."""
         self.links_may_have_changed(room_id)
         self.public_may_have_changed(room_id)
-
-    def mark_smart_dirty(self, room_id: str) -> None:
-        """Any event edit can change a smart catalogue's members; re-read them shortly."""
-        if any(c.uuid in self._smart for c in self._catalogs_of(room_id)) or self._links_from(room_id):
-            self._smart_dirty.add(room_id)
-            self._smart_timer.start()
-
-    def refresh_smart_catalogs(self) -> None:
-        self._smart_timer.stop()
-        dirty, self._smart_dirty = self._smart_dirty, set()
-        for room_id in dirty:
-            for catalog in self._catalogs_of(room_id):
-                if catalog.uuid in self._smart:
-                    self.reload_catalog(catalog)
-            for catalog in self._links_from(room_id):
-                self.reload_catalog(catalog)
 
     def _forget_catalog(self, catalog: Catalog) -> None:
         self._smart.discard(catalog.uuid)

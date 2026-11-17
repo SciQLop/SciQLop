@@ -50,12 +50,12 @@ def test_my_own_catalogues_and_links_offer_no_link(p):
     assert [a.name for a in p.actions(view)] == ["Unlink", "Export…"]
 
 
-def test_a_link_follows_what_its_catalogue_holds(p):
+def test_a_link_follows_what_its_catalogue_holds(p, qtbot):
     original = shocks_in_shared(p)
     view = link(p, original)
     p.add_event(original, CatalogEvent(uuid="e2", start=T0 + HOUR, stop=T0 + 2 * HOUR))
-    p.refresh_smart_catalogs()
-    assert sorted(e.uuid for e in p.events(view)) == ["e1", "e2"]
+    p.refresh_smart_catalogs()  # read in the background
+    qtbot.waitUntil(lambda: sorted(e.uuid for e in p.events(view)) == ["e1", "e2"], timeout=5000)
 
 
 def test_unlink_removes_only_the_link(p, opened):
