@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import warnings
+from html import escape
 import shutil
 import uuid
 from contextlib import contextmanager
@@ -61,6 +63,7 @@ RANGE_DEBOUNCE_MS = 100
 SYNC_STALL_MS = 30_000  # a joined room not synced by then is reported once
 SAVE_TIMEOUT_S = 10  # how long a version waits for local changes to reach the server
 SMART_REFRESH_MS = 200  # smart catalogues are re-read this long after the last edit in their room
+PUBLIC_REFRESH_MS = 5 * 60 * 1000  # the public catalogues change on the server with no sign here
 LOCK_SUFFIX = ".lock"  # next to a project kept on this computer: held by the window that has it open
 CACHE_LOCK = "sciqlop_cache.lock"  # held by the window that uses the shared caches of the server's projects
 OTHER_WINDOWS = "other_windows"  # in the cache folder: one folder per later window
@@ -166,6 +169,8 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
         self._starting = None                  # the start under way, cancelled on close
         self._stall_timers: dict[str, QTimer] = {}
         self._smart: set[str] = set()          # uuids of catalogues that have a rule
+        self._public_smart: set[str] = set()   # those whose rule searches the public catalogues
+        self._read_notes: dict[str, str] = {}  # uuid -> what cocat-rs warned while reading it
         self._unreadable: dict[str, str] = {}  # uuid -> why this cocat-rs cannot read it (a newer rule form)
         self._smart_dirty: set[str] = set()    # room ids whose smart catalogues need a re-read
         self._remembered = Remembered(cache_dir)
@@ -193,6 +198,9 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
         self._smart_timer.setSingleShot(True)
         self._smart_timer.setInterval(SMART_REFRESH_MS)
         self._smart_timer.timeout.connect(self.refresh_smart_catalogs)
+        self._public_timer = QTimer(self)
+        self._public_timer.setInterval(PUBLIC_REFRESH_MS)
+        self._public_timer.timeout.connect(self._reread_public_smart)
 
     # ---- rooms ----
 
@@ -605,6 +613,7 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
             self.error_occurred.emit(f"Cannot open project '{room_id}': {error}")
             return
         try:
+            self._give_server(room)
             self._set_identity(room, self._room_infos[room_id])
             self.attach_room(room_id, room, self._room_infos[room_id].role)
             self.listen_room(room_id)
@@ -614,6 +623,12 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
             room.close()
             self._let_go(room_id)
             self.error_occurred.emit(f"Cannot join project '{room_id}': {error}")
+
+    def _give_server(self, room) -> None:
+        """Before the first read: a smart catalogue may search the public catalogues on the server,
+        even in a project kept on this computer, which never syncs."""
+        if self._session is not None and self._session.signed_in:
+            room.use_server(self._session.url, self._session.cookie)
 
     def _set_identity(self, room, info) -> None:
         """Names the project and the person in what cocat-rs writes there (links, comments)."""
@@ -915,7 +930,11 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
             if catalog.uuid in self._unreadable:
                 return tips.unreadable_tip(catalog.name, self._unreadable[catalog.uuid])
             cocat_cat = self._cocat_catalogue(catalog)
-            return tips.catalogue_tip(cocat_cat, self._events.get(catalog.uuid, [])) if cocat_cat else None
+            if cocat_cat is None:
+                return None
+            tip = tips.catalogue_tip(cocat_cat, self._events.get(catalog.uuid, []))
+            note = self._read_notes.get(catalog.uuid)
+            return f"{tip}<br><i>{escape(note)}</i>" if note else tip
         if node_type == NodeType.FOLDER and path and len(path) == 1 and path[0] in self._room_infos:
             return self._project_tip(path[0])
         return None
@@ -1010,7 +1029,20 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
         """Derived rows reuse the event already shown for them, so a re-read creates only what changed."""
         shown = {e.uuid: e for e in self._events.get(catalog.uuid, [])}
         room_id = self._events_room_id(catalog)
-        return [self._row_event(room_id, r, shown) for r in rows_of(cocat_cat.event_arrays(attributes=True))]
+        with warnings.catch_warnings(record=True) as warned:
+            warnings.simplefilter("always", UserWarning)
+            arrays = cocat_cat.event_arrays(attributes=True)
+        self._note_read(catalog, [str(w.message) for w in warned if issubclass(w.category, UserWarning)])
+        return [self._row_event(room_id, r, shown) for r in rows_of(arrays)]
+
+    def _note_read(self, catalog: Catalog, said: list[str]) -> None:
+        """What cocat-rs warned while reading it (no server to search the public catalogues on):
+        shown in its tooltip, not only in the log."""
+        if said:
+            self._read_notes[catalog.uuid] = said[-1]
+            log.info("Catalogue '%s': %s", catalog.name, said[-1])
+        else:
+            self._read_notes.pop(catalog.uuid, None)
 
     def _wrap_catalogue(self, room_id: str, cocat_cat) -> Catalog:
         attributes = cocat_cat.attributes
@@ -1042,6 +1074,25 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
             self._smart.discard(catalog.uuid)
         else:
             self._smart.add(catalog.uuid)
+        if cocat_cat.searches_public:
+            self._public_smart.add(catalog.uuid)
+        else:
+            self._public_smart.discard(catalog.uuid)
+        self._sync_public_timer()
+
+    def _sync_public_timer(self) -> None:
+        if self._public_smart and not self._public_timer.isActive():
+            self._public_timer.start()
+        elif not self._public_smart:
+            self._public_timer.stop()
+
+    def _reread_public_smart(self) -> None:
+        """cocat-rs keeps each search's answer a minute: a re-read here asks the server again,
+        usually to hear that nothing changed."""
+        for uuid in list(self._public_smart):
+            catalog = self._catalogs.get(uuid)
+            if catalog is not None:
+                self.reload_catalog(catalog)
 
     def reload_catalog(self, catalog: Catalog) -> None:
         """Re-read a catalogue's members; signals only when they changed."""
@@ -1078,6 +1129,9 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
 
     def _forget_catalog(self, catalog: Catalog) -> None:
         self._smart.discard(catalog.uuid)
+        self._public_smart.discard(catalog.uuid)
+        self._read_notes.pop(catalog.uuid, None)
+        self._sync_public_timer()
         self._unreadable.pop(catalog.uuid, None)
         self._catalogs.pop(catalog.uuid, None)
         self._attribute_specs.pop(catalog.uuid, None)
