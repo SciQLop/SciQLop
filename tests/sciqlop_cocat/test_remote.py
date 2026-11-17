@@ -158,3 +158,15 @@ def test_remote_rule_change_refreshes_the_catalogue(attached, room, listener):
     listener.catalogue_rule(c.uuid)
     assert [e.uuid for e in attached.events(c)] == [ev.uuid]
     assert Capability.EDIT_EVENTS not in attached.capabilities(c)
+
+
+def test_remote_tags_and_confidence_reach_the_event(attached, room, listener, qtbot):
+    c = attached.create_catalog("n", ["r"])
+    ev = _event(room)
+    listener.events_added(c.uuid, [ev.uuid])
+    [wrapper] = attached.events(c)
+    room.event(ev.uuid).tags = {"shock"}
+    room.event(ev.uuid).confidence = 0.4
+    with qtbot.waitSignal(attached.event_meta_changed):
+        listener.event_fields(ev.uuid, {"tags": ["shock"], "confidence": 0.4}, [])
+    assert (wrapper.meta["tags"], wrapper.meta["rating"]) == (["shock"], 4)

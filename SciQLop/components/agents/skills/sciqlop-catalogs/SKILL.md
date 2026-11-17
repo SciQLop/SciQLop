@@ -108,8 +108,8 @@ and Ctrl+Shift+M:
   start == stop is allowed (an instant).
 - **Reserved names:** `start`, `stop`, `uuid`, `tags`, `products` and
   `rating` are built-in fields, not free attributes. `tags` is a list of
-  strings, `rating` an integer from 1 to 10. They are stored, but
-  `catalogs.get()` does not return them yet: do not rely on reading them back.
+  strings, `rating` an integer from 1 to 10 (stored as a confidence: it comes
+  back rounded to a whole number). `catalogs.get()` returns both when set.
   The event's author is set by SciQLop (the signed-in account); an `author`
   key you pass is kept as a plain attribute.
 - **Attribute names:** use letters, digits and `_`, starting with a letter

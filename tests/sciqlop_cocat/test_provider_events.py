@@ -256,3 +256,15 @@ def test_setting_an_absent_key_to_none_is_a_change(attached, qtbot):
     with qtbot.waitSignal(attached.event_meta_changed):
         attached.set_event_meta(c, wrapper, "note", None)
     assert "note" in wrapper.meta and wrapper.meta["note"] is None
+
+
+def test_a_re_read_brings_new_tags_and_rating_and_says_so(attached, room, qtbot):
+    smart = attached.create_catalog("tagged", ["r"])
+    plain, wrapper = _catalog_with_event(attached, tags=["s"], rating=2)
+    room.catalogue(smart.uuid).rule = {"filter": {"all": True}, "where": {"contains": ["tags", "s"]}}
+    attached.reload_catalog(smart)
+    [member] = attached.events(smart)
+    room.event(member.uuid).confidence = 0.9
+    with qtbot.waitSignal(attached.events_changed):
+        attached.reload_catalog(smart)
+    assert attached.events(smart)[0].meta["rating"] == 9

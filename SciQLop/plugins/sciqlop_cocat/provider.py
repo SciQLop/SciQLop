@@ -53,6 +53,7 @@ from .convert import (
     rows_of,
     schema_specs,
     split_typed_meta,
+    typed_meta,
 )
 
 log = getLogger(__name__)
@@ -135,6 +136,25 @@ def _stored_event(room, uuid: str):
         log.debug("Event %s is not in the room; edit dropped", uuid)
         return None
     return event
+
+
+TYPED_KEYS = ("tags", "rating")  # what a bulk read tells about an event besides its attributes
+
+
+def _with_typed_fields(event: CocatRsEvent, meta: dict) -> CocatRsEvent:
+    """An event already shown takes the tags and rating a new read gives (they change elsewhere too:
+    a public event, another window)."""
+    for key in TYPED_KEYS:
+        if key in meta:
+            event.set_meta(key, meta[key])
+        else:
+            event.remove_meta(key)
+    return event
+
+
+def _seen(event) -> tuple:
+    """What a re-read compares: a change of tags or rating alone is a change too."""
+    return (event.uuid, event.start, event.stop, *(repr(event.meta.get(k)) for k in TYPED_KEYS))
 
 
 def _default_project(infos) -> str | None:
@@ -1020,7 +1040,7 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
 
     def _row_event(self, room_id: str, row, shown: dict) -> CocatRsEvent:
         if not row.derived:
-            return self._wrapper(room_id, row.uuid, row.start, row.stop, row.meta)
+            return _with_typed_fields(self._wrapper(room_id, row.uuid, row.start, row.stop, row.meta), row.meta)
         kept = shown.get(row.uuid)
         if kept is not None and (kept.start, kept.stop, kept.meta) == (row.start, row.stop, row.meta):
             return kept
@@ -1100,9 +1120,9 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
         cocat_cat = self._cocat_catalogue(catalog)
         if cocat_cat is None:
             return
+        shown = [_seen(e) for e in self._events.get(catalog.uuid, [])]  # before: the read updates events in place
         members = self._readable_members(catalog, cocat_cat)
-        shown = [(e.uuid, e.start, e.stop) for e in self._events.get(catalog.uuid, [])]
-        if shown != [(e.uuid, e.start, e.stop) for e in members]:
+        if shown != [_seen(e) for e in members]:
             with self.remote_changes():
                 self._set_events(catalog, members)
             self._emit_events_changed(catalog)  # _set_events is silent; the browser waits for this
@@ -1275,7 +1295,8 @@ class CocatRsProvider(Placing, Following, Linking, Submitting, ImportingTscat, C
                 room.create_event(start=event.start, stop=event.stop, author=self._author,
                                   uuid=event.uuid, attributes=attributes or None, **typed)
             cocat_cat.add_events([event.uuid])
-        self._add_event(catalog, self._wrapper(room_id, event.uuid, event.start, event.stop, attributes))
+        shown = {**attributes, **typed_meta(typed.get("tags"), typed.get("confidence"))}  # as a re-read gives
+        self._add_event(catalog, self._wrapper(room_id, event.uuid, event.start, event.stop, shown))
         self.mark_smart_dirty(room_id)
 
     def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:

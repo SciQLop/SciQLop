@@ -130,3 +130,25 @@ def test_without_a_project_it_is_the_default_one_signed_in(qapp, tmp_path):
     finally:
         run(p.close())
         CatalogRegistry.instance()._forget_for_tests(p)
+
+
+def test_tags_and_rating_come_back_from_get(catalogs, path):
+    catalogs.create(path("t"), [("2020-01-01", "2020-01-02", {"tags": ["shock"], "rating": 7, "note": "n"}),
+                                ("2020-02-01", "2020-02-02")])
+    first, second = catalogs.get(path("t"))
+    assert (first.meta["tags"], first.meta["rating"], first.meta["note"]) == (["shock"], 7, "n")
+    assert "rating" not in second.meta and "tags" not in second.meta
+
+
+def test_tags_and_rating_come_back_after_a_restart(catalogs, path, provider, tmp_path):
+    catalogs.create(path("t"), [("2020-01-01", "2020-01-02", {"tags": ["shock"], "rating": 7})])
+    run(provider.close())
+    CatalogRegistry.instance()._forget_for_tests(provider)  # a restart: only the new one is listed
+    again = under_test(FakeSession(signed_in=False), tmp_path)
+    try:
+        run(again.show_signed_out())
+        [event] = catalogs.get(path("t"))
+        assert (event.meta["tags"], event.meta["rating"]) == (["shock"], 7)
+    finally:
+        run(again.close())
+        CatalogRegistry.instance()._forget_for_tests(again)

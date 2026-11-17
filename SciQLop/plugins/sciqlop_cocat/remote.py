@@ -10,7 +10,7 @@ import cocat_rs
 
 from SciQLop.components.sciqlop_logging import getLogger
 
-from .convert import SUBPATH_ATTR, decode_subpath, rows_of, schema_key, schema_specs
+from .convert import SUBPATH_ATTR, decode_subpath, rows_of, schema_key, schema_specs, typed_meta
 
 log = getLogger(__name__)
 
@@ -144,7 +144,29 @@ class RoomListener:
             self.event_removed(uuid)
         elif "status" in set or "status" in removed:
             self._restore(uuid)
+        if {"tags", "confidence"} & ({*set} | {*removed}):
+            self._typed_fields_changed(uuid)
         self._provider.mark_smart_dirty(self._room_id)
+
+    def _typed_fields_changed(self, uuid):
+        """Tags and confidence show as the event's tags and rating, as a bulk read gives them."""
+        wrapper = self._wrapper(uuid)
+        try:
+            stored = self._room.event(uuid)
+        except cocat_rs.NotFound:
+            return
+        if wrapper is None:
+            return
+        now = typed_meta(stored.tags, stored.confidence)
+        changed = [key for key in ("tags", "rating") if wrapper.meta.get(key) != now.get(key)]
+        for key in changed:
+            if key in now:
+                wrapper.set_meta(key, now[key])
+            else:
+                wrapper.remove_meta(key)
+        for catalog in self._catalogs_holding(wrapper):
+            for key in changed:
+                self._provider.event_meta_changed.emit(catalog, wrapper, key)
 
     def _restore(self, uuid):
         try:

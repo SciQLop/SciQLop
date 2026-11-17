@@ -69,3 +69,32 @@ def test_derived_rows_get_a_stable_id_and_are_marked():
     real, derived = rows_of(arrays)
     assert (real.uuid, real.derived) == ("e1", False)
     assert derived.derived and derived.uuid == rows_of(arrays)[1].uuid and "e1" in derived.uuid
+
+
+# ---- tags and rating from the bulk read (cocat-rs 0.10.2) ----
+
+def test_event_rows_carry_tags_and_rating():
+    arrays = {**_arrays(["u1", "u2"], ["2020-01-01"] * 2, ["2020-01-02"] * 2),
+              "tags": [["b", "a"], []], "confidence": [0.7, None]}
+    first, second = event_rows(arrays, [{"note": "x"}, {}])
+    assert first.meta == {"note": "x", "tags": ["a", "b"], "rating": 7}  # sorted
+    assert second.meta == {}  # no tag, no confidence: nothing added
+
+
+def test_the_rating_is_the_confidence_out_of_ten_rounded():
+    arrays = {**_arrays(["u"], ["2020-01-01"], ["2020-01-02"]), "tags": [[]], "confidence": [0.26]}
+    [row] = event_rows(arrays, [{}])
+    assert row.meta == {"rating": 3}
+    assert split_typed_meta(row.meta)[0] == {"confidence": 0.3}
+
+
+def test_an_interval_made_by_a_rule_has_neither():
+    arrays = {**_arrays([None], ["2020-01-01"], ["2020-01-02"]), "sources": [["e1"]],
+              "tags": [None], "confidence": [None]}
+    [row] = event_rows(arrays, [{}])
+    assert row.derived and row.meta == {}
+
+
+def test_an_older_bulk_read_without_them_still_reads():
+    [row] = event_rows(_arrays(["u1"], ["2020-01-01"], ["2020-01-02"]), [{"k": 1}])
+    assert row.meta == {"k": 1}

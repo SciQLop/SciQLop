@@ -76,6 +76,16 @@ def _derived_id(start: datetime, sources) -> str:
     return f"derived:{start.isoformat()}:{','.join(sources or [])}"
 
 
+def typed_meta(tags, confidence) -> dict:
+    """The bulk read's tags and confidence as SciQLop's meta: none when there are none."""
+    meta = {}
+    if tags:
+        meta["tags"] = sorted(tags)  # one order, whether cocat-rs gives a list or a set
+    if confidence is not None:
+        meta["rating"] = round(confidence * RATING_SCALE)
+    return meta
+
+
 def _row(uuid, start, stop, meta, sources) -> EventRow:
     if uuid is None:
         return EventRow(_derived_id(start, sources), start, stop, dict(meta), derived=True)
@@ -88,8 +98,11 @@ def event_rows(arrays: dict, attributes: list[dict]) -> list[EventRow]:
         raise ValueError(f"{len(attributes)} attribute rows for {len(uuids)} events")
     sources = arrays.get("sources")
     sources = [None] * len(uuids) if sources is None else sources
+    typed = [typed_meta(*fields) for fields in zip(arrays.get("tags") or [None] * len(uuids),
+                                                   arrays.get("confidence") or [None] * len(uuids))]
+    metas = [{**extra, **fields} for extra, fields in zip(attributes, typed)]
     return [_row(*fields) for fields in zip(uuids, _utc(arrays["start"]), _utc(arrays["stop"]),
-                                            attributes, sources)]
+                                            metas, sources)]
 
 
 def split_typed_meta(meta: dict[str, Any]) -> tuple[dict, dict]:
