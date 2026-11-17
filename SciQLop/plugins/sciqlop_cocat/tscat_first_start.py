@@ -69,7 +69,7 @@ class ImportingTscat:
 
     def _show_new_local_project(self, name: str) -> str:
         info = cocat_rs.ProjectInfo(str(uuid.uuid4()), name, "owner")
-        self._local.projects = [*self._local.projects, info]
+        self._local.add_project(info)
         self._local_ids.add(info.id)
         self._room_infos[info.id] = info
         self.folder_added.emit([info.id])

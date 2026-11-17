@@ -127,12 +127,8 @@ class Following:
 
     # ---- following ----
 
-    def _followed_row(self, room_id: str) -> dict | None:
-        return next((row for row in self._remembered.followed if row["id"] == room_id), None)
-
     async def follow(self, row: dict) -> None:
-        if self._followed_row(row["id"]) is None:
-            self._remembered.followed = [*self._remembered.followed, {key: row.get(key) for key in KEPT}]
+        self._remembered.follow({key: row.get(key) for key in KEPT})
         self._public_ids.add(row["id"])
         self._room_infos[row["id"]] = as_info(row)
         await self.join_room(row["id"])
@@ -156,7 +152,7 @@ class Following:
         return self._public_views.pop(catalog.uuid)
 
     def _forget_followed(self, room_id: str) -> None:
-        self._remembered.followed = [row for row in self._remembered.followed if row["id"] != room_id]
+        self._remembered.unfollow(room_id)
         self._public_ids.discard(room_id)
         self._room_infos.pop(room_id, None)
 

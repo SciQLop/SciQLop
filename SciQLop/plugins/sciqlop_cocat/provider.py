@@ -344,11 +344,10 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         """The projects kept on this computer; the first one is made while no account was ever used."""
         if self._local is None:
             return []
-        infos = self._local.projects
-        if not infos and self._account_copy() is None:
-            infos = [cocat_rs.ProjectInfo(str(uuid.uuid4()), MY_CATALOGUES, "owner")]
-            self._local.projects = infos
-        return infos
+        if self._account_copy() is not None:
+            return self._local.projects
+        return self._local.projects_with_a_first(
+            lambda: cocat_rs.ProjectInfo(str(uuid.uuid4()), MY_CATALOGUES, "owner"))
 
     async def show_signed_out(self) -> None:
         """My catalogues without a server: the last account's copy, and what is kept on this computer."""
@@ -469,7 +468,7 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         return True
 
     def _delete_local(self, room_id: str) -> None:
-        self._local.projects = [i for i in self._local.projects if i.id != room_id]
+        self._local.remove_project(room_id)
         for path in Path(self._local_dir).glob(f"{room_id}.*"):
             path.unlink()
 
@@ -573,7 +572,7 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
     async def add_project(self, info) -> None:
         """A project the person just got (created, or copied from a version): listed and joined."""
         self._room_infos[info.id] = info
-        self._remembered.projects = list(self._room_infos.values())
+        self._remembered.add_project(info)
         self.folder_added.emit([info.id])
         await self.join_room(info.id)
         self.status_changed.emit()
