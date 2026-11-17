@@ -2,7 +2,8 @@
 
 Each joined room is a folder (``path[0]`` is the room id). Signed out, it shows "My catalogues": the
 last account's own project from its cache, else a project kept on this computer only. The first sign-in
-that finds catalogues on this computer offers to move them into the account's own project. Local edits are written to the room by
+that finds catalogues on this computer offers to move them into the account's own project. A project
+kept on this computer is open in one SciQLop window at a time: the window holds its lock. Local edits are written to the room by
 uuid; they do not come back from the room, so every edit updates the SciQLop side itself too.
 Remote changes are applied by ``remote.RoomListener`` inside :meth:`remote_changes`.
 """
@@ -31,6 +32,7 @@ from .history_dialog import ask_text, show_history_dialog
 from . import questions
 from .icons import status_badge
 from .transfer import NeedsValueRange, export_catalogue, import_file, tscat_available
+from .locks import lock_on
 from .remembered import Remembered
 from .public import PUBLIC, PUBLIC_FOLDER, Following, as_info
 from .links import Linking
@@ -56,6 +58,7 @@ RANGE_DEBOUNCE_MS = 100
 SYNC_STALL_MS = 30_000  # a joined room not synced by then is reported once
 SAVE_TIMEOUT_S = 10  # how long a version waits for local changes to reach the server
 SMART_REFRESH_MS = 200  # smart catalogues are re-read this long after the last edit in their room
+LOCK_SUFFIX = ".lock"  # next to a project kept on this computer: held by the window that has it open
 
 open_room = cocat_rs.Project.open  # module-level so tests can keep projects off the network
 
@@ -162,6 +165,8 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         self._local_dir = local_dir            # projects kept on this computer only
         self._local = Remembered(local_dir) if local_dir is not None else None
         self._local_ids: set[str] = set()      # the shown projects that are kept on this computer
+        self._held: dict = {}                  # room id -> the lock of a project kept on this computer, open here
+        self._elsewhere: set[str] = set()      # the ones another SciQLop window was holding when last tried
         self._read_tscat = read_tscat          # tscat_import.read_tscat_database; None: tscat is left alone
         self._public_ids: set[str] = set()     # the joined projects that are followed public catalogues
         self._public_views: dict[str, dict] = {}  # a listed public catalogue's uuid in SciQLop -> its row
@@ -414,18 +419,38 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
 
     def _local_with_catalogues(self) -> list:
         """An empty project kept on this computer has nothing to move: forgotten at sign-in."""
-        kept = []
-        for info in self._local_infos():
-            room = open_room(str(self._local_dir), info.id)
+        return [info for info in self._local_infos() if not self._dropped_as_empty(info.id)]
+
+    def _dropped_as_empty(self, room_id: str) -> bool:
+        """Never one that another SciQLop window has open."""
+        if not self._hold(room_id):
+            return False
+        try:
+            room = open_room(str(self._local_dir), room_id)
             try:
                 empty = not room.catalogues()
             finally:
                 room.close()
             if empty:
-                self._delete_local(info.id)
-            else:
-                kept.append(info)
-        return kept
+                self._delete_local(room_id)
+            return empty
+        finally:
+            self._let_go(room_id)
+
+    def _hold(self, room_id: str) -> bool:
+        """Takes the lock of a project kept on this computer; False while another window holds it."""
+        lock = lock_on(Path(self._local_dir) / f"{room_id}{LOCK_SUFFIX}")
+        if not lock.tryLock(0):
+            self._elsewhere.add(room_id)
+            return False
+        self._elsewhere.discard(room_id)
+        self._held[room_id] = lock
+        return True
+
+    def _let_go(self, room_id: str) -> None:
+        lock = self._held.pop(room_id, None)
+        if lock is not None:
+            lock.unlock()
 
     def _account_project(self) -> str | None:
         """The account's own project, when joined and writable: where local catalogues move to."""
@@ -470,7 +495,8 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
     def _delete_local(self, room_id: str) -> None:
         self._local.remove_project(room_id)
         for path in Path(self._local_dir).glob(f"{room_id}.*"):
-            path.unlink()
+            if path.suffix != LOCK_SUFFIX:  # held here, and gone when let go
+                path.unlink()
 
     async def reconnect(self) -> bool:
         self.disconnect()
@@ -503,15 +529,17 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         self._hide_public()
         self._room_infos = {}
         self._local_ids = set()
+        self._elsewhere = set()
         self._public_ids = set()
         self._default_room_id = None
 
     async def join_room(self, room_id: str) -> None:
-        if room_id in self._rooms:
+        if room_id in self._rooms or (room_id in self._local_ids and not self._hold(room_id)):
             return
         try:
             room = open_room(str(self._local_dir if room_id in self._local_ids else self._cache_dir), room_id)
         except Exception as error:
+            self._let_go(room_id)
             self.error_occurred.emit(f"Cannot open project '{room_id}': {error}")
             return
         try:
@@ -522,6 +550,7 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         except Exception as error:
             self.detach_room(room_id)
             room.close()
+            self._let_go(room_id)
             self.error_occurred.emit(f"Cannot join project '{room_id}': {error}")
 
     def _set_identity(self, room, info) -> None:
@@ -542,6 +571,22 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         room = self.detach_room(room_id)
         if room is not None:
             room.close()
+        self._let_go(room_id)
+
+    def release(self, room_id: str) -> None:
+        """Closes a project kept on this computer in this window: another window can open it."""
+        self.leave_room(room_id)
+        self.show_links()
+        self.status_changed.emit()
+
+    async def open_here(self, room_id: str) -> None:
+        await self.join_room(room_id)
+        if room_id in self._elsewhere:
+            self.error_occurred.emit(
+                f"{self._room_infos[room_id].name} is still open in another SciQLop window: "
+                f"right-click it there > Release, or close that window, then try again.")
+        self.show_links()
+        self.status_changed.emit()
 
     async def close(self) -> None:
         if self._sign_in is not None:
@@ -680,7 +725,7 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         if len(path) != 1 or path[0] not in self._room_infos:
             return []
         if path[0] in self._local_ids:
-            return [*self._move_actions(path[0]), *self._import_actions(path[0])]
+            return self._local_actions(path[0])
         if path[0] in self._rooms:
             membership = action("Leave", lambda p: self._choose_to_leave(p[0]))
         else:
@@ -695,6 +740,12 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         if path[0] in self._rooms and self._can_write(path[0]):
             server.insert(0, action("Save version…", lambda p: self._ask_and_save_version(p[0])))
         return [membership, *server, *self._import_actions(path[0]), browse]
+
+    def _local_actions(self, room_id: str) -> list[ProviderAction]:
+        if room_id not in self._rooms:
+            return [action("Open here", lambda p: asyncio.ensure_future(self.open_here(p[0])))]
+        return [*self._move_actions(room_id), *self._import_actions(room_id),
+                action("Release", lambda p: self.release(p[0]))]
 
     def _move_actions(self, room_id: str) -> list[ProviderAction]:
         target = self._account_project()
@@ -785,6 +836,9 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
         info = self._room_infos.get(path[0]) if len(path) == 1 else None
         if info is None:
             return None
+        if info.id in self._local_ids and info.id not in self._rooms:
+            where = "open in another SciQLop window" if info.id in self._elsewhere else "not open"
+            return f"{info.name} ({where})"
         if info.id in self._local_ids and self._connected:
             return f"{info.name} (on this computer)"
         if info.id in self._public_ids:
@@ -818,6 +872,8 @@ class CocatRsProvider(Following, Linking, Submitting, ImportingTscat, CatalogPro
 
     def _project_tip(self, room_id: str) -> str:
         joined = room_id in self._rooms
+        if room_id in self._local_ids and not joined:
+            return tips.closed_local_tip(self._room_infos[room_id].name, room_id in self._elsewhere)
         catalogs = self._catalogs_of(room_id)
         own = [c for c in catalogs if c.uuid not in self._links]
         return tips.project_tip(self._room_infos[room_id], state=self.room_status(room_id) if joined else None,

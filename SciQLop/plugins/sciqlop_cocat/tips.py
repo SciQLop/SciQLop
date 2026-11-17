@@ -28,6 +28,9 @@ ACTIONS = {
     "Import…": "Add catalogues from a VOTable, tscat JSON or TFCat file",
     "Import tscat catalogues": "Copy your tscat catalogues here; doing it again updates the same ones",
     "Open in browser": "This project in the CoCat web app",
+    "Release": "Close this project in this window, so that another SciQLop window can open it",
+    "Open here": "Open this project in this window; a project kept on this computer is open in one "
+                 "SciQLop window at a time",
     "Export…": "Write this catalogue as VOTable, tscat JSON or TFCat",
     "Copy into a project…": "Copy this public catalogue into a project of yours, where you can edit it; or drag it onto a project",
     "Submit as a public catalogue…": "Offer a copy of it to the server's curators, to list under Public "
@@ -91,6 +94,14 @@ def project_tip(info, *, state: str | None, local: bool, default: bool, catalogu
     notes = ["Right-click > Join to load it"] * (not loaded)
     notes += ["New catalogues go here unless you choose a project"] * default
     return _html(info.name, rows, notes)
+
+
+def closed_local_tip(name: str, elsewhere: bool) -> str:
+    """A project kept on this computer that this window does not have open."""
+    where = "Open in another SciQLop window" if elsewhere else "Not open in this window"
+    note = ("Right-click > Open here, once the other window released it or closed" if elsewhere
+            else "Right-click > Open here to load it")
+    return _html(name, [("Stored", "on this computer only"), ("State", where)], [note])
 
 
 def _origin(cocat_cat) -> str:
