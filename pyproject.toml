@@ -103,7 +103,7 @@ dev = [
     # plugin.json; tscat only to import the old catalogues), installed by the workspace launcher in
     # production. CI doesn't take that path, and tests/sciqlop_cocat need both.
     "tscat>=0.5.1",
-    "cocat-rs>=0.10.1,<0.11",
+    "cocat-rs>=0.10.2,<0.11",
     "pytest-xdist>=3.8.0",
     "pytest-timeout>=2.3.1",
     # runtime deps of the ACP layer (SciQLop/components/agents/acp), declared
