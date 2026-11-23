@@ -89,6 +89,10 @@ CORE_GUIDES = (
           "In a notebook, run a cell that starts with %%vp and defines a function of start and stop. The function "
           "becomes a product in the Products pane, under its own name: drag it onto a panel to plot it.",
           ("virtual", "product", "vp", "%%vp", "notebook", "function", "magic")),
+    _core("tune-a-virtual-product", "Change a virtual product's inputs",
+          "Open the Properties pane with its icon on the left edge and pick the curve. Each keyword argument with a "
+          "default is listed under Adjustable inputs: change one and the curve is computed again.",
+          ("virtual", "product", "knob", "input", "parameter", "properties", "tune")),
 )
 
 
