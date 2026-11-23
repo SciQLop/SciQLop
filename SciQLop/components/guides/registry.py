@@ -106,6 +106,11 @@ CORE_GUIDES = (
           "Signed in to CoCat, right-click a project under Shared in the Catalogs pane and choose Sharing…. "
           "Type the person's email, pick a role and click Invite: the invitation waits under Pending invitations.",
           ("catalog", "catalogue", "share", "sharing", "invite", "project", "cocat", "collaborate")),
+    _core("catalog-tree-sections", "Find your way in the Catalogs pane",
+          "The Catalogs pane has three sections. My catalogues holds your own catalogues, and new ones go there. "
+          "Shared holds the projects shared with other people, yours or theirs. Reference holds read-only lists, "
+          "such as the public catalogues.",
+          ("catalog", "catalogue", "tree", "section", "my catalogues", "shared", "reference", "public")),
 )
 
 

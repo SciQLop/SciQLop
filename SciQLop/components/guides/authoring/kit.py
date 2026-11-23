@@ -157,10 +157,11 @@ def tree_row(y: float, depth: int, text: str, arrow: str | None = None, cls: str
     return f'{tri}<text x="{x+14}" y="{y}" class="{cls}">{text}</text>'
 
 
-def section_row(y: float, icon_name: str, text: str, arrow: str = "open", cls: str = "") -> str:
-    """A top-level section of the catalogue tree (My catalogues, Shared, Reference) with its icon."""
+def section_row(y: float, icon_name: str, text: str, arrow: str | None = "open", cls: str = "") -> str:
+    """A top-level section of the catalogue tree (My catalogues, Shared, Reference) with its icon; `arrow`
+    None leaves the triangle to the guide, to animate it."""
     tri = {"open": f'<path d="M62 {y-7} l8 0 l-4 6 z" fill="var(--dim)"/>',
-           "closed": f'<path d="M63 {y-9} l6 4 l-6 4 z" fill="var(--dim)"/>'}[arrow]
+           "closed": f'<path d="M63 {y-9} l6 4 l-6 4 z" fill="var(--dim)"/>'}.get(arrow, "")
     return f'{tri}{icon(icon_name, y - 12, "var(--dim)", x=75)}<text x="96" y="{y}" class="{cls}">{text}</text>'
 
 
@@ -168,15 +169,15 @@ def products_pane(rows: str, hot_y: float, pane_class: str = "", hot_class: str 
     return pane(ui("Products"), rows, hot_y, pane_class, hot_class)
 
 
-def pane(title: str, rows: str, hot_y: float, pane_class: str = "", hot_class: str = "rowhot a") -> str:
-    """A side pane, open over the panel area (x 49..241). Rows come from tree_row().
+def pane(title: str, rows: str, hot_y: float | None, pane_class: str = "", hot_class: str = "rowhot a") -> str:
+    """A side pane, open over the panel area (x 49..241). Rows come from tree_row(); `hot_y` None: no row lit.
     When `pane_class` slides it in (see `pane_slide`), draw `strip()` again after it."""
     return f"""<g class="{pane_class}">
   <rect x="49" y="55" width="196" height="306" fill="var(--shadow)"/>
   <rect x="49" y="55" width="192" height="306" fill="var(--side)"/>
   <line x1="241" y1="55" x2="241" y2="361" stroke="var(--line)"/>
   <text x="62" y="78" class="title">{title}</text>
-  <rect class="{hot_class}" x="55" y="{hot_y - 16}" width="180" height="24" rx="6" fill="var(--accent-soft)"/>
+  {"" if hot_y is None else f'<rect class="{hot_class}" x="55" y="{hot_y - 16}" width="180" height="24" rx="6" fill="var(--accent-soft)"/>'}
   {rows}
 </g>"""
 

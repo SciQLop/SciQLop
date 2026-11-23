@@ -17,6 +17,7 @@ Short looping animations that each teach one SciQLop manipulation, drawn as a si
 | `command-palette.svg` | Ctrl+K, type a few letters, Enter: here New plot panel. |
 | `plot-keys-and-wheel.svg` | Wheel moves in time, Ctrl+wheel zooms, the wheel on an axis zooms it; click, then M fits. |
 | `share-a-catalog-project.svg` | Right-click a project under Shared, Sharing…, type an email, Invite. |
+| `catalog-tree-sections.svg` | The Catalogs pane's sections open one by one: My catalogues, Shared, Reference. |
 
 Each file is a standalone SVG animated with CSS: no script, no image. It follows the light or dark
 theme of whatever displays it, and shows a still picture where animation is off. It plays in a web
