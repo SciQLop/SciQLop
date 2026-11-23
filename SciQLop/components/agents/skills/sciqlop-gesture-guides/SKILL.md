@@ -55,7 +55,8 @@ plugin and change the scene. `SciQLop.components.guides.authoring.kit` gives the
 | `Clock(T)`: `at`, `path`, `pulse`, `shown`, `hidden`, `lit` | the timeline, written in seconds |
 | `keyframes(name, stops)` | one `@keyframes` block from `(percent, css)` stops |
 | `window`, `strip`, `panel_frame`, `time_pill`, `combo`, `popup` | SciQLop's window, icon strip, panel, row under the panel, menus |
-| `pane`, `products_pane`, `tree_row`, `pane_slide` | a side pane, its rows, its opening |
+| `pane`, `products_pane`, `tree_row`, `section_row`, `pane_slide` | a side pane, its rows, the catalogue tree's sections, its opening |
+| `ui(label)` | a word of SciQLop's interface (pane title, menu entry), checked against the code by SciQLop's tests |
 | `static_plot`, `curve`, `trace`, `SIGNALS`, `span` | plots, realistic signals, catalog events |
 | `CURSOR`, `ghost`, `ring`, `keycap`, `step` | the cursor, a dragged item, clicks, held keys, the three step labels |
 | `host_page(guides)` | one web page showing several guides (for a website or a review) |
@@ -71,7 +72,10 @@ Rules of the style:
   of that loop.
 - **Resting state = the result.** Draw everything in its final state; the animation overrides it. A
   viewer that cannot animate then shows a true picture.
-- **Own prefix.** Class and keyframe names carry the guide's prefix `p` (core uses `sqa sqc sqd sqe sqj sqm sqn`).
+- **Own prefix.** Class and keyframe names carry the guide's prefix `p` (core uses `sqa sqc sqd sqe sqj sqk sqm sqn sqp sqs sqt sqv sqw sqx`).
+- **Interface words as the code writes them**, through `kit.ui`, and from the code's own constants where
+  it has them (`CATALOG_MODES`, `SECTION_LABELS`). Give `ui` a whole `<text>`: Qt drops the spaces
+  around a `<tspan>`.
 
 ## What Qt's renderer needs
 
@@ -86,6 +90,7 @@ colours, `@media` blocks are dropped, `#rrggbbaa` is split into colour + opacity
 | place with a CSS `transform` outside keyframes | ignored | the SVG `transform="…"` attribute |
 | scale a 1-unit shape by 80 | blurry, edges lost (browsers too) | draw near real size, move each edge with a translate |
 | rely on click rings or self-drawing curves | not animated: rings stay hidden, curves appear at once | keep them as extras, never as the message |
+| move a curve inside a plot | it spills out of the plot: no clip | a flip book of curves cut to the plot (`core/plot_keys_and_wheel.py`) |
 
 ## Check it
 
