@@ -15,6 +15,7 @@ Short looping animations that each teach one SciQLop manipulation, drawn as a si
 | `write-a-virtual-product.svg` | Run a `%%vp` cell, then drag the new product from the Products pane onto a panel. |
 | `tune-a-virtual-product.svg` | Properties pane, pick the curve, change one of its Adjustable inputs: the curve follows. |
 | `command-palette.svg` | Ctrl+K, type a few letters, Enter: here New plot panel. |
+| `plot-keys-and-wheel.svg` | Wheel moves in time, Ctrl+wheel zooms, the wheel on an axis zooms it; click, then M fits. |
 
 Each file is a standalone SVG animated with CSS: no script, no image. It follows the light or dark
 theme of whatever displays it, and shows a still picture where animation is off. It plays in a web

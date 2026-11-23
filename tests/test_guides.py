@@ -47,12 +47,16 @@ def sciqlop_code():
     return _sciqlop_code()
 
 
+DRAWS_NO_INTERFACE_WORDS = {"sciqlop.plot-keys-and-wheel"}  # only a plot, keys and the mouse
+
+
 @pytest.mark.parametrize("guide", CORE_GUIDES, ids=lambda g: g.id)
 def test_a_guide_draws_only_words_the_interface_still_has(guide, sciqlop_code):
     """A renamed menu entry or pane must not leave a guide showing the old name."""
     from SciQLop.components.guides.authoring.kit import ui_labels
     svg = guide.path.read_text(encoding="utf-8")
-    assert ui_labels(svg), "mark the interface words with kit.ui so they are checked"
+    if guide.id not in DRAWS_NO_INTERFACE_WORDS:
+        assert ui_labels(svg), "mark the interface words with kit.ui so they are checked"
     assert _labels_gone(svg, sciqlop_code) == []
 
 

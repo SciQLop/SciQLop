@@ -97,6 +97,11 @@ CORE_GUIDES = (
           "Press Ctrl+K (Cmd+K on macOS) to open the command palette. Type a few letters of what you want, "
           "such as \"new pa\" for New plot panel, and press Enter.",
           ("command", "palette", "ctrl+k", "keyboard", "search", "shortcut")),
+    _core("plot-keys-and-wheel", "Move, zoom and fit a plot",
+          "Over a plot, the wheel moves in time and Ctrl+wheel zooms in time; Shift+wheel zooms vertically. Over an "
+          "axis, the wheel zooms that axis. Click a plot, then press M to fit it, or L over an axis for a log scale; "
+          "H hides the selected curve.",
+          ("zoom", "wheel", "scroll", "pan", "move", "fit", "autoscale", "log", "keys", "shortcut", "m", "l", "h")),
 )
 
 
