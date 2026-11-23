@@ -68,7 +68,7 @@ ROWS = "".join([kit.tree_row(106, 0, "speasy", "open"), kit.tree_row(134, 1, "am
 BODY = f"""{kit.window(P, active="tree", tab_class="tabhot a")}
 {kit.panel_frame()}
 <g class="hint a"><rect x="76" y="112" width="590" height="194" rx="8" fill="none" stroke="var(--dim)" stroke-width="1.2" stroke-dasharray="5 5"/>
-  <text x="464" y="204" text-anchor="middle" class="dim" style="font-size:13px">Add a product to this panel</text></g>
+  <text x="464" y="204" text-anchor="middle" class="dim" style="font-size:13px">{kit.ui("Add a product to this panel")}</text></g>
 <rect class="dzhot a" x="76" y="112" width="590" height="194" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
 <g class="plot a">{GRID}
   <line x1="{X0}" y1="{(Y0 + Y1) // 2}" x2="{X1}" y2="{(Y0 + Y1) // 2}" stroke="var(--line)"/>

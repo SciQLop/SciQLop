@@ -9,8 +9,12 @@ by the "Zoom out" factor shown next to the mode box (x2 = the event fills half t
 import sys
 from pathlib import Path
 
+from SciQLop.components.catalogs.backend.provider import Section
+from SciQLop.components.catalogs.ui.catalog_tree import SECTION_LABELS
 from SciQLop.components.guides.authoring import kit
+from SciQLop.components.plotting.ui.catalog_chrome import CATALOG_MODES
 
+MODE = {key: label for label, key in CATALOG_MODES}
 P, T = "sqj", 14.0
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(".")
 clock = kit.Clock(T)
@@ -94,7 +98,7 @@ STYLE = STYLE.replace(kit.keyframes(f"{P}-click", []), "") \
 
 DOT = '<circle cx="{x}" cy="{y}" r="4" fill="var(--c4)"/>'
 EVENT_ROWS = "".join(DOT.format(x=70, y=y - 4) + f'<text x="82" y="{y}" class="small">2019-03-01 {start}</text>' for y, (_, _, start) in zip(ROW_Y, EVENTS))
-ROWS = (kit.tree_row(106, 0, "My catalogues", "open") + '<rect x="55" y="118" width="180" height="24" rx="6" fill="var(--accent-soft)"/>'
+ROWS = (kit.tree_row(106, 0, kit.ui(SECTION_LABELS[Section.MINE]), "open") + '<rect x="55" y="118" width="180" height="24" rx="6" fill="var(--accent-soft)"/>'
         + DOT.format(x=84, y=130) + kit.tree_row(134, 1, "MMS crossings") + kit.tree_row(162, 1, "Flux ropes", cls="dim")
         + '<line x1="57" y1="196" x2="233" y2="196" stroke="var(--line)"/>'
         + '<text x="62" y="222" class="small dim">Start (UTC)</text>'
@@ -110,13 +114,13 @@ BODY = f"""{kit.window(P, active="catalogue")}
 {plot(104, {"bx": "c1", "by": "c2", "bz": "c3"})}
 {plot(214, {"density": "c3"})}
 {PILL}
-<text x="436" y="345" class="small dim">Catalog mode:</text>
-{kit.combo(510, 66, "View", "view a")}
-<text x="519" y="345" class="small jump a">Jump</text>
-<g class="jump a"><text x="584" y="345" class="small dim">Zoom out:</text>
+<text x="436" y="345" class="small dim">{kit.ui("Catalog mode:")}</text>
+{kit.combo(510, 66, kit.ui(MODE["view"]), "view a")}
+<text x="519" y="345" class="small jump a">{kit.ui(MODE["jump"])}</text>
+<g class="jump a"><text x="584" y="345" class="small dim">{kit.ui("Zoom out:")}</text>
   <rect x="636" y="330" width="46" height="22" rx="6" fill="var(--win)" stroke="var(--line)"/><text x="645" y="345" class="small">×2.0</text></g>
-{kit.pane("Catalogs", ROWS, hot_y=ROW_Y[2], hot_class="row3 a")}
-{kit.popup(510, 252, 72, ["View", "Jump", "Edit"], hot=1, cls="menu a")}
+{kit.pane(kit.ui("Catalogs"), ROWS, hot_y=ROW_Y[2], hot_class="row3 a")}
+{kit.popup(510, 252, 72, [kit.ui(label) for label, _ in CATALOG_MODES], hot=1, cls="menu a")}
 {"".join(kit.ring(name, *xy) for name, _, xy in RINGS)}
 {kit.CURSOR}
 {kit.step(58, 1, "Set Catalog mode to Jump", "s1")}

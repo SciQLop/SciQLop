@@ -8,6 +8,8 @@ drop rule "sciqlop.catalogs.overlay" overlays it on the panel dropped on (core_k
 import sys
 from pathlib import Path
 
+from SciQLop.components.catalogs.backend.provider import Section
+from SciQLop.components.catalogs.ui.catalog_tree import SECTION_LABELS
 from SciQLop.components.guides.authoring import kit
 
 P, T = "sqc", 12.0
@@ -60,10 +62,10 @@ STYLE = kit.base_style(P, f"{T:g}s") + f"""
     + kit.keyframes(f"{P}-s1", lit(0.5, 3.2)) + kit.keyframes(f"{P}-s2", lit(3.5, RELEASE)) + kit.keyframes(f"{P}-s3", lit(RELEASE + 0.3, RESET - 0.3))
 
 DOT = '<circle cx="{x}" cy="{y}" r="4" fill="var(--{c})"/>'
-ROWS = "".join([kit.tree_row(106, 0, "My catalogues", "open"),
+ROWS = "".join([kit.tree_row(106, 0, kit.ui(SECTION_LABELS[Section.MINE]), "open"),
                 DOT.format(x=84, y=130, c="c4"), kit.tree_row(134, 1, "MMS crossings"),
                 DOT.format(x=84, y=158, c="c2"), kit.tree_row(162, 1, "Flux ropes", cls="dim"),
-                kit.tree_row(190, 0, "Reference", "closed", cls="dim")])
+                kit.tree_row(190, 0, kit.ui(SECTION_LABELS[Section.REFERENCE]), "closed", cls="dim")])
 
 BODY = f"""{kit.window(P, active="catalogue", tab_class="tabhot a")}
 {kit.panel_frame()}
@@ -72,7 +74,7 @@ BODY = f"""{kit.window(P, active="catalogue", tab_class="tabhot a")}
 {"".join(kit.span(x, w, cls=f"a ev{i}") for i, (x, w) in enumerate(SPANS))}
 <rect class="dzhot a" x="68" y="100" width="608" height="218" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
 {kit.TIME_PILL}
-{kit.pane("Catalogs", ROWS, hot_y=134, pane_class="pane a")}
+{kit.pane(kit.ui("Catalogs"), ROWS, hot_y=134, pane_class="pane a")}
 {kit.strip("catalogue", "tabhot a")}
 {kit.ring("open", 34, 101)}{kit.ring("press", ROW[0], ROW[1] - 3)}{kit.ring("release", *DROP)}
 {kit.ghost("MMS crossings", width=112)}

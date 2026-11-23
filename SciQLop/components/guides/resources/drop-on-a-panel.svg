@@ -89,7 +89,7 @@
   <rect x="49" y="55" width="196" height="306" fill="var(--shadow)"/>
   <rect x="49" y="55" width="192" height="306" fill="var(--side)"/>
   <line x1="241" y1="55" x2="241" y2="361" stroke="var(--line)"/>
-  <text x="62" y="78" class="title">Products</text>
+  <text x="62" y="78" class="title"><tspan class="ui">Products</tspan></text>
   <rect class="rowhot a" x="55" y="202" width="180" height="24" rx="6" fill="var(--accent-soft)"/>
   <path d="M62 99 l8 0 l-4 6 z" fill="var(--dim)"/><text x="76" y="106" class="">speasy</text><path d="M78 127 l8 0 l-4 6 z" fill="var(--dim)"/><text x="92" y="134" class="">amda</text><path d="M94 155 l8 0 l-4 6 z" fill="var(--dim)"/><text x="108" y="162" class="">ACE</text><text x="124" y="190" class="dim">imf</text><text x="124" y="218" class="">imf_mag</text><path d="M95 237 l6 4 l-6 4 z" fill="var(--dim)"/><text x="108" y="246" class="dim">MMS1</text><path d="M79 265 l6 4 l-6 4 z" fill="var(--dim)"/><text x="92" y="274" class="dim">cda</text>
 </g></g>

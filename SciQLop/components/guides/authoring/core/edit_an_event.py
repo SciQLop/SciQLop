@@ -11,7 +11,9 @@ import sys
 from pathlib import Path
 
 from SciQLop.components.guides.authoring import kit
+from SciQLop.components.plotting.ui.catalog_chrome import CATALOG_MODES
 
+MODE = {key: label for label, key in CATALOG_MODES}
 P, T = "sqm", 15.0
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(".")
 clock = kit.Clock(T)
@@ -22,7 +24,7 @@ BODY_FROM, BODY_TO = (X0 + W1 // 2, Y), (X1 + W1 // 2, Y)
 MENU_X, MENU_Y = BODY_TO[0] + 8, Y - 12
 DELETE = (MENU_X + 44, MENU_Y + 18 + 22 * 5 - 2)
 GRAB1, DROP1, GRAB2, DROP2, MENU, CLICK_DELETE, RESET = 1.8, 3.1, 4.4, 5.9, 6.9, 8.6, 13.6
-MENU_ROWS = ["Event: 13:23:01", "Edit attributes…", "Show in Catalogs", "Zoom to event", "Copy start and stop", "Delete"]
+MENU_ROWS = ["Event: 13:23:01", *map(kit.ui, ("Edit attributes…", "Show in Catalogs", "Zoom to event", "Copy start and stop", "Delete"))]
 
 # The band is drawn 100 wide and stretched a little; drawn 1 wide and stretched 80x, browsers blur it.
 band = lambda x, width: f"transform: translate({x}px, 0px) scale({width / 100}, 1);"
@@ -67,9 +69,9 @@ BODY = f"""{kit.window(P)}
 {kit.span(130, 34)}{kit.span(590, 40)}
 {EVENT}
 {kit.time_pill()}
-<text x="300" y="345" class="small dim">Catalog mode:</text>
-{kit.combo(374, 72, "Edit")}
-<text x="458" y="345" class="small dim">Add to:</text>{kit.combo(500, 118, "MMS crossings")}
+<text x="300" y="345" class="small dim">{kit.ui("Catalog mode:")}</text>
+{kit.combo(374, 72, kit.ui(MODE["edit"]))}
+<text x="458" y="345" class="small dim">{kit.ui("Add to:")}</text>{kit.combo(500, 118, "MMS crossings")}
 {kit.popup(MENU_X, MENU_Y, 156, MENU_ROWS, hot=5, cls="menu a", dim=(0,))}
 {kit.ring("g1", *EDGE)}{kit.ring("d1", *EDGE_TO)}{kit.ring("g2", *BODY_FROM)}{kit.ring("d2", *BODY_TO)}{kit.ring("rc", *BODY_TO)}
 {kit.ring("del", DELETE[0], DELETE[1] - 2)}

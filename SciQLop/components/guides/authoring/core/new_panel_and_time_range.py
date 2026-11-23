@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from SciQLop.components.guides.authoring import kit
+from SciQLop.components.plotting.ui.catalog_chrome import CATALOG_MODES
 
 P, T = "sqn", 13.0
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(".")
@@ -70,8 +71,8 @@ TIME_BAR = f"""{nav(76, FAST_BACK)}{nav(100, BACK)}
 <text x="314" y="345" class="small dur0 a">1d</text><text x="314" y="345" class="small dur1 a">3h</text>
 <path d="M343 339 l4 4 l4 -4" fill="none" stroke="var(--dim)" stroke-width="1.3"/>
 {nav(368, FORWARD)}{nav(392, FAST_FORWARD)}
-<text x="426" y="345" class="small dim">Zoom limit:</text>{kit.combo(482, 52, "1d")}
-<text x="548" y="345" class="small dim">Catalog mode:</text>{kit.combo(620, 64, "View")}"""
+<text x="426" y="345" class="small dim">{kit.ui("Zoom limit:")}</text>{kit.combo(482, 52, "1d")}
+<text x="548" y="345" class="small dim">{kit.ui("Catalog mode:")}</text>{kit.combo(620, 64, kit.ui(CATALOG_MODES[0][0]))}"""
 
 PLUS_ICON = kit.icon("add_graph", 66, "var(--fg)", x=126)
 
@@ -84,7 +85,7 @@ BODY = f"""{kit.window(P)}
 <rect x="60" y="96" width="624" height="226" rx="10" fill="none" stroke="var(--line)"/>
 <g class="old a">{kit.static_plot(76, 104, 592, {"bx": "c1", "by": "c2", "bz": "c3"})}{kit.static_plot(76, 214, 592, {"density": "c3"})}</g>
 <g class="new a"><rect x="76" y="112" width="592" height="194" rx="8" fill="none" stroke="var(--dim)" stroke-width="1.2" stroke-dasharray="5 5"/>
-  <text x="372" y="214" text-anchor="middle" class="dim" style="font-size:13px">Add a product to this panel</text></g>
+  <text x="372" y="214" text-anchor="middle" class="dim" style="font-size:13px">{kit.ui("Add a product to this panel")}</text></g>
 {TIME_BAR}
 {kit.ring("k0", 134, 74)}{kit.ring("k1", 212, 341)}{kit.ring("k2", 333, 341)}
 <g class="enter a">{kit.keycap("Enter")}</g>

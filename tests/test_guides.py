@@ -1,6 +1,9 @@
 """Gesture guides: every guide plays in Qt's SVG renderer with the theme's colours, is reachable from
 Help, the palette and a "?" button, and a plugin can add its own."""
 from .fixtures import *
+import re
+from pathlib import Path
+
 import pytest
 from PySide6.QtCore import QByteArray
 from PySide6.QtSvg import QSvgRenderer
@@ -24,6 +27,39 @@ def test_a_core_guide_animates_in_qt(qapp, guide):
     renderer = QSvgRenderer(QByteArray(svg.encode()))
     assert renderer.isValid() and renderer.animated()
     assert 8000 <= renderer.animationDuration() <= 20000
+
+
+def _sciqlop_code() -> str:
+    import SciQLop
+    root = Path(SciQLop.__file__).parent
+    guides = root / "components" / "guides"
+    return "\n".join(p.read_text(encoding="utf-8") for p in root.rglob("*.py") if guides not in p.parents)
+
+
+def _labels_gone(svg: str, code: str) -> list[str]:
+    """The interface words a guide draws (kit.ui) that no string in SciQLop's code starts with."""
+    from SciQLop.components.guides.authoring.kit import ui_labels
+    return [label for label in ui_labels(svg) if not re.search("[\"']" + re.escape(label), code)]
+
+
+@pytest.fixture(scope="module")
+def sciqlop_code():
+    return _sciqlop_code()
+
+
+@pytest.mark.parametrize("guide", CORE_GUIDES, ids=lambda g: g.id)
+def test_a_guide_draws_only_words_the_interface_still_has(guide, sciqlop_code):
+    """A renamed menu entry or pane must not leave a guide showing the old name."""
+    from SciQLop.components.guides.authoring.kit import ui_labels
+    svg = guide.path.read_text(encoding="utf-8")
+    assert ui_labels(svg), "mark the interface words with kit.ui so they are checked"
+    assert _labels_gone(svg, sciqlop_code) == []
+
+
+def test_the_label_check_sees_a_word_the_interface_lost(sciqlop_code):
+    from SciQLop.components.guides.authoring.kit import ui
+    svg = f"<text>{ui('Add to:')}</text><text>{ui('Frobnicate the catalog…')}</text>"
+    assert _labels_gone(svg, sciqlop_code) == ["Frobnicate the catalog…"]
 
 
 def test_the_guide_takes_the_theme_colours(qapp):

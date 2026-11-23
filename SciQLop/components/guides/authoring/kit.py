@@ -4,7 +4,9 @@ cursor, click ring, step row, keyframe helper and the host page.
 Every guide passes its own prefix `p` (e.g. "sqd"): class and keyframe names carry it, because
 several guides are inlined in one page and an SVG's <style> is global there.
 """
+import html
 import math
+import re
 
 LIGHT = "--win:#ffffff;--bar:#ebebed;--side:#f4f4f6;--line:#d5d5da;--fg:#2f2f33;--dim:#77777f;--accent:#3584e4;--accent-soft:#3584e422;--on-accent:#ffffff;--c1:#1c71d8;--c2:#e66100;--c3:#26a269;--c4:#9141ac;--shadow:#00000022;"
 DARK = "--win:#27272b;--bar:#34343a;--side:#2e2e33;--line:#4a4a52;--fg:#f1f1f3;--dim:#a3a3ad;--accent:#78aeed;--accent-soft:#78aeed2e;--on-accent:#14141a;--c1:#78aeed;--c2:#ffa348;--c3:#57e389;--c4:#dc8add;--shadow:#00000066;"
@@ -18,6 +20,20 @@ ICON_PATHS = {
     "add_graph": ['M6 9.99h2v7H6zm8 3h2v4h-2zm-4-6h2v10h-2zM20 7V4h-2v3h-3v2h3v3h2V9h3V7zm-2 12H4V5h12V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-5h-2v5z'],
 }
 STRIP = ("tree", "catalogue", "settings", "plot_properties")
+
+
+_UI_LABEL = re.compile(r'<tspan class="ui">(.*?)</tspan>')
+
+
+def ui(label: str) -> str:
+    """A word of SciQLop's own interface, written as the code writes it. tests/test_guides.py fails
+    when the code no longer has it, so a renamed menu entry cannot leave a guide behind.
+    Give it a whole <text>: Qt drops the spaces between a <tspan> and the text beside it."""
+    return f'<tspan class="ui">{html.escape(label, quote=False)}</tspan>'
+
+
+def ui_labels(svg_text: str) -> list[str]:
+    return [html.unescape(m) for m in _UI_LABEL.findall(svg_text)]
 
 
 def base_style(p: str, duration: str) -> str:
@@ -140,7 +156,7 @@ def tree_row(y: float, depth: int, text: str, arrow: str | None = None, cls: str
 
 
 def products_pane(rows: str, hot_y: float, pane_class: str = "", hot_class: str = "rowhot a") -> str:
-    return pane("Products", rows, hot_y, pane_class, hot_class)
+    return pane(ui("Products"), rows, hot_y, pane_class, hot_class)
 
 
 def pane(title: str, rows: str, hot_y: float, pane_class: str = "", hot_class: str = "rowhot a") -> str:

@@ -10,7 +10,9 @@ import sys
 from pathlib import Path
 
 from SciQLop.components.guides.authoring import kit
+from SciQLop.components.plotting.ui.catalog_chrome import CATALOG_MODES
 
+MODE = {key: label for label, key in CATALOG_MODES}
 P, T = "sqe", 14.0
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(".")
 HOME, COMBO, EDIT, START, END = (575, 300), (414, 345), (410, 322), (360, 160), (500, 160)
@@ -77,7 +79,7 @@ def combo(x, width, label_class, label, y=330):
 MENU = (f'<g class="menu a"><rect x="374" y="256" width="72" height="72" rx="8" fill="var(--shadow)" transform="translate(0 2)"/>'
         f'<rect x="374" y="256" width="72" height="72" rx="8" fill="var(--win)" stroke="var(--line)"/>'
         f'<rect x="378" y="306" width="64" height="20" rx="5" fill="var(--accent-soft)"/>'
-        + "".join(f'<text x="386" y="{y}" class="small">{t}</text>' for y, t in ((274, "View"), (297, "Jump"), (320, "Edit"))) + "</g>")
+        + "".join(f'<text x="386" y="{y}" class="small">{t}</text>' for y, t in zip((274, 297, 320), (kit.ui(label) for label, _ in CATALOG_MODES))) + "</g>")
 
 BODY = f"""{kit.window(P)}
 {kit.panel_frame()}
@@ -87,10 +89,10 @@ BODY = f"""{kit.window(P)}
 {kit.span(START[0], WIDTH, cls="made a")}
 <g class="draft a">{"".join(f'<rect x="{START[0]}" y="{y}" width="{WIDTH}" height="100" fill="var(--c4)" fill-opacity=".12" stroke="var(--c4)" stroke-width="1.5" stroke-dasharray="5 4"/>' for y in (104, 214))}</g>
 {kit.time_pill()}
-<text x="300" y="345" class="small dim">Catalog mode:</text>
-{combo(374, 72, "view a", "View")}
-<text x="383" y="345" class="small edit a">Edit</text>
-<g class="target a"><text x="458" y="345" class="small dim">Add to:</text>{combo(500, 118, "", "MMS crossings")}</g>
+<text x="300" y="345" class="small dim">{kit.ui("Catalog mode:")}</text>
+{combo(374, 72, "view a", kit.ui(MODE["view"]))}
+<text x="383" y="345" class="small edit a">{kit.ui(MODE["edit"])}</text>
+<g class="target a"><text x="458" y="345" class="small dim">{kit.ui("Add to:")}</text>{combo(500, 118, "", "MMS crossings")}</g>
 {MENU}
 {kit.ring("k0", 410, 341)}{kit.ring("k1", 410, 317)}{kit.ring("k2", *START)}{kit.ring("k3", *END)}
 {kit.keycap("Shift", cls="key a")}
