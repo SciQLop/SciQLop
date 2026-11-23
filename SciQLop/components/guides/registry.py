@@ -102,6 +102,10 @@ CORE_GUIDES = (
           "axis, the wheel zooms that axis. Click a plot, then press M to fit it, or L over an axis for a log scale; "
           "H hides the selected curve.",
           ("zoom", "wheel", "scroll", "pan", "move", "fit", "autoscale", "log", "keys", "shortcut", "m", "l", "h")),
+    _core("share-a-catalog-project", "Share a catalogue project",
+          "Signed in to CoCat, right-click a project under Shared in the Catalogs pane and choose Sharing…. "
+          "Type the person's email, pick a role and click Invite: the invitation waits under Pending invitations.",
+          ("catalog", "catalogue", "share", "sharing", "invite", "project", "cocat", "collaborate")),
 )
 
 
