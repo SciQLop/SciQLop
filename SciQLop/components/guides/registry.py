@@ -85,6 +85,10 @@ CORE_GUIDES = (
           "Right-click a catalog in the Catalogs pane, open Color by… and pick an attribute such as rating. "
           "Each event on the plots takes the colour of its value.",
           ("catalog", "event", "color", "colour", "attribute", "rating", "colormap")),
+    _core("write-a-virtual-product", "Write a virtual product",
+          "In a notebook, run a cell that starts with %%vp and defines a function of start and stop. The function "
+          "becomes a product in the Products pane, under its own name: drag it onto a panel to plot it.",
+          ("virtual", "product", "vp", "%%vp", "notebook", "function", "magic")),
 )
 
 

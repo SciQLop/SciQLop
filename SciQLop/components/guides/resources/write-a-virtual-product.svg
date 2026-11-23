@@ -1,0 +1,92 @@
+<svg class="sqv" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 430" role="img" aria-label="Run a notebook cell that starts with %%vp: its function becomes a product in the Products pane, under its own name. Drag it onto a panel to plot it.">
+<style>
+.sqv { --win:#ffffff;--bar:#ebebed;--side:#f4f4f6;--line:#d5d5da;--fg:#2f2f33;--dim:#77777f;--accent:#3584e4;--accent-soft:#3584e422;--on-accent:#ffffff;--c1:#1c71d8;--c2:#e66100;--c3:#26a269;--c4:#9141ac;--shadow:#00000022; font-family: "Adwaita Sans", Inter, Cantarell, system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { .sqv { --win:#27272b;--bar:#34343a;--side:#2e2e33;--line:#4a4a52;--fg:#f1f1f3;--dim:#a3a3ad;--accent:#78aeed;--accent-soft:#78aeed2e;--on-accent:#14141a;--c1:#78aeed;--c2:#ffa348;--c3:#57e389;--c4:#dc8add;--shadow:#00000066; } }
+.sqv text { fill: var(--fg); font-size: 12px; }
+.sqv .dim { fill: var(--dim); }
+.sqv .small { font-size: 10.5px; }
+.sqv .title { font-weight: 700; font-size: 12.5px; }
+.sqv .step text { font-size: 12.5px; font-weight: 600; }
+.sqv .a { animation-duration: 13s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
+.sqv .trace { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; vector-effect: non-scaling-stroke; }
+/* A plain curve, for groups the animation stretches or cross-fades: the dash trick misbehaves there. */
+.sqv .curve { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.sqv .ring { transform-box: fill-box; transform-origin: center; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .sqv .a { animation: none; } }
+
+/* Resting state = the result: the cell has run, the product is in the tree and plotted. */
+.sqv .code text { font-family: monospace; font-size: 10.5px; }
+.sqv .cursor { animation-name: sqv-cursor; opacity: 0; }
+.sqv .ghost { animation-name: sqv-ghost; opacity: 0; }
+.sqv .pane { animation-name: sqv-pane; }
+.sqv .tabhot { animation-name: sqv-tab; }
+.sqv .newrow { animation-name: sqv-newrow; }
+.sqv .rowhot { animation-name: sqv-rowhot; opacity: 0; }
+.sqv .dzhot { animation-name: sqv-dzhot; opacity: 0; }
+.sqv .empty { animation-name: sqv-empty; opacity: 0; }
+.sqv .unrun { animation-name: sqv-unrun; opacity: 0; }
+.sqv .ran { animation-name: sqv-ran; }
+.sqv .key { animation-name: sqv-key; opacity: 0; }
+.sqv .sine { animation-name: sqv-sine; }
+.sqv .run { animation-name: sqv-run; }
+.sqv .open { animation-name: sqv-open; }
+.sqv .press { animation-name: sqv-press; }
+.sqv .release { animation-name: sqv-release; }
+.sqv .s1 { animation-name: sqv-s1; }
+.sqv .s2 { animation-name: sqv-s2; }
+.sqv .s3 { animation-name: sqv-s3; }
+@keyframes sqv-cursor { 0.00% { transform: translate(600px, 300px);opacity: 1; } 4.62% { transform: translate(600px, 300px);opacity: 1; } 11.54% { transform: translate(640px, 92px);opacity: 1; } 20.00% { transform: translate(640px, 92px);opacity: 1; } 27.69% { transform: translate(35px, 76px);opacity: 1; } 33.08% { transform: translate(35px, 76px);opacity: 1; } 40.00% { transform: translate(128px, 131px);opacity: 1; } 41.54% { transform: translate(128px, 131px);opacity: 1; } 56.92% { transform: translate(470px, 252px);opacity: 1; } 87.69% { transform: translate(470px, 252px);opacity: 1; } 100.00% { transform: translate(600px, 300px);opacity: 1; } }
+@keyframes sqv-ghost { 0.00% { transform: translate(128px, 131px);opacity: 0; } 41.15% { transform: translate(128px, 131px);opacity: 0; } 41.54% { transform: translate(128px, 131px);opacity: 1; } 56.92% { transform: translate(470px, 252px);opacity: 1; } 58.46% { transform: translate(470px, 252px);opacity: 1; } 60.77% { transform: translate(470px, 252px);opacity: 0; } 100.00% { transform: translate(470px, 252px);opacity: 0; } }
+@keyframes sqv-pane { 0.00% { transform: translate(-28px, 0px); opacity: 0; } 29.23% { transform: translate(-28px, 0px); opacity: 0; } 34.62% { transform: translate(0px, 0px); opacity: 1; } 93.85% { transform: translate(0px, 0px); opacity: 1; } 97.69% { transform: translate(-28px, 0px); opacity: 0; } 100.00% { transform: translate(-28px, 0px); opacity: 0; } }
+@keyframes sqv-tab { 0.00% { opacity: 0; } 28.46% { opacity: 0; } 30.77% { opacity: 1; } 93.85% { opacity: 1; } 96.15% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqv-newrow { 0.00% { opacity: 0; } 16.15% { opacity: 0; } 18.46% { opacity: 1; } 96.92% { opacity: 1; } 99.23% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqv-rowhot { 0.00% { opacity: 0; } 38.46% { opacity: 0; } 40.38% { opacity: 1; } 58.46% { opacity: 1; } 60.38% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqv-dzhot { 0.00% { opacity: 0; } 49.23% { opacity: 0; } 51.54% { opacity: 1; } 58.46% { opacity: 1; } 60.77% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqv-empty { 0.00% { opacity: 1; } 58.46% { opacity: 1; } 60.77% { opacity: 0; } 93.85% { opacity: 0; } 96.15% { opacity: 1; } 100.00% { opacity: 1; } }
+@keyframes sqv-unrun { 0.00% { opacity: 1; } 14.62% { opacity: 1; } 16.92% { opacity: 0; } 93.85% { opacity: 0; } 96.15% { opacity: 1; } 100.00% { opacity: 1; } }
+@keyframes sqv-ran { 0.00% { opacity: 0; } 14.62% { opacity: 0; } 16.92% { opacity: 1; } 93.85% { opacity: 1; } 96.15% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqv-key { 0.00% { opacity: 0; } 10.77% { opacity: 0; } 12.31% { opacity: 1; } 18.46% { opacity: 1; } 20.00% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqv-sine { 0.00% { opacity: 0; } 60.00% { opacity: 0; } 66.15% { opacity: 1; } 93.85% { opacity: 1; } 100.00% { opacity: 0; } 100.00% { opacity: 0; } }
+@keyframes sqv-run { 14.46% { transform: scale(.3); opacity: 0; } 14.62% { transform: scale(.3); opacity: .9; } 19.23% { transform: scale(1.5); opacity: 0; } 100.00% { transform: scale(1.5); opacity: 0; } }
+@keyframes sqv-open { 29.08% { transform: scale(.3); opacity: 0; } 29.23% { transform: scale(.3); opacity: .9; } 33.85% { transform: scale(1.5); opacity: 0; } 100.00% { transform: scale(1.5); opacity: 0; } }
+@keyframes sqv-press { 41.38% { transform: scale(.3); opacity: 0; } 41.54% { transform: scale(.3); opacity: .9; } 46.15% { transform: scale(1.5); opacity: 0; } 100.00% { transform: scale(1.5); opacity: 0; } }
+@keyframes sqv-release { 58.31% { transform: scale(.3); opacity: 0; } 58.46% { transform: scale(.3); opacity: .9; } 63.08% { transform: scale(1.5); opacity: 0; } 100.00% { transform: scale(1.5); opacity: 0; } }
+@keyframes sqv-s1 { 0.00% { opacity: .4; } 3.85% { opacity: .4; } 6.15% { opacity: 1; } 23.08% { opacity: 1; } 25.38% { opacity: .4; } 100.00% { opacity: .4; } }
+@keyframes sqv-s2 { 0.00% { opacity: .4; } 25.38% { opacity: .4; } 27.69% { opacity: 1; } 58.46% { opacity: 1; } 60.77% { opacity: .4; } 100.00% { opacity: .4; } }
+@keyframes sqv-s3 { 0.00% { opacity: .4; } 60.00% { opacity: .4; } 62.31% { opacity: 1; } 91.54% { opacity: 1; } 93.85% { opacity: .4; } 100.00% { opacity: .4; } }
+</style>
+<defs>
+  <clipPath id="sqv-win"><rect x="20" y="16" width="680" height="344" rx="14"/></clipPath>
+  <clipPath id="sqv-body"><path d="M49 55 H700 V346 a14 14 0 0 1 -14 14 H49 Z"/></clipPath>
+</defs>
+<rect x="20" y="19" width="680" height="344" rx="14" fill="var(--shadow)"/>
+<g clip-path="url(#sqv-win)">
+  <rect x="20" y="16" width="680" height="344" fill="var(--win)"/>
+  <rect x="20" y="16" width="680" height="38" fill="var(--bar)"/>
+  <line x1="20" y1="54" x2="700" y2="54" stroke="var(--line)"/>
+</g>
+<rect x="20" y="16" width="680" height="344" rx="14" fill="none" stroke="var(--line)"/>
+<text x="360" y="40" text-anchor="middle" class="title">SciQLop</text>
+<circle cx="678" cy="35" r="8" fill="var(--line)"/>
+<path d="M674.5 31.5 l7 7 M681.5 31.5 l-7 7" stroke="var(--fg)" stroke-width="1.4" stroke-linecap="round"/>
+<path d="M21 55 H48 V359 H34 a13 13 0 0 1 -13 -13 Z" fill="var(--side)"/><line x1="48" y1="54" x2="48" y2="360" stroke="var(--line)"/><rect class="tabhot a" x="23" y="62" width="22" height="22" rx="6" fill="var(--accent-soft)"/><g transform="translate(26 65) scale(0.6667)" fill="var(--fg)"><path d="M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3z"/></g><g transform="translate(26 93) scale(0.6667)" fill="var(--dim)"><path d="M21,5c-1.11-0.35-2.33-0.5-3.5-0.5c-1.95,0-4.05,0.4-5.5,1.5c-1.45-1.1-3.55-1.5-5.5-1.5S2.45,4.9,1,6v14.65 c0,0.25,0.25,0.5,0.5,0.5c0.1,0,0.15-0.05,0.25-0.05C3.1,20.45,5.05,20,6.5,20c1.95,0,4.05,0.4,5.5,1.5c1.35-0.85,3.8-1.5,5.5-1.5 c1.65,0,3.35,0.3,4.75,1.05c0.1,0.05,0.15,0.05,0.25,0.05c0.25,0,0.5-0.25,0.5-0.5V6C22.4,5.55,21.75,5.25,21,5z M21,18.5 c-1.1-0.35-2.3-0.5-3.5-0.5c-1.7,0-4.15,0.65-5.5,1.5V8c1.35-0.85,3.8-1.5,5.5-1.5c1.2,0,2.4,0.15,3.5,0.5V18.5z"/><path d="M17.5,10.5c0.88,0,1.73,0.09,2.5,0.26V9.24C19.21,9.09,18.36,9,17.5,9c-1.7,0-3.24,0.29-4.5,0.83v1.66 C14.13,10.85,15.7,10.5,17.5,10.5z"/><path d="M13,12.49v1.66c1.13-0.64,2.7-0.99,4.5-0.99c0.88,0,1.73,0.09,2.5,0.26V11.9c-0.79-0.15-1.64-0.24-2.5-0.24 C15.8,11.66,14.26,11.96,13,12.49z"/><path d="M17.5,14.33c-1.7,0-3.24,0.29-4.5,0.83v1.66c1.13-0.64,2.7-0.99,4.5-0.99c0.88,0,1.73,0.09,2.5,0.26v-1.52 C19.21,14.41,18.36,14.33,17.5,14.33z"/></g><g transform="translate(26 121) scale(0.6667)" fill="var(--dim)"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></g><g transform="translate(26 149) scale(0.6667)" fill="var(--dim)"><path d="M14.06,9.94L12,9l2.06-0.94L15,6l0.94,2.06L18,9l-2.06,0.94L15,12L14.06,9.94z M4,14l0.94-2.06L7,11l-2.06-0.94L4,8 l-0.94,2.06L1,11l2.06,0.94L4,14z M8.5,9l1.09-2.41L12,5.5L9.59,4.41L8.5,2L7.41,4.41L5,5.5l2.41,1.09L8.5,9z M4.5,20.5l6-6.01l4,4 L23,8.93l-1.41-1.41l-7.09,7.97l-4-4L3,19L4.5,20.5z"/></g>
+<rect x="252" y="62" width="432" height="104" rx="8" fill="var(--side)" stroke="var(--line)"/><text x="262" y="84" class="small dim unrun a">[ ]:</text><text x="262" y="84" class="small dim ran a">[1]:</text><g class="code"><text x="290.0" y="84">%%vp</text><text x="290.0" y="102">def tunable_sine(start, stop, frequency: float = 0.01,</text><text x="397.1" y="120">amplitude: float = 1.0) -> Scalar["signal"]:</text><text x="315.2" y="138">t = np.arange(start, stop, 5.0)</text><text x="315.2" y="156">return t, amplitude * np.sin(2 * np.pi * frequency * t)</text></g>
+<rect x="252" y="178" width="432" height="144" rx="10" fill="none" stroke="var(--line)"/><g class="empty a"><rect x="268" y="190" width="400" height="120" rx="8" fill="none" stroke="var(--dim)" stroke-width="1.2" stroke-dasharray="5 5"/><text x="468" y="254" text-anchor="middle" class="dim" style="font-size:13px"><tspan class="ui">Add a product to this panel</tspan></text></g><rect class="dzhot a" x="268" y="190" width="400" height="120" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><line x1="276" y1="254" x2="660" y2="254" stroke="var(--line)" stroke-dasharray="2 4"/><g class="sine a"><polyline class="curve solid" stroke="var(--c1)" points="276.0,254.0 280.8,238.7 285.6,225.7 290.4,217.0 295.2,214.0 300.0,217.0 304.8,225.7 309.6,238.7 314.4,254.0 319.2,269.3 324.0,282.3 328.8,291.0 333.6,294.0 338.4,291.0 343.2,282.3 348.0,269.3 352.8,254.0 357.6,238.7 362.4,225.7 367.2,217.0 372.0,214.0 376.8,217.0 381.6,225.7 386.4,238.7 391.2,254.0 396.0,269.3 400.8,282.3 405.6,291.0 410.4,294.0 415.2,291.0 420.0,282.3 424.8,269.3 429.6,254.0 434.4,238.7 439.2,225.7 444.0,217.0 448.8,214.0 453.6,217.0 458.4,225.7 463.2,238.7 468.0,254.0 472.8,269.3 477.6,282.3 482.4,291.0 487.2,294.0 492.0,291.0 496.8,282.3 501.6,269.3 506.4,254.0 511.2,238.7 516.0,225.7 520.8,217.0 525.6,214.0 530.4,217.0 535.2,225.7 540.0,238.7 544.8,254.0 549.6,269.3 554.4,282.3 559.2,291.0 564.0,294.0 568.8,291.0 573.6,282.3 578.4,269.3 583.2,254.0 588.0,238.7 592.8,225.7 597.6,217.0 602.4,214.0 607.2,217.0 612.0,225.7 616.8,238.7 621.6,254.0 626.4,269.3 631.2,282.3 636.0,291.0 640.8,294.0 645.6,291.0 650.4,282.3 655.2,269.3 660.0,254.0"/></g>
+<rect x="474" y="330" width="210" height="22" rx="11" fill="var(--side)" stroke="var(--line)"/><text x="488" y="345" class="small dim">2019-03-01 12:00 UTC</text><text x="642" y="345" class="small">3h</text>
+<g class="pane a">
+  <rect x="49" y="55" width="196" height="306" fill="var(--shadow)"/>
+  <rect x="49" y="55" width="192" height="306" fill="var(--side)"/>
+  <line x1="241" y1="55" x2="241" y2="361" stroke="var(--line)"/>
+  <text x="62" y="78" class="title"><tspan class="ui">Products</tspan></text>
+  <rect class="rowhot a" x="55" y="118" width="180" height="24" rx="6" fill="var(--accent-soft)"/>
+  <path d="M63 97 l6 4 l-6 4 z" fill="var(--dim)"/><text x="76" y="106" class="">speasy</text><g class="newrow a"><text x="76" y="134" class="">tunable_sine</text></g>
+</g>
+<path d="M21 55 H48 V359 H34 a13 13 0 0 1 -13 -13 Z" fill="var(--side)"/><line x1="48" y1="54" x2="48" y2="360" stroke="var(--line)"/><rect class="tabhot a" x="23" y="62" width="22" height="22" rx="6" fill="var(--accent-soft)"/><g transform="translate(26 65) scale(0.6667)" fill="var(--fg)"><path d="M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3z"/></g><g transform="translate(26 93) scale(0.6667)" fill="var(--dim)"><path d="M21,5c-1.11-0.35-2.33-0.5-3.5-0.5c-1.95,0-4.05,0.4-5.5,1.5c-1.45-1.1-3.55-1.5-5.5-1.5S2.45,4.9,1,6v14.65 c0,0.25,0.25,0.5,0.5,0.5c0.1,0,0.15-0.05,0.25-0.05C3.1,20.45,5.05,20,6.5,20c1.95,0,4.05,0.4,5.5,1.5c1.35-0.85,3.8-1.5,5.5-1.5 c1.65,0,3.35,0.3,4.75,1.05c0.1,0.05,0.15,0.05,0.25,0.05c0.25,0,0.5-0.25,0.5-0.5V6C22.4,5.55,21.75,5.25,21,5z M21,18.5 c-1.1-0.35-2.3-0.5-3.5-0.5c-1.7,0-4.15,0.65-5.5,1.5V8c1.35-0.85,3.8-1.5,5.5-1.5c1.2,0,2.4,0.15,3.5,0.5V18.5z"/><path d="M17.5,10.5c0.88,0,1.73,0.09,2.5,0.26V9.24C19.21,9.09,18.36,9,17.5,9c-1.7,0-3.24,0.29-4.5,0.83v1.66 C14.13,10.85,15.7,10.5,17.5,10.5z"/><path d="M13,12.49v1.66c1.13-0.64,2.7-0.99,4.5-0.99c0.88,0,1.73,0.09,2.5,0.26V11.9c-0.79-0.15-1.64-0.24-2.5-0.24 C15.8,11.66,14.26,11.96,13,12.49z"/><path d="M17.5,14.33c-1.7,0-3.24,0.29-4.5,0.83v1.66c1.13-0.64,2.7-0.99,4.5-0.99c0.88,0,1.73,0.09,2.5,0.26v-1.52 C19.21,14.41,18.36,14.33,17.5,14.33z"/></g><g transform="translate(26 121) scale(0.6667)" fill="var(--dim)"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></g><g transform="translate(26 149) scale(0.6667)" fill="var(--dim)"><path d="M14.06,9.94L12,9l2.06-0.94L15,6l0.94,2.06L18,9l-2.06,0.94L15,12L14.06,9.94z M4,14l0.94-2.06L7,11l-2.06-0.94L4,8 l-0.94,2.06L1,11l2.06,0.94L4,14z M8.5,9l1.09-2.41L12,5.5L9.59,4.41L8.5,2L7.41,4.41L5,5.5l2.41,1.09L8.5,9z M4.5,20.5l6-6.01l4,4 L23,8.93l-1.41-1.41l-7.09,7.97l-4-4L3,19L4.5,20.5z"/></g>
+<circle class="ring a run" cx="640" cy="92" r="14" fill="none" stroke="var(--accent)" stroke-width="2"/><circle class="ring a open" cx="35" cy="73" r="14" fill="none" stroke="var(--accent)" stroke-width="2"/><circle class="ring a press" cx="128" cy="128" r="14" fill="none" stroke="var(--accent)" stroke-width="2"/><circle class="ring a release" cx="470" cy="252" r="14" fill="none" stroke="var(--accent)" stroke-width="2"/>
+<g transform="translate(552 42)"><g class="key a"><rect x="16" y="20" width="91" height="20" rx="5" fill="var(--win)" stroke="var(--fg)" stroke-width="1.2"/><text x="61.5" y="34" text-anchor="middle" style="font-size:11px;font-weight:600">Shift+Enter</text></g></g>
+<g class="ghost a"><rect x="10" y="10" width="98" height="24" rx="12" fill="var(--accent)"/><text x="59.0" y="26.5" text-anchor="middle" style="fill:var(--on-accent);font-weight:600">tunable_sine</text></g>
+<g class="cursor a"><path d="M0 0 L0 17 L4.6 12.8 L7.6 19.6 L10.4 18.4 L7.4 11.6 L13.4 11.6 Z" fill="var(--fg)" stroke="var(--win)" stroke-width="1.3" stroke-linejoin="round"/></g>
+<g class="step a s1"><circle cx="66" cy="398" r="10" fill="var(--accent)"/><text x="66" y="402.3" text-anchor="middle" style="fill:var(--on-accent);font-size:11.5px;font-weight:700">1</text><text x="84" y="402.3">Run a %%vp cell</text></g>
+<g class="step a s2"><circle cx="240" cy="398" r="10" fill="var(--accent)"/><text x="240" y="402.3" text-anchor="middle" style="fill:var(--on-accent);font-size:11.5px;font-weight:700">2</text><text x="258" y="402.3">Drag the new product onto a panel</text></g>
+<g class="step a s3"><circle cx="530" cy="398" r="10" fill="var(--accent)"/><text x="530" y="402.3" text-anchor="middle" style="fill:var(--on-accent);font-size:11.5px;font-weight:700">3</text><text x="548" y="402.3">It is plotted</text></g>
+</svg>

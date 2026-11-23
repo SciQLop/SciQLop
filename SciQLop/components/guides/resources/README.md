@@ -12,6 +12,7 @@ Short looping animations that each teach one SciQLop manipulation, drawn as a si
 | `jump-to-an-event.svg` | Catalog mode Jump: pick an event in the list, the panel goes to it. |
 | `edit-an-event.svg` | In Edit mode: drag an edge to resize, the middle to move, right-click to delete. |
 | `color-events-by-attribute.svg` | Right-click a catalog, Color by…, pick an attribute: each event takes the colour of its value. |
+| `write-a-virtual-product.svg` | Run a `%%vp` cell, then drag the new product from the Products pane onto a panel. |
 
 Each file is a standalone SVG animated with CSS: no script, no image. It follows the light or dark
 theme of whatever displays it, and shows a still picture where animation is off. It plays in a web
