@@ -81,6 +81,10 @@ CORE_GUIDES = (
           "In Edit mode, drag an edge of an event to resize it or its middle to move it. Right-click it "
           "and choose Delete to remove it from its catalog.",
           ("catalog", "event", "edit", "resize", "move", "delete"), ("catalog.events.edit",)),
+    _core("color-events-by-attribute", "Colour events by an attribute",
+          "Right-click a catalog in the Catalogs pane, open Color by… and pick an attribute such as rating. "
+          "Each event on the plots takes the colour of its value.",
+          ("catalog", "event", "color", "colour", "attribute", "rating", "colormap")),
 )
 
 
