@@ -93,6 +93,10 @@ CORE_GUIDES = (
           "Open the Properties pane with its icon on the left edge and pick the curve. Each keyword argument with a "
           "default is listed under Adjustable inputs: change one and the curve is computed again.",
           ("virtual", "product", "knob", "input", "parameter", "properties", "tune")),
+    _core("command-palette", "Run any command from the keyboard",
+          "Press Ctrl+K (Cmd+K on macOS) to open the command palette. Type a few letters of what you want, "
+          "such as \"new pa\" for New plot panel, and press Enter.",
+          ("command", "palette", "ctrl+k", "keyboard", "search", "shortcut")),
 )
 
 
