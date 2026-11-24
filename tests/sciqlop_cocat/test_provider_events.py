@@ -261,8 +261,19 @@ def test_it_says_why_and_offers_no_edit(one_unreadable):
     from SciQLop.components.catalogs.backend.provider import NodeType
     provider, catalogs = one_unreadable
     tip = provider.node_tooltip(NodeType.CATALOG, catalog=catalogs["bad"])
-    assert "Cannot be read" in tip and "not a set" in tip and "update" in tip
+    assert "Invalid rule" in tip and "not a set" in tip and "update" not in tip
     assert provider.capabilities(catalogs["bad"]) & {Capability.EDIT_EVENTS, Capability.CREATE_EVENTS} == set()
+
+
+def test_the_status_bar_hears_of_it_once(provider, room):
+    told = []
+    provider.error_occurred.connect(told.append)
+    bad = room.create_catalogue(name="bad", author="other")
+    provider.attach_room("r", _RoomWithOneUnreadable(room, bad.uuid))
+    [catalog] = provider.catalogs()
+    provider.reload_catalog(catalog)
+    provider.reload_catalog(catalog)
+    assert len(told) == 1 and "bad" in told[0] and "rule" in told[0] and "not a set" in told[0]
 
 
 def test_re_reading_it_does_not_raise(one_unreadable):

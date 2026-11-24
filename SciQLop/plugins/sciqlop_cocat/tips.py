@@ -116,8 +116,7 @@ def _origin(cocat_cat) -> str:
 
 
 def unreadable_tip(name: str, error: str) -> str:
-    return _html(name, [("Cannot be read", error)],
-                 ["Made with a newer CoCat: update the plugin's cocat-rs to see its events"])
+    return _html(name, [("Invalid rule", error)], ["This smart catalogue shows no events until its rule is fixed"])
 
 
 def catalogue_tip(cocat_cat, events: list) -> str:

@@ -1129,7 +1129,7 @@ class CatalogBrowser(QWidget):
         # `caps` is the provider-level set, used for folder/provider-node
         # decisions. For per-catalog decisions (Save Catalog, Delete Catalog,
         # rename, …) use `node_caps`, which lets a provider opt out of those
-        # for synthetic rows like the tscat orphan-events virtual catalog.
+        # for one catalogue, like a read-only link to another project's.
         caps = node.provider.capabilities()
         node_caps = node.provider.capabilities(node.catalog) if node.catalog is not None else caps
         menu = QMenu(self)

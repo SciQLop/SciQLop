@@ -205,7 +205,7 @@ class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, Import
         self._public_smart: set[str] = set()   # those whose rule searches the public catalogues
         self._read_notes: dict[str, str] = {}  # uuid -> why its members may be incomplete (signed out)
         self._shown_keys: dict[str, tuple] = {}  # uuid -> the keys of the read last shown
-        self._unreadable: dict[str, str] = {}  # uuid -> why this cocat-rs cannot read it (a newer rule form)
+        self._unreadable: dict[str, str] = {}  # uuid -> why its rule cannot be used (invalid, or a newer form)
         self._smart_dirty: set[str] = set()    # room ids whose smart catalogues need a re-read
         self._remembered = Remembered(cache_dir)
         self._local_dir = local_dir            # projects kept on this computer only
@@ -1083,6 +1083,9 @@ class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, Import
         already shown for them, so a re-read creates only what changed."""
         if error is not None:
             log.warning("Cannot read catalogue '%s': %s", catalog.name, error)
+            if self._unreadable.get(catalog.uuid) != str(error):  # once, not at every re-read
+                self.error_occurred.emit(f"Smart catalogue '{catalog.name}' shows no events: its rule is "
+                                         f"invalid ({error})")
             self._unreadable[catalog.uuid] = str(error)
             return []
         self._unreadable.pop(catalog.uuid, None)
