@@ -151,12 +151,12 @@ def test_remote_trash_and_restore_of_an_event(attached, room, listener):
     assert [e.uuid for e in attached.events(a)] == [ev.uuid] == [e.uuid for e in attached.events(b)]
 
 
-def test_remote_rule_change_refreshes_the_catalogue(attached, room, listener):
+def test_remote_rule_change_refreshes_the_catalogue(attached, room, listener, qtbot):
     c = attached.create_catalog("n", ["r"])
     ev = _event(room, tags=["s"])
     room.catalogue(c.uuid).rule = {"filter": {"all": True}, "where": {"contains": ["tags", "s"]}}
-    listener.catalogue_rule(c.uuid)
-    assert [e.uuid for e in attached.events(c)] == [ev.uuid]
+    listener.catalogue_rule(c.uuid)  # read again in the background
+    qtbot.waitUntil(lambda: [e.uuid for e in attached.events(c)] == [ev.uuid], timeout=5000)
     assert Capability.EDIT_EVENTS not in attached.capabilities(c)
 
 

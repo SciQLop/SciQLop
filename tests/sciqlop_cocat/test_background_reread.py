@@ -114,18 +114,19 @@ def test_closing_waits_for_the_read_in_flight(attached, room, smart, monkeypatch
     assert [kind for kind, *_ in log] == ["start", "end"]
 
 
-def test_results_are_shown_one_catalogue_per_turn_of_the_qt_loop(attached, room, smart, qtbot):
-    from SciQLop.plugins.sciqlop_cocat.rereading import read_rows
+def test_results_are_shown_one_catalogue_after_the_other(attached, room, smart, qtbot):
+    from SciQLop.plugins.sciqlop_cocat.rereading import read_change
     other = attached.create_catalog("tagged too", ["r"])
     room.catalogue(other.uuid).rule = RULE
     add_tagged_event(attached, room)
-    reads = [(c, *read_rows(room.catalogue(c.uuid))) for c in (smart, other)]
+    reads = [(c, read_change(room.catalogue(c.uuid), attached._snapshots.get(c.uuid))) for c in (smart, other)]
+    shown = []
+    attached.events_changed.connect(lambda c: shown.append(c.uuid) if c in (smart, other) else None)
     attached._reading = [smart, other]
     attached._apply_reads(reads)
-    assert [e.uuid for e in attached.events(smart)] == ["e1"]
-    assert attached.events(other) == []  # next turn
-    qtbot.waitUntil(lambda: [e.uuid for e in attached.events(other)] == ["e1"], timeout=2000)
-    assert attached._reading is None
+    qtbot.waitUntil(lambda: attached._reading is None, timeout=2000)
+    assert shown == [smart.uuid, other.uuid]
+    assert [e.uuid for e in attached.events(other)] == ["e1"]
 
 
 def test_a_re_read_that_finds_nothing_new_says_nothing(attached, room, smart, qtbot):

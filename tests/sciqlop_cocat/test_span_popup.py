@@ -63,7 +63,8 @@ def test_the_popup_is_read_only_for_a_smart_catalogue(qtbot, provider, opened):
     smart.rule = {"filter": {"all": True}, "where": {"contains": ["tags", "s"]}}
     provider._rewrap_room("a")
     catalog = next(c for c in provider.catalogs() if c.uuid == smart.uuid)
-    [event] = provider.events(catalog)
+    from .conftest import loaded
+    [event] = loaded(provider, catalog, qtbot)
     popup = popup_for(qtbot, catalog, event)
     assert not popup.view.model().flags(row(popup, "label")) & Qt.ItemFlag.ItemIsEditable
 

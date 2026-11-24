@@ -5,7 +5,7 @@ import pytest
 
 from SciQLop.components.catalogs import Capability, CatalogEvent
 
-from .conftest import HOUR, T0
+from .conftest import HOUR, T0, loaded
 
 
 def _new_event(**meta):
@@ -171,13 +171,13 @@ def _smart(provider, room, name="smart", tag="s"):
     return provider._wrap_catalogue("r", cocat_cat)
 
 
-def test_smart_catalogue_shows_derived_intervals_read_only(attached, room):
+def test_smart_catalogue_shows_derived_intervals_read_only(attached, room, qtbot):
     c = attached.create_catalog("plain", ["r"])
     attached.add_event(c, _new_event(tags=["s"]))
     attached.add_event(c, CatalogEvent(uuid=str(_uuid.uuid4()), start=T0 + HOUR / 2, stop=T0 + 2 * HOUR,
                                        meta={"tags": ["s"]}))
     smart = _smart(attached, room)
-    [merged] = attached.events(smart)
+    [merged] = loaded(attached, smart, qtbot)
     assert (merged.start, merged.stop) == (T0, T0 + 2 * HOUR)
     assert attached.capabilities(smart) & {Capability.EDIT_EVENTS, Capability.CREATE_EVENTS,
                                            Capability.DELETE_EVENTS} == set()
@@ -201,7 +201,7 @@ def test_a_smart_catalogue_reuses_the_intervals_it_already_shows(attached, room,
     c = attached.create_catalog("plain", ["r"])
     attached.add_event(c, _new_event(tags=["s"]))
     smart = _smart(attached, room)
-    [first] = attached.events(smart)
+    [first] = loaded(attached, smart, qtbot)
     attached.add_event(c, CatalogEvent(uuid=str(_uuid.uuid4()), start=T0 + 10 * HOUR, stop=T0 + 11 * HOUR,
                                        meta={"tags": ["s"]}))
     qtbot.waitUntil(lambda: len(attached.events(smart)) == 2)

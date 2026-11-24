@@ -127,12 +127,6 @@ def split_typed_meta(meta: dict[str, Any]) -> tuple[dict, dict]:
     return typed, rest
 
 
-def row_key(row: EventRow) -> tuple:
-    """What a re-read compares: plain values, made where the read runs, so the Qt thread does not
-    have to ask thousands of events for them."""
-    return row.uuid, row.start, row.stop, tuple(row.meta.get("tags", ())), row.meta.get("rating")
-
-
 def rows_of(arrays: dict) -> list[EventRow]:
     """Rows from cocat-rs ``event_arrays(..., attributes=True)``: one read, already aligned."""
     return event_rows(arrays, arrays["attributes"])

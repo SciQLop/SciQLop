@@ -42,11 +42,29 @@ def provider(qapp):
     CatalogRegistry.instance()._forget_for_tests(p)
 
 
+@pytest.fixture(autouse=True)
+def gc_on_the_gui_thread_only():
+    """As SciQLop does (core/main_thread_gc.py): the read worker runs Python, and a collection there
+    finalised Qt objects of earlier tests that live on the GUI thread, crashing later in QObject::event."""
+    import gc
+    gc.disable()
+    yield
+    gc.enable()
+    gc.collect()
+
+
 @pytest.fixture
 def attached(provider, room):
     """A provider with the offline test room attached as room id "r"."""
     provider.attach_room("r", room)
     return provider
+
+
+def loaded(provider, catalog, qtbot):
+    """A smart catalogue's events, once its first read (started by asking) has been shown."""
+    provider.events(catalog)
+    qtbot.waitUntil(lambda: not provider.is_loading(catalog), timeout=5000)
+    return provider.events(catalog)
 
 
 def only(provider):

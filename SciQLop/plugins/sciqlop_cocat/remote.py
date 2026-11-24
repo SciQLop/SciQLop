@@ -69,7 +69,7 @@ class RoomListener:
     def catalogue_rule(self, uuid):
         catalog = self._catalog(uuid)
         if catalog is not None:
-            self._provider.reload_catalog(catalog)
+            self._provider.reread(catalog)
 
     def catalogue_attributes(self, uuid, set, removed):
         catalog = self._catalog(uuid)

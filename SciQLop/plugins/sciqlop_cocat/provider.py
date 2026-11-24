@@ -42,7 +42,7 @@ from .links import Linking
 from .submission import Submitting
 from .tscat_first_start import ImportingTscat
 from .sections import Placing
-from .rereading import Rereading, read_rows
+from .rereading import Rereading, Snapshot
 from .sharing_dialog import describe, show_sharing_dialog
 from .convert import (
     SCHEMA_ATTR_PREFIX,
@@ -51,6 +51,7 @@ from .convert import (
     subpath_of,
     encode_subpath,
     schema_specs,
+    rows_of,
     split_typed_meta,
     typed_fields,
     typed_meta,
@@ -204,7 +205,6 @@ class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, Import
         self._smart: set[str] = set()          # uuids of catalogues that have a rule
         self._public_smart: set[str] = set()   # those whose rule searches the public catalogues
         self._read_notes: dict[str, str] = {}  # uuid -> why its members may be incomplete (signed out)
-        self._shown_keys: dict[str, tuple] = {}  # uuid -> the keys of the read last shown
         self._unreadable: dict[str, str] = {}  # uuid -> why its rule cannot be used (invalid, or a newer form)
         self._smart_dirty: set[str] = set()    # room ids whose smart catalogues need a re-read
         self._remembered = Remembered(cache_dir)
@@ -1069,12 +1069,14 @@ class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, Import
         return CocatRsEvent(uuid=row.uuid, start=row.start, stop=row.stop, meta=row.meta)
 
     def _read_now(self, catalog: Catalog, cocat_cat) -> tuple:
-        """(rows, keys, error), read here, on the Qt thread: a first read, an explicit reload."""
+        """(rows, snapshot, error), read here, on the Qt thread: a link or public catalogue's first
+        read, an explicit reload."""
         try:
             self._note_rule(catalog, cocat_cat)
+            arrays = cocat_cat.event_arrays(attributes=True)
         except Exception as error:
             return None, None, error
-        return read_rows(cocat_cat)
+        return rows_of(arrays), Snapshot.of(arrays), None
 
     def _members_from(self, catalog: Catalog, rows, error) -> list[CocatRsEvent]:
         """The rows of a read as events; none when this cocat-rs cannot read the catalogue: one such
@@ -1111,12 +1113,24 @@ class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, Import
         specs = schema_specs(attributes)
         if specs:
             self._attribute_specs[catalog.uuid] = specs
-        self._set_events(catalog, self._readable_members(catalog, cocat_cat))
+        self._set_events(catalog, self._first_members(catalog, cocat_cat))
         self.catalog_added.emit(catalog)
         return catalog
 
+    def _first_members(self, catalog: Catalog, cocat_cat) -> list[CocatRsEvent]:
+        """A smart catalogue is read once used, in the background (it may pick 100 000 events): only
+        its rule is noted now. Any other is read here: it lists its own events."""
+        try:
+            self._note_rule(catalog, cocat_cat)
+        except Exception as error:
+            return self._members_from(catalog, None, error)
+        if catalog.uuid in self._smart:
+            self._unread.add(catalog.uuid)
+            return []
+        return self._readable_members(catalog, cocat_cat)
+
     def _readable_members(self, catalog: Catalog, cocat_cat) -> list[CocatRsEvent]:
-        """A first read. (Its keys are not kept: the first re-read rebuilds once.)"""
+        """A first read, here. (Its snapshot is not kept: the first re-read rebuilds once.)"""
         rows, _, error = self._read_now(catalog, cocat_cat)
         return self._members_from(catalog, rows, error)
 
@@ -1138,36 +1152,44 @@ class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, Import
             self._public_timer.stop()
 
     def reload_catalog(self, catalog: Catalog) -> None:
-        """Re-read a catalogue's members now; signals only when they changed."""
+        """Re-read a catalogue's members now, here, on the Qt thread (links, public catalogues, an
+        explicit reload); signals only when they changed. Smart catalogues are re-read with reread()."""
         cocat_cat = self._cocat_catalogue(catalog)
         if cocat_cat is None:
             return
+        self._unread.discard(catalog.uuid)
         self._show_rows(catalog, *self._read_now(catalog, cocat_cat))
 
-    def _show_rows(self, catalog: Catalog, rows, keys, error) -> None:
-        """Shows a read; signals only when it differs from the last one shown. The keys say so
-        without asking every event: a big smart catalogue re-read after an edit stays cheap."""
-        if error is None and keys == self._shown_keys.get(catalog.uuid):
+    def _show_rows(self, catalog: Catalog, rows, snapshot, error) -> None:
+        """Shows a read made here; signals only when it differs from the read shown."""
+        shown = self._snapshots.get(catalog.uuid)
+        if error is None and shown is not None and snapshot.same_as(shown):
             self._unreadable.pop(catalog.uuid, None)
             self._note_sign_in(catalog)
             return
         members = self._members_from(catalog, rows, error)
         with self.remote_changes():
             self._set_events(catalog, members)
-        self._shown_keys[catalog.uuid] = keys  # after: _set_events forgets them
+        if error is None:  # after: _set_events forgets them
+            self._snapshots[catalog.uuid] = snapshot
+            self._members[catalog.uuid] = {event.uuid: event for event in members}
         self._emit_events_changed(catalog)  # _set_events is silent; the browser waits for this
 
     def _set_events(self, catalog: Catalog, events) -> None:
-        self._shown_keys.pop(catalog.uuid, None)  # shown otherwise than by a re-read: compare afresh
+        self._forget_shown_read(catalog)  # shown otherwise than by a read: the next one rebuilds
         super()._set_events(catalog, events)
 
     def _add_event(self, catalog: Catalog, event) -> None:
-        self._shown_keys.pop(catalog.uuid, None)  # changed here: the next read is compared afresh
+        self._forget_shown_read(catalog)
         super()._add_event(catalog, event)
 
     def _remove_event(self, catalog: Catalog, event) -> None:
-        self._shown_keys.pop(catalog.uuid, None)
+        self._forget_shown_read(catalog)
         super()._remove_event(catalog, event)
+
+    def _forget_shown_read(self, catalog: Catalog) -> None:
+        self._snapshots.pop(catalog.uuid, None)
+        self._members.pop(catalog.uuid, None)
 
     def catalogues_may_have_changed(self, room_id: str) -> None:
         """After a sync or a batch of remote changes: what cocat-rs does not report one by one."""
@@ -1178,7 +1200,7 @@ class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, Import
         self._smart.discard(catalog.uuid)
         self._public_smart.discard(catalog.uuid)
         self._read_notes.pop(catalog.uuid, None)
-        self._shown_keys.pop(catalog.uuid, None)
+        self._forget_reads_of(catalog.uuid)
         self._sync_public_timer()
         self._unreadable.pop(catalog.uuid, None)
         self._catalogs.pop(catalog.uuid, None)

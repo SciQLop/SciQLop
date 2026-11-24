@@ -170,3 +170,16 @@ def test_tags_and_rating_edited_through_save_survive_a_restart(catalogs, path, p
     finally:
         run(again.close())
         CatalogRegistry.instance()._forget_for_tests(again)
+
+
+def test_a_smart_catalogue_nobody_opened_says_it_is_loading_until_read(catalogs, path, provider, qtbot):
+    """What get(), save() and add_events() wait on from a cell or an agent (off the GUI thread):
+    without it they would read a smart catalogue before its first background read."""
+    catalogs.create(path("plain"), [("2020-01-01", "2020-01-02", {"tags": ["shock"]})])
+    [project] = provider._room_infos
+    smart = provider._rooms[project].create_catalogue(name="shocks", author="me")
+    smart.rule = {"filter": {"all": True}, "where": {"contains": ["tags", "shock"]}}
+    provider._rewrap_room(project)
+    assert catalogs._still_loading(path("shocks"))
+    qtbot.waitUntil(lambda: not catalogs._still_loading(path("shocks")), timeout=5000)
+    assert len(catalogs.get(path("shocks"))) == 1
