@@ -3,6 +3,7 @@ import concurrent.futures
 import re as _re
 import traceback as _traceback
 from typing import Any, Dict
+from urllib.parse import quote
 
 from jupyqt import EmbeddedJupyter
 from PySide6.QtCore import QObject
@@ -10,6 +11,12 @@ from PySide6.QtGui import QColor
 from SciQLop.user_api.magics import register_all_magics
 from SciQLop.components.jupyter.kernel.namespace import follow_jupyter_namespace, kernel_poster
 from SciQLop.user_api.threading import init_invoker, invoke_on_main_thread  # noqa: F401 — re-export
+
+
+def lab_tree_url(lab_url: str, rel_path: str) -> str:
+    """Lab's ``/lab/tree/<path>`` URL opens that file with its default viewer."""
+    base, sep, query = lab_url.partition("?")
+    return f"{base}/tree/{quote(rel_path)}{sep}{query}"
 
 
 def _is_dark_palette() -> bool:
@@ -170,6 +177,13 @@ class KernelManager(QObject):
             from concurrent.futures import ThreadPoolExecutor
             _pool = ThreadPoolExecutor(max_workers=1)
             _pool.submit(_sync_theme_via_api, self._jupyter._launcher)
+        return w
+
+    def open_in_lab(self, rel_path: str):
+        # simplify: reloads the whole Lab page; use Lab's docmanager:open command
+        # instead once jupyqt can run a Lab command in the embedded page.
+        w = self.widget()
+        w.load(lab_tree_url(self._jupyter._launcher.url, rel_path))
         return w
 
     def open_in_browser(self):

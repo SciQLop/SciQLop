@@ -11,7 +11,7 @@ from html import escape as _html_escape
 from pathlib import Path
 from typing import List, Literal, Optional, Union
 
-from PySide6.QtCore import QMimeData, QStringListModel, Qt, QTimer, QUrl
+from PySide6.QtCore import QMimeData, QStringListModel, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import (
     QImage,
     QKeyEvent,
@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 
 from SciQLop.core.ui.shortcuts import native_shortcut_text
 from .history import PromptHistory
+from .links import open_link
 
 
 @dataclass
@@ -120,6 +121,8 @@ _BOTTOM_SLACK_PX = 4
 
 
 class TranscriptView(QTextBrowser):
+    link_refused = Signal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setOpenExternalLinks(False)
@@ -162,6 +165,10 @@ class TranscriptView(QTextBrowser):
             gid = ref[len("toggle:"):]
             self._expanded.symmetric_difference_update({gid})
             self.render_messages(self._last_messages)
+            return
+        refusal = open_link(ref)
+        if refusal:
+            self.link_refused.emit(refusal)
 
     def set_assistant_label(self, label: str) -> None:
         self._role_labels["assistant"] = label or "Assistant"

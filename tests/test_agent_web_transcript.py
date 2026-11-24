@@ -162,10 +162,10 @@ def test_toggle_flips_expansion_and_re_emits(view, qtbot):
 
 
 def test_open_link_opens_http_and_https(view, monkeypatch):
-    from SciQLop.components.agents.chat import web_view as mod
+    from SciQLop.components.agents.chat import links
 
     opened = []
-    monkeypatch.setattr(mod.QDesktopServices, "openUrl", lambda url: opened.append(url.toString()))
+    monkeypatch.setattr(links, "_open_in_browser", opened.append)
 
     view.backend.open_link("https://example.com")
     view.backend.open_link("http://example.com")
@@ -173,10 +173,11 @@ def test_open_link_opens_http_and_https(view, monkeypatch):
 
 
 def test_open_link_ignores_non_http_schemes(view, monkeypatch):
-    from SciQLop.components.agents.chat import web_view as mod
+    from SciQLop.components.agents.chat import links
 
     opened = []
-    monkeypatch.setattr(mod.QDesktopServices, "openUrl", lambda url: opened.append(url.toString()))
+    monkeypatch.setattr(links, "_open_in_browser", opened.append)
+    monkeypatch.setattr(links, "_open_in_lab", opened.append)
 
     view.backend.open_link("file:///etc/passwd")
     view.backend.open_link("javascript:alert(1)")

@@ -1236,6 +1236,11 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, jupyter_widget,
                                    size_hint_from_content=False)
 
+    def open_in_jupyterlab(self, rel_path: str):
+        """Show a file of the current workspace in the JupyterLab pane."""
+        workspaces_manager_instance().open_in_lab(rel_path)
+        self.open_jupyterlab_widget()
+
     def _notify_panels_list_changed(self):
         self.panels_list_changed.emit(self.plot_panels())
 

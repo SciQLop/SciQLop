@@ -128,6 +128,10 @@ class WorkspaceManager(QObject):
         self._ensure_started()
         return self._kernel_manager.widget()
 
+    def open_in_lab(self, rel_path: str):
+        self._ensure_started()
+        return self._kernel_manager.open_in_lab(rel_path)
+
     def _ensure_started(self):
         """Batch mode never starts the kernel: JupyterLab starts it on demand."""
         if not self._kernel_started:

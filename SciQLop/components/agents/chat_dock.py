@@ -261,6 +261,7 @@ class AgentChatDock(QWidget):
         self._splitter.setChildrenCollapsible(False)
 
         self._transcript = self._make_transcript(self._splitter)
+        self._transcript.link_refused.connect(self._set_status)
         self._splitter.addWidget(self._transcript)
         self._init_tool_verbosity()
 
@@ -1222,6 +1223,7 @@ class AgentChatDock(QWidget):
         # itself (QSplitter tracks any child widget from the moment it's
         # parented, not only through addWidget()).
         self._transcript = self._make_transcript(None, renderer)
+        self._transcript.link_refused.connect(self._set_status)
         self._splitter.replaceWidget(0, self._transcript)
         old_transcript.deleteLater()
         self._transcript.set_tool_verbosity(AgentChatSettings().tool_verbosity)

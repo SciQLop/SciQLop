@@ -26,6 +26,7 @@
 - Themes: the controls look less dated in every theme. Buttons, fields and lists are taller, corners are rounder, outlines are softer and turn to the accent colour under the mouse, the default button of a dialog is filled, table headers are flat, scroll bars are a little wider.
 - Themes: labels, checkboxes and radio buttons no longer paint their own background. They showed as lighter bands on toolbars and dialogs, for example "Zoom limit:" in the time bar.
 - Themes: a selected row in a tree, list or table stays readable when its window is not the active one (a dialog or a floating panel has the focus). In the six light themes it was white text on a pale fill.
+- Agents: links in the agent's replies work. A file of the workspace opens in the JupyterLab pane (a notebook as a notebook), a web link opens in your browser, and a link to anything else says why it can't be opened, under the chat.
 - Agents: closing SciQLop stops the agent processes started by the Agents panel. They were only stopped when a session was replaced, so one could keep running after SciQLop had quit.
 - "Restart now", opening another workspace and the store's restart now ask about unsaved catalog changes and running jobs, like closing the window does. They used to quit directly and the edits were lost. Answering No keeps SciQLop open.
 - Muted text is readable on dark themes: "Add a product to this panel", the tour's "1 / 14" and the hints in Settings were drawn in half-transparent black. A theme that sets no `PlaceholderText` colour now gets its `UnselectedText` colour.

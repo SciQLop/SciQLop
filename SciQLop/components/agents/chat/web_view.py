@@ -9,18 +9,13 @@ import json
 import os
 from typing import Dict, List, Optional, Set
 
-from PySide6.QtCore import QObject, QTimer, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import QObject, QTimer, Signal, Slot
 
-from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.core.web_channel_page import WebChannelPage
 
+from .links import open_link
 from .render_model import transcript_model
 from .view import ChatMessage, _DEFAULT_ROLE_LABEL, _RENDER_INTERVAL_MS
-
-log = getLogger(__name__)
-
-_OPEN_LINK_SCHEMES = ("http://", "https://")
 
 
 class TranscriptBridge(QObject):
@@ -41,10 +36,9 @@ class TranscriptBridge(QObject):
 
     @Slot(str)
     def open_link(self, url: str) -> None:
-        if url.startswith(_OPEN_LINK_SCHEMES):
-            QDesktopServices.openUrl(QUrl(url))
-        else:
-            log.debug("ignoring non-http(s) link from the transcript: %r", url)
+        refusal = open_link(url)
+        if refusal:
+            self._view.link_refused.emit(refusal)
 
     @Slot(result=str)
     def current_state(self) -> str:
@@ -52,6 +46,7 @@ class TranscriptBridge(QObject):
 
 
 class WebTranscriptView(WebChannelPage):
+    link_refused = Signal(str)
     resources_dir = os.path.join(os.path.dirname(__file__), "..", "resources", "web")
     template_name = "transcript.html.j2"
     allows_remote_content = False
