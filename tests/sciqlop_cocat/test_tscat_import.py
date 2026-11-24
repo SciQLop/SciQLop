@@ -264,7 +264,7 @@ def test_a_database_of_an_older_tscat_is_read_without_being_upgraded_in_place(tm
 
     assert fingerprint(database.parent) == before
     assert (result.catalogues, result.events) == (2, 2)  # of each, one is in tscat's trash
-    [catalogue] = project.catalogues()
+    [catalogue] = [c for c in project.catalogues() if c not in not_in_any(project)]
     assert catalogue.tags == {"tag1", "#tag2", "", "'as"} and catalogue.rule is not None
 
 
@@ -333,3 +333,45 @@ def test_a_read_under_way_is_stopped_when_sciqlop_closes(tmp_path, monkeypatch):
 
     assert not thread.is_alive()
     assert len(outcome) == 1 and isinstance(outcome[0], TscatUnreadable)
+
+
+# ---- the events in no catalogue ----
+
+def not_in_any(project):
+    from SciQLop.plugins.sciqlop_cocat.tscat_import import UNLISTED_RULE
+    return [c for c in project.catalogues() if c.rule == UNLISTED_RULE]
+
+
+def one_listed_one_not(tscat):
+    tscat.create_catalogue("Shocks", "me", events=[tscat.create_event(hours(0), hours(1), "me")])
+    tscat.create_event(hours(2), hours(3), "Nobody")
+
+
+def test_events_in_no_catalogue_get_a_smart_catalogue_that_shows_them(tmp_path, project):
+    result = import_tscat_text(project, small(tmp_path, one_listed_one_not))
+    [smart] = not_in_any(project)
+    assert smart.name == "Not in any catalogue"
+    [uuid] = smart.event_arrays()["uuid"]
+    assert project.event(uuid).author == "Nobody" and result.unlisted == 1
+
+
+def test_importing_again_keeps_one_not_in_any_catalogue_even_renamed(tmp_path, project):
+    text = small(tmp_path, one_listed_one_not)
+    import_tscat_text(project, text)
+    [smart] = not_in_any(project)
+    smart.name = "Orphans"
+    import_tscat_text(project, text)
+    assert [c.name for c in not_in_any(project)] == ["Orphans"]
+
+
+def test_a_tscat_catalogue_of_events_in_no_catalogue_is_not_made_twice(imported):
+    project, _, result = imported
+    assert [c.name for c in not_in_any(project)] == ["In no catalogue"] and result.unlisted == 1
+
+
+def test_no_smart_catalogue_when_every_event_is_in_one(tmp_path, project):
+    def write(tscat):
+        tscat.create_catalogue("Shocks", "me", events=[tscat.create_event(hours(0), hours(1), "me")])
+
+    import_tscat_text(project, small(tmp_path, write))
+    assert not_in_any(project) == [] and len(project.catalogues()) == 1

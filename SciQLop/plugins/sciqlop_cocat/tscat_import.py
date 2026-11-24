@@ -65,6 +65,10 @@ def _run_dump(output: Path, database: Path) -> subprocess.CompletedProcess:
     return subprocess.CompletedProcess(process.args, process.returncode, "", errors)
 
 
+NOT_IN_ANY_CATALOGUE = "Not in any catalogue"
+UNLISTED_RULE = {"filter": {"all": True}, "where": {"in_catalogue": None}}
+
+
 @dataclass(frozen=True)
 class Imported:
     catalogues: int = 0
@@ -185,7 +189,24 @@ class TscatContent:
             warnings.simplefilter("always")
             catalogues = project.import_tscat_json(json.dumps(self.data))
         notes = (*self.notes, *dict.fromkeys(str(warning.message) for warning in said))
-        return Imported(len(catalogues), len(self.data["events"]), _unlisted(self.data), notes)
+        unlisted = show_unlisted(project) if _unlisted(self.data) else 0
+        return Imported(len(catalogues), len(self.data["events"]), unlisted, notes)
+
+
+def show_unlisted(project) -> int:
+    """One smart catalogue showing the events no catalogue lists, kept only when it shows some; found
+    by its rule, so a renamed one still counts. Returns how many it shows: counted on the project,
+    since a tscat dynamic catalogue cocat-rs cannot say as a rule keeps its events listed."""
+    smart = next((c for c in project.catalogues() if c.rule == UNLISTED_RULE), None)
+    made = smart is None
+    if made:
+        smart = project.create_catalogue(name=NOT_IN_ANY_CATALOGUE)
+        smart.rule = UNLISTED_RULE
+    shown = len(smart.event_arrays()["uuid"])
+    if made and not shown:
+        smart.delete()
+        smart.purge()
+    return shown
 
 
 def tscat_content(text: str) -> TscatContent:
