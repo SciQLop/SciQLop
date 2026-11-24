@@ -1225,7 +1225,15 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         # Always re-request the widget, even when the dock exists: Lab's File menu
         # can shut its own server down or navigate to /logout, and jupyqt only
         # relaunches/reloads when asked for the widget again (SciQLop/jupyqt#10).
-        jupyter_widget = workspaces_manager_instance().widget()
+        self._show_jupyterlab(workspaces_manager_instance().widget())
+
+    def open_in_jupyterlab(self, rel_path: str):
+        """Show a file of the current workspace in the JupyterLab pane."""
+        # Not open_jupyterlab_widget(): asking jupyqt for the widget again while
+        # Lab is still loading on the file sends the view back to plain /lab.
+        self._show_jupyterlab(workspaces_manager_instance().open_in_lab(rel_path))
+
+    def _show_jupyterlab(self, jupyter_widget):
         existing = self.dock_manager.findDockWidget("SciQLop JupyterLab")
         if existing is not None:
             existing.toggleView(True)
@@ -1235,11 +1243,6 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             jupyter_widget.setWindowTitle("SciQLop JupyterLab")
             self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, jupyter_widget,
                                    size_hint_from_content=False)
-
-    def open_in_jupyterlab(self, rel_path: str):
-        """Show a file of the current workspace in the JupyterLab pane."""
-        workspaces_manager_instance().open_in_lab(rel_path)
-        self.open_jupyterlab_widget()
 
     def _notify_panels_list_changed(self):
         self.panels_list_changed.emit(self.plot_panels())

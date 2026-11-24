@@ -155,3 +155,23 @@ def test_remote_and_foreign_paths_are_refused_without_touching_the_filesystem(hr
     for name in ("resolve", "exists", "stat"):
         monkeypatch.setattr(pathlib.Path, name, guarded(getattr(pathlib.Path, name)))
     assert _classify(href, workspace).kind == "refused"
+
+
+def test_main_window_shows_the_widget_open_file_returned_without_asking_lab_again(monkeypatch):
+    """Asking jupyqt for the Lab widget again right after open_file, while Lab
+    is still loading on the file, sent the view back to plain /lab."""
+    from types import SimpleNamespace
+    from SciQLop.core.ui import mainwindow
+
+    lab_widget = object()
+    calls = []
+    manager = SimpleNamespace(
+        open_in_lab=lambda rel: calls.append(("open_in_lab", rel)) or lab_widget,
+        widget=lambda: calls.append(("widget",)) or lab_widget)
+    monkeypatch.setattr(mainwindow, "workspaces_manager_instance", lambda: manager)
+    shown = []
+    window = SimpleNamespace(_show_jupyterlab=shown.append)
+
+    mainwindow.SciQLopMainWindow.open_in_jupyterlab(window, "a.png")
+    assert calls == [("open_in_lab", "a.png")]
+    assert shown == [lab_widget]
