@@ -6,7 +6,7 @@ import pytest
 from SciQLop.components.catalogs import CatalogEvent, CatalogRegistry
 from SciQLop.plugins.sciqlop_cocat import provider as provider_module
 from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
-from .conftest import HOUR, T0
+from .conftest import HOUR, T0, own_catalogs
 
 
 class FakeSignIn:
@@ -208,7 +208,7 @@ def test_join_room_opens_local_copy_and_connects(make_provider, opened, tmp_path
         await p.connect()
         await p.join_room("a")
     run(go())
-    assert [c.name for c in p.catalogs()] == ["kept"]
+    assert [c.name for c in own_catalogs(p)] == ["kept"]
     assert opened["a"].connected_with == ("https://h", "token")
     assert [a.name for a in p.folder_actions(["a"])] == PROJECT_ACTIONS
     assert p.create_catalog("n").path == ["a"]
@@ -229,7 +229,7 @@ def test_leave_room_flushes_pending_ranges_first(make_provider, opened, tmp_path
     reopened = cocat_rs.Project.open(tmp_path / "cache", "a")
     assert reopened.event("e1").stop == T0 + 3 * HOUR
     reopened.close()
-    assert p.catalogs() == []
+    assert own_catalogs(p) == []
 
 
 async def _settle():
@@ -251,7 +251,7 @@ def test_an_ended_sign_in_is_reported_once_and_signs_out(make_provider, opened):
         await _settle()
     run(go())
     assert len(errors) == 1 and "Sign in" in errors[0]
-    assert session.sign_outs == 1 and p.catalogs() == []
+    assert session.sign_outs == 1 and own_catalogs(p) == []
     assert [a.name for a in p.actions()] == ["Sign in…", "Open CoCat in browser"]
 
 
@@ -267,7 +267,7 @@ def test_a_role_change_makes_the_project_read_only(make_provider, opened):
         p.room_status_changed("a", "connecting")
         p.room_status_changed("a", "synced")
     run(go())
-    [catalog] = p.catalogs()
+    [catalog] = own_catalogs(p)
     assert catalog.name == "kept" and p.capabilities(catalog) == set()
     assert p.folder_display_name(["a"]) == "Mine"
     assert session.sign_outs == 0 and [a.name for a in p.actions()] == CONNECTED_ACTIONS
@@ -310,7 +310,7 @@ def test_a_project_you_were_removed_from_leaves_the_tree(make_provider, opened):
         await p.join_room("a")
         p.room_status_changed("a", "no_access")
     run(go())
-    assert removed == [["a"]] and p.catalogs() == []
+    assert removed == [["a"]] and own_catalogs(p) == []
     assert len(notices) == 1 and "no longer" in notices[0]
     assert "a" not in p._room_infos and session.sign_outs == 0
 
@@ -325,7 +325,7 @@ def test_disconnect_leaves_rooms_and_folders(make_provider, opened):
     removed = []
     p.folder_removed.connect(removed.append)
     p.disconnect()
-    assert p.catalogs() == [] and sorted(removed) == [["a"], ["b"]]
+    assert own_catalogs(p) == [] and sorted(removed) == [["a"], ["b"]]
     assert [a.name for a in p.actions()] == ["Connect", "Sign out", "Open CoCat in browser"]
 
 
@@ -415,7 +415,7 @@ def test_a_viewer_project_is_read_only(make_provider, opened, tmp_path):
     _seed(tmp_path, "a", "mine")
     _seed(tmp_path, "b", "shared")
     p = _joined(make_provider, "a", "b")
-    by_name = {c.name: c for c in p.catalogs()}
+    by_name = {c.name: c for c in own_catalogs(p)}
     assert p.capabilities(by_name["shared"]) == set()
     assert p.capabilities(by_name["mine"]) == set(provider_module.CAPABILITIES)
     assert p.capabilities() == set(provider_module.CAPABILITIES)
@@ -647,7 +647,7 @@ def test_an_exported_catalogue_imports_into_another_project(make_provider, opene
     export.callback(catalog)
     [import_] = [a for a in p.folder_actions(["c"]) if a.name == "Import…"]
     import_.callback(["c"])
-    [imported] = [c for c in p.catalogs() if c.path == ["c"]]
+    [imported] = [c for c in own_catalogs(p) if c.path == ["c"]]
     assert imported.name == "shocks" and len(p.events(imported)) == 1
 
 
@@ -726,7 +726,7 @@ def test_a_version_is_viewed_read_only_beside_the_live_project(make_provider, op
     [past] = versions.catalogs()
     assert past.name == "as it was" and past.path == ["a@3"]
     assert versions.folder_display_name(["a@3"]) == "Mine as of 2026-11-09 15:10"
-    assert [c.name for c in p.catalogs()] == ["as it is"] and live.provider is p
+    assert [c.name for c in own_catalogs(p)] == ["as it is"] and live.provider is p
     run(p.close())
     assert versions.catalogs() == []
     CatalogRegistry.instance()._forget_for_tests(versions)
@@ -747,7 +747,7 @@ def test_an_imported_tscat_catalogue_keeps_its_folder(make_provider, opened, tmp
     run(p.connect())
     path = _tscat_file(tmp_path)
     assert p.import_into("a", lambda project: import_file(FORMATS[1], project, path), "t.json")
-    [flybys] = p.catalogs()
+    [flybys] = own_catalogs(p)
     assert flybys.path == ["a", "Mercury", "MSA"]
 
 
@@ -757,10 +757,10 @@ def test_a_tscat_catalogue_moved_to_the_root_stays_there(make_provider, opened, 
     run(p.connect())
     path = _tscat_file(tmp_path)
     p.import_into("a", lambda project: import_file(FORMATS[1], project, path), "t.json")
-    [flybys] = p.catalogs()
+    [flybys] = own_catalogs(p)
     p.move_catalog(flybys, ["a"])
     p._rewrap_room("a")  # as when the project is shown afresh
-    [flybys] = p.catalogs()
+    [flybys] = own_catalogs(p)
     assert flybys.path == ["a"]
 
 

@@ -40,6 +40,7 @@ from .remembered import Remembered
 from .public import PUBLIC, PUBLIC_FOLDER, Following, as_info
 from .links import Linking
 from .searches import Searching
+from .all_events import ShowingAllEvents
 from .submission import Submitting
 from .tscat_first_start import ImportingTscat
 from .sections import Placing
@@ -178,7 +179,7 @@ def _default_project(infos) -> str | None:
     return next((i.id for i in infos if i.personal), infos[0].id if infos else None)
 
 
-class CocatRsProvider(Placing, Rereading, Searching, Following, Linking, Submitting, ImportingTscat, CatalogProvider):
+class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following, Linking, Submitting, ImportingTscat, CatalogProvider):
     NAME = PROVIDER_NAME
     DESCRIPTION = "Your catalogues, and the projects shared with you, through cocat-rs."
 
@@ -249,6 +250,7 @@ class CocatRsProvider(Placing, Rereading, Searching, Following, Linking, Submitt
             return
         for cocat_cat in room.catalogues():
             self._wrap_catalogue(room_id, cocat_cat)
+        self._show_all_events(room_id)
         if room_id not in self._room_infos:  # a listed project's folder is shown from the listing
             self.folder_added.emit([room_id])
 
@@ -877,6 +879,8 @@ class CocatRsProvider(Placing, Rereading, Searching, Following, Linking, Submitt
                        f"Move these catalogues into {name}, saved with your account; the copy here goes")]
 
     def _catalog_actions(self, catalog: Catalog) -> list[ProviderAction]:
+        if self._is_all_events(catalog):
+            return []
         if catalog.uuid in self._public_views:
             return self._public_actions(catalog)
         if not catalog.path or catalog.path[0] not in self._rooms:
@@ -983,7 +987,7 @@ class CocatRsProvider(Placing, Rereading, Searching, Following, Linking, Submitt
         joined = room_id in self._rooms
         if room_id in self._local_ids and not joined:
             return tips.closed_local_tip(self._room_infos[room_id].name, room_id in self._elsewhere)
-        catalogs = self._catalogs_of(room_id)
+        catalogs = [c for c in self._catalogs_of(room_id) if not self._is_all_events(c)]
         own = [c for c in catalogs if c.uuid not in self._links]
         tip = tips.project_tip(self._room_infos[room_id], state=self.room_status(room_id) if joined else None,
                                local=room_id in self._local_ids, default=room_id == self._default_room_id,
@@ -1045,6 +1049,8 @@ class CocatRsProvider(Placing, Rereading, Searching, Following, Linking, Submitt
         return self._rooms.get(self._events_room_id(catalog))
 
     def _cocat_catalogue(self, catalog: Catalog):
+        if self._is_all_events(catalog):
+            return self._all_events_source(catalog)
         if catalog.uuid in self._links:
             return self._linked_catalogue(catalog)
         if catalog.uuid in self._public_views:
@@ -1227,8 +1233,8 @@ class CocatRsProvider(Placing, Rereading, Searching, Following, Linking, Submitt
     def capabilities(self, catalog: Catalog | None = None) -> set[str]:
         if catalog is None:
             return set(CAPABILITIES) if self._writable_rooms() else set()
-        if catalog.uuid in self._links:  # simplify: read-only; editing through a link writes to the original
-            return set()
+        if catalog.uuid in self._links or self._is_all_events(catalog):  # simplify: links are read-only; editing
+            return set()                                                  # through one writes to the original
         if not catalog.path or not self._can_write(catalog.path[0]):
             return set()
         if catalog.uuid in self._smart or catalog.uuid in self._unreadable:

@@ -14,7 +14,7 @@ from SciQLop.components.catalogs.backend.provider import NodeType
 from SciQLop.plugins.sciqlop_cocat import provider as provider_module
 from SciQLop.plugins.sciqlop_cocat.locks import lock_on
 from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
-from .conftest import HOUR, T0
+from .conftest import HOUR, T0, own_catalogs
 from .test_provider_rooms import ROOMS, FakeSession, RecordingRoom, opened, run  # noqa: F401
 from .test_tscat_first_start import SHOCKS, Tscat
 
@@ -60,7 +60,7 @@ def test_the_window_that_opens_a_local_project_holds_it(window):
     second = window()
 
     assert project_of(second) == project and project not in second._rooms
-    assert second.catalogs() == [] and second.errors == []
+    assert own_catalogs(second) == [] and second.errors == []
     assert second.project_state(project) == "elsewhere"
     assert names(second.folder_actions([project])) == ["Open here"]
     assert "another SciQLop window" in second.node_tooltip(NodeType.FOLDER, [project])
@@ -87,13 +87,13 @@ def test_a_released_project_can_be_opened_in_another_window(window):
 
     release.callback([project])
 
-    assert project not in first._rooms and first.catalogs() == []
+    assert project not in first._rooms and own_catalogs(first) == []
     assert first.project_state(project) == "released"
     assert names(first.folder_actions([project])) == ["Open here"]
 
     run(second.open_here(project))
 
-    assert second.errors == [] and [c.name for c in second.catalogs()] == ["shocks"]
+    assert second.errors == [] and [c.name for c in own_catalogs(second)] == ["shocks"]
     assert second.project_state(project) == "on this computer"
 
     run(first.open_here(project))
@@ -136,7 +136,7 @@ def test_signing_in_does_not_drop_a_project_open_in_another_window(window, tmp_p
     first.create_catalog("shocks")
     run(first.close())
     run(second.open_here(project))
-    assert "shocks" in [c.name for c in second.catalogs()]
+    assert "shocks" in [c.name for c in own_catalogs(second)]
 
 
 def test_a_window_that_crashed_frees_its_lock(tmp_path):
@@ -174,7 +174,7 @@ def test_two_windows_starting_at_once_import_tscat_once(window, tmp_path):
     assert second._read_tscat.reads == 0 and second.notices == [] and second.errors == []
     [told] = first.notices
     assert "1 catalogue(s) and 1 event(s) imported from tscat" in told
-    assert [c.name for c in first.catalogs()] == ["Shocks"]
+    assert [c.name for c in own_catalogs(first)] == ["Shocks"]
     project = project_of(first)
     assert not lock_on(tmp_path / "local" / f"{project}.lock").tryLock(0)  # written while holding it
 
@@ -196,7 +196,7 @@ def test_tscat_is_not_written_into_a_project_open_in_another_window(window):
     [error] = second.errors
     assert error == ("Cannot import your tscat catalogues: My catalogues is open in another "
                      "SciQLop window")
-    assert list(second._room_infos) == [project] and first.catalogs() == []
+    assert list(second._room_infos) == [project] and own_catalogs(first) == []
     run(first.close())
     third = window(tscat=Tscat(SHOCKS))  # tried again at the next start
     assert [c.name for c in third.catalogs()] == ["Shocks"]

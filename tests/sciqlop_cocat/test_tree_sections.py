@@ -95,7 +95,7 @@ def test_the_tree_shows_the_sections(make, opened):
     model = tree()
     assert rows(model)[:2] == ["My catalogues", "Shared"]
     mine = rows(model, section(model, "My catalogues"))
-    assert mine[0] == "shocks" and "Team" not in mine
+    assert {"All events", "shocks"} <= set(mine) and "Team" not in mine
     assert rows(model, section(model, "Shared")) == ["Lab", "Team"]
 
 

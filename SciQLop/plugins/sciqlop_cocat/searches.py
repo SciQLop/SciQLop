@@ -33,6 +33,8 @@ class Searching:
         return catalog
 
     def catalog_search(self, catalog: Catalog) -> CatalogSearch | None:
+        if self._is_all_events(catalog):
+            return None
         cocat_cat = self._cocat_catalogue(catalog)
         try:
             rule = cocat_cat.rule if cocat_cat is not None else None
@@ -67,7 +69,8 @@ class Searching:
         return self._catalogs.get(frozen.uuid) or self._wrap_catalogue(room_id, frozen)
 
     def _searchable_catalogue(self, catalog: Catalog):
-        if not self._can_search_in(catalog.path[0] if catalog.path else None) or catalog.uuid in self._links:
+        if not self._can_search_in(catalog.path[0] if catalog.path else None) or catalog.uuid in self._links \
+                or self._is_all_events(catalog):
             raise PermissionError(f"'{catalog.name}' is read-only for you")
         cocat_cat = self._cocat_catalogue(catalog)
         if cocat_cat is None:

@@ -34,6 +34,9 @@ for e in cat:
   projects. Write to the default project unless the user names another one;
   a project shared with the user may be read-only. `Remote` (Speasy/AMDA
   catalogs) is read-only.
+- **"All events"**: each open project of `Catalogs (cocat-rs)` lists a
+  read-only `"<provider>//<project>//All events"`, every event of the project
+  outside the trash. Read it with `get()`; it cannot be written to.
 - **The Catalogs panel** groups them differently from paths: "My catalogues"
   (the default project's catalogs, shown directly), "Shared" (projects shared
   with others) and "Reference" (public catalogues, AMDA, plugin lists). A

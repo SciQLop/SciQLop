@@ -10,6 +10,7 @@
 - **Going back to an older SciQLop**: the tscat database is only read, never changed. An older SciQLop finds your tscat catalogues as they were at the upgrade. Catalogues made or edited in SciQLop since then are not in tscat, and do not go back into it.
 - A smart catalogue whose rule cannot be used says so: its tooltip reads "Invalid rule" with the reason, instead of asking to update cocat-rs, and the status bar tells it once.
 - A smart catalogue has a funnel in its colour in the catalog tree, instead of the dot of a catalogue you fill by hand. Its colour still matches its events on the plots.
+- Catalogs: each open project shows "All events", every event of the project outside the trash, read when you open it and kept up to date. It is a view: nothing to rename, delete or edit.
 - Catalogs: the event table's filter no longer slows typing on big catalogues (it matches in the background), says how many events it keeps ("1,203 of 116,370"), and is remembered for each catalogue until SciQLop closes. "Show only these on the plots" (off by default) makes the panels draw only the events the filter keeps.
 - Notebooks and agents: `catalogs.filter(path, text)` gives the events of any catalogue that the browser's filter box would keep.
 - Notebooks and agents: `catalogs.create_smart(path, search, source=None)`, `search_of`, `set_search`, `rule_of`, `set_rule`, `remove_search` and `freeze`. A wrong search raises a `cocat_rs.QueryError` that says where and suggests the field meant.

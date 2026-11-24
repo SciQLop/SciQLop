@@ -12,6 +12,7 @@ from SciQLop.plugins.sciqlop_cocat.remembered import Remembered
 from SciQLop.plugins.sciqlop_cocat.tscat_import import TscatBusy, TscatUnreadable, read_tscat_database
 from .test_provider_rooms import ROOMS, FakeSession, _call_and_settle, opened, run  # noqa: F401
 from .tscat_databases import build, edge_cases
+from .conftest import own_catalogs
 
 EVENT, CATALOGUE = "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"
 SHOCKS = json.dumps({
@@ -60,14 +61,14 @@ def start(qapp, tmp_path, monkeypatch):
 
 
 def shown(p) -> list[tuple[str, str]]:
-    return [(p.folder_display_name(c.path[:1]), c.name) for c in p.catalogs()]
+    return [(p.folder_display_name(c.path[:1]), c.name) for c in own_catalogs(p)]
 
 
 def test_the_first_start_brings_the_tscat_catalogues_into_my_catalogues(start):
     tscat = Tscat(SHOCKS)
     p = start(tscat)
     assert shown(p) == [("My catalogues", "Shocks")]
-    assert len(p.events(p.catalogs()[0])) == 1
+    assert len(p.events(own_catalogs(p)[0])) == 1
     assert p.notices == ["1 catalogue(s) and 1 event(s) imported from tscat into My catalogues."]
     assert p.errors == [] and tscat.reads == 1
 
@@ -83,7 +84,7 @@ def test_the_next_starts_do_not_import_again(start):
 def test_a_catalogue_deleted_after_the_import_does_not_come_back(start):
     tscat = Tscat(SHOCKS)
     p = start(tscat)
-    p.remove_catalog(p.catalogs()[0])
+    p.remove_catalog(own_catalogs(p)[0])
     run(p.close())
     assert shown(start(tscat)) == []
 
@@ -159,7 +160,7 @@ def asked(monkeypatch):
 def test_signed_in_they_go_straight_into_the_account_s_own_project(start, asked):
     p = start(Tscat(SHOCKS), FakeSession(rooms=ROOMS))
     assert shown(p) == [("My catalogues", "Shocks")]
-    assert [c.path for c in p.catalogs()] == [["a"]]
+    assert [c.path for c in own_catalogs(p)] == [["a"]]
     assert p._local_ids == set() and asked == []
     assert p.notices == ["1 catalogue(s) and 1 event(s) imported from tscat into My catalogues."]
 
@@ -169,7 +170,7 @@ def test_signed_in_while_the_server_cannot_be_reached_they_stay_on_this_computer
     session.reachable = False
     p = start(Tscat(SHOCKS), session)
     assert shown(p) == [("My catalogues", "Shocks")]
-    assert [c.path[0] for c in p.catalogs()] == list(p._local_ids)
+    assert [c.path[0] for c in own_catalogs(p)] == list(p._local_ids)
 
 
 def test_imported_signed_out_they_are_offered_to_the_account_at_sign_in(start, asked):
@@ -202,7 +203,7 @@ def test_a_provider_given_no_tscat_reader_imports_nothing(qapp, tmp_path):
                         local_dir=tmp_path / "local")
     try:
         run(p._start())
-        assert p.catalogs() == []
+        assert own_catalogs(p) == []
     finally:
         run(p.close())
         CatalogRegistry.instance()._forget_for_tests(p)
@@ -213,7 +214,7 @@ def test_the_menu_entry_imports_into_the_project_it_is_asked_from(start):
     p = start(tscat, FakeSession(rooms=ROOMS))
     [entry] = [a for a in p.folder_actions(["a"]) if a.name == "Import tscat catalogues"]
     run(_call_and_settle(entry.callback, ["a"]))
-    assert [c.path for c in p.catalogs()] == [["a"]]
+    assert [c.path for c in own_catalogs(p)] == [["a"]]
     assert p.notices == ["1 catalogue(s) and 1 event(s) imported from tscat into My catalogues."]
 
 
@@ -229,8 +230,8 @@ def test_a_real_tscat_database_comes_in_at_the_first_start(start, tmp_path):
     database, held = build(tmp_path / "tscat", edge_cases)
     p = start(lambda: read_tscat_database(database))
     names = {c["name"] for c in held.catalogues.values() if not c["removed"]}
-    assert {c.name for c in p.catalogs()} == names and len(names) == 10
-    [a] = [c for c in p.catalogs() if c.name == "Catalogue A"]
+    assert {c.name for c in own_catalogs(p)} == names and len(names) == 10
+    [a] = [c for c in own_catalogs(p) if c.name == "Catalogue A"]
     assert len(p.events(a)) == len(held.catalogue("Catalogue A")["members"])
     assert p.errors == []
 

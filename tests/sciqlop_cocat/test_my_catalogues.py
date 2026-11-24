@@ -8,7 +8,7 @@ from SciQLop.components.catalogs import CatalogEvent, CatalogRegistry
 from SciQLop.components.catalogs.backend.provider import NodeType
 from SciQLop.plugins.sciqlop_cocat import provider as provider_module
 from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
-from .conftest import HOUR, T0
+from .conftest import HOUR, T0, own_catalogs
 from .test_provider_rooms import ROOMS, FakeSession, RecordingRoom, opened, run  # noqa: F401
 
 SIGNED_OUT_ACTIONS = ["Sign in…", "Open CoCat in browser"]
@@ -71,7 +71,7 @@ def test_local_catalogues_survive_a_restart(make):
     run(p.close())
     again = make(FakeSession(signed_in=False))
     run(again.show_signed_out())
-    [kept] = again.catalogs()
+    [kept] = own_catalogs(again)
     assert list(again._room_infos) == [local_id]
     assert kept.path == [local_id, "MMS"] and len(again.events(kept)) == 1
 
@@ -84,7 +84,7 @@ def test_the_first_sign_in_moves_local_catalogues_to_the_account(make, opened, a
     run(p.connect())
     assert asked == [(["My catalogues"], "My catalogues")]
     assert list(p._room_infos) == ["a", "b"]
-    [moved] = [c for c in p.catalogs() if c.uuid == catalog.uuid]
+    [moved] = [c for c in own_catalogs(p) if c.uuid == catalog.uuid]
     assert moved.path == ["a", "MMS"] and [e.uuid for e in p.events(moved)] == ["e1"]
     assert not list((tmp_path / "local").glob(f"{local_id}.*"))
     run(p.reconnect())
@@ -102,7 +102,7 @@ def test_declined_local_catalogues_stay_and_can_move_later(make, answers):
     assert len(asked) == 1
     p.folder_actions([local_id])[0].callback([local_id])
     assert local_id not in p._room_infos
-    assert [c.path for c in p.catalogs() if c.uuid == catalog.uuid] == [["a", "MMS"]]
+    assert [c.path for c in own_catalogs(p) if c.uuid == catalog.uuid] == [["a", "MMS"]]
 
 
 def test_an_empty_local_project_is_dropped_at_sign_in(make, answers, opened):
@@ -123,7 +123,7 @@ def test_signing_out_keeps_the_account_copy_offline(make, opened):
     run(p.sign_out())
     assert list(p._room_infos) == ["a"]
     assert p.folder_display_name(["a"]) == "My catalogues"
-    assert [c.uuid for c in p.catalogs()] == [catalog.uuid]
+    assert [c.uuid for c in own_catalogs(p)] == [catalog.uuid]
     assert [a.name for a in p.actions()] == SIGNED_OUT_ACTIONS
     assert p.create_catalog("offline").path == ["a"]
 

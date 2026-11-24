@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from .conftest import HOUR, T0, only
+from .conftest import HOUR, T0, only, own_catalogs
 
 
 def _schema(spec):
@@ -39,7 +39,7 @@ def test_event_in_two_catalogues_is_one_object(provider, room):
     room.create_catalogue(name="a", author="t", events=[ev])
     room.create_catalogue(name="b", author="t", events=[ev])
     provider.attach_room("r", room)
-    a, b = provider.catalogs()
+    a, b = own_catalogs(provider)
     assert provider.events(a)[0] is provider.events(b)[0]
 
 
@@ -66,7 +66,7 @@ def test_rename_and_remove_catalog_reach_room(attached, room, qtbot):
     assert room.catalogue(c.uuid).name == "new" and c.name == "new"
     with qtbot.waitSignal(attached.catalog_removed):
         attached.remove_catalog(c)
-    assert room.catalogues() == [] and attached.catalogs() == []
+    assert room.catalogues() == [] and own_catalogs(attached) == []
 
 
 def test_move_catalog_updates_subpath_and_rejects_other_room(attached, room):
@@ -94,4 +94,4 @@ def test_detach_room_clears_tree_and_capabilities(attached, room):
     attached.create_catalog("n", ["r"])
     assert attached.capabilities()
     assert attached.detach_room("r") is room
-    assert attached.catalogs() == [] and attached.capabilities() == set()
+    assert own_catalogs(attached) == [] and attached.capabilities() == set()

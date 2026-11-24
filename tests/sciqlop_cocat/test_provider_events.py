@@ -5,7 +5,7 @@ import pytest
 
 from SciQLop.components.catalogs import Capability, CatalogEvent
 
-from .conftest import HOUR, T0, loaded
+from .conftest import HOUR, T0, loaded, own_catalogs
 
 
 def _new_event(**meta):
@@ -248,7 +248,7 @@ def one_unreadable(provider, room):
     good.add_events([room.create_event(start=T0, stop=T0 + HOUR, author="me").uuid])
     bad = room.create_catalogue(name="bad", author="other")
     provider.attach_room("r", _RoomWithOneUnreadable(room, bad.uuid))
-    return provider, {c.name: c for c in provider.catalogs()}
+    return provider, {c.name: c for c in own_catalogs(provider)}
 
 
 def test_a_catalogue_that_cannot_be_read_leaves_the_rest_of_the_project_open(one_unreadable):
@@ -270,7 +270,7 @@ def test_the_status_bar_hears_of_it_once(provider, room):
     provider.error_occurred.connect(told.append)
     bad = room.create_catalogue(name="bad", author="other")
     provider.attach_room("r", _RoomWithOneUnreadable(room, bad.uuid))
-    [catalog] = provider.catalogs()
+    [catalog] = own_catalogs(provider)
     provider.reload_catalog(catalog)
     provider.reload_catalog(catalog)
     assert len(told) == 1 and "bad" in told[0] and "rule" in told[0] and "not a set" in told[0]

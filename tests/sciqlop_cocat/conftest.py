@@ -67,6 +67,11 @@ def loaded(provider, catalog, qtbot):
     return provider.events(catalog)
 
 
+def own_catalogs(provider):
+    """The provider's catalogues, without each project's "All events" view."""
+    return [c for c in provider.catalogs() if not c.uuid.startswith("all-events:")]
+
+
 def only(provider):
-    [catalog] = provider.catalogs()
+    [catalog] = own_catalogs(provider)
     return catalog

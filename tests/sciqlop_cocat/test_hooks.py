@@ -4,6 +4,7 @@ import pytest
 
 from SciQLop.components.catalogs.backend.provider import NodeType
 from SciQLop.plugins.sciqlop_cocat import provider as provider_module
+from .conftest import own_catalogs
 from .test_provider_rooms import ROOMS, FakeSession, make_provider, opened, run  # noqa: F401
 
 
@@ -88,7 +89,7 @@ def test_a_role_change_keeps_the_catalogues_and_announces_new_capabilities(make_
     opened["a"].role = "viewer"
     p.room_status_changed("a", "synced")
     assert announced == [None] and removed == []
-    assert p.catalogs() == [catalog] and p.capabilities(catalog) == set()
+    assert own_catalogs(p) == [catalog] and p.capabilities(catalog) == set()
 
 
 def test_an_unreachable_server_is_a_notice_not_an_error(make_provider):

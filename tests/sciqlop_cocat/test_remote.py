@@ -6,7 +6,7 @@ import pytest
 from SciQLop.components.catalogs import Capability
 
 from SciQLop.plugins.sciqlop_cocat.remote import RoomListener
-from .conftest import HOUR, T0, only
+from .conftest import HOUR, T0, only, own_catalogs
 
 
 @pytest.fixture
@@ -23,9 +23,9 @@ def test_remote_catalogue_added_and_removed(attached, room, listener):
     listener.catalogue_added(cat.uuid)
     assert (only(attached).name, only(attached).path) == ("theirs", ["r", "f"])
     listener.catalogue_added(cat.uuid)
-    assert len(attached.catalogs()) == 1
+    assert len(own_catalogs(attached)) == 1
     listener.catalogue_removed(cat.uuid)
-    assert attached.catalogs() == []
+    assert own_catalogs(attached) == []
 
 
 def test_remote_rename_emits_catalog_renamed(attached, listener, qtbot):
@@ -119,7 +119,7 @@ def test_unknown_uuids_are_ignored(attached, listener):
     listener.event_range("nope", T0, T0)
     listener.event_attributes("nope", {"a": 1}, [])
     listener.event_removed("nope")
-    assert attached.catalogs() == [c] and attached.events(c) == []
+    assert own_catalogs(attached) == [c] and attached.events(c) == []
 
 
 def test_status_is_forwarded_to_the_provider(attached, listener, qtbot):

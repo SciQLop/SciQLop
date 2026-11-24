@@ -5,6 +5,7 @@ import pytest
 from SciQLop.components.catalogs import CatalogRegistry
 from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
 from SciQLop.user_api.catalogs._service import CatalogService
+from .conftest import own_catalogs
 from .test_provider_rooms import FakeSession, run
 
 PROVIDER = "Catalogs under test"  # the shared test main window has a "Catalogs (cocat-rs)" too
@@ -97,7 +98,7 @@ def test_persist_needs_no_save(catalogs, path, provider):
     """cocat-rs writes each change as it happens."""
     catalogs.create(path("t"), TWO)
     catalogs.persist(path("t"))
-    [catalog] = provider.catalogs()
+    [catalog] = own_catalogs(provider)
     assert not provider.is_dirty(catalog)
 
 
@@ -107,7 +108,7 @@ def test_a_path_without_a_project_means_the_default_one(catalogs, path, provider
     catalogs.create(f"{PROVIDER}//shocks", TWO)
 
     assert len(catalogs.get(f"{PROVIDER}//shocks")) == 2
-    assert catalogs.list(PROVIDER) == [path("shocks")]  # listed with its project
+    assert catalogs.list(PROVIDER) == [path("All events"), path("shocks")]  # listed with its project
     catalogs.add_events(f"{PROVIDER}//shocks", [("2021-01-01", "2021-01-02")])
     assert len(catalogs.get(path("shocks"))) == 3
 
@@ -116,7 +117,7 @@ def test_save_and_remove_without_a_project(catalogs, path):
     catalogs.save(f"{PROVIDER}//shocks", TWO)
     assert len(catalogs.get(path("shocks"))) == 2
     catalogs.remove(f"{PROVIDER}//shocks")
-    assert catalogs.list(PROVIDER) == []
+    assert catalogs.list(PROVIDER) == [path("All events")]
 
 
 def test_without_a_project_it_is_the_default_one_signed_in(qapp, tmp_path):
@@ -125,7 +126,7 @@ def test_without_a_project_it_is_the_default_one_signed_in(qapp, tmp_path):
     try:
         run(p.connect())
         CatalogService().create(f"{PROVIDER}//shocks", TWO)
-        [catalog] = p.catalogs()
+        [catalog] = own_catalogs(p)
         assert catalog.path == ["a"]  # the account's own project, not the read-only "Team"
     finally:
         run(p.close())
