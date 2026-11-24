@@ -54,10 +54,36 @@ def test_everything_else_is_refused_with_a_message(href, workspace):
     assert action.target
 
 
-def test_lab_tree_url_keeps_the_token_and_quotes_the_path():
-    from SciQLop.components.jupyter.kernel.manager import lab_tree_url
-    url = lab_tree_url("http://localhost:1234/lab?token=abc", "sub dir/a b.ipynb")
-    assert url == "http://localhost:1234/lab/tree/sub%20dir/a%20b.ipynb?token=abc"
+class _FakeLabWidget:
+    def __init__(self):
+        self.loaded = []
+
+    def load(self, url):
+        self.loaded.append(url)
+
+
+class _FakeJupyter:
+    _launcher = None
+
+    def __init__(self):
+        self.lab = _FakeLabWidget()
+        self.opened = []
+
+    def widget(self):
+        return self.lab
+
+    def open_file(self, path):
+        self.opened.append(path)
+        return self.lab
+
+
+def test_open_in_lab_opens_the_file_in_the_running_lab_without_reloading():
+    from SciQLop.components.jupyter.kernel.manager import KernelManager
+    km = KernelManager.__new__(KernelManager)
+    km._jupyter = _FakeJupyter()
+    assert km.open_in_lab("sub dir/a b.png") is km._jupyter.lab
+    assert km._jupyter.opened == ["sub dir/a b.png"]
+    assert km._jupyter.lab.loaded == []
 
 
 @pytest.fixture
