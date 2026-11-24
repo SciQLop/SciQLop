@@ -1,164 +1,169 @@
-"""Free-text filter on the event table (2026-09-06 review): the catalog
-tree has one, the event table didn't, despite catalogs with thousands of
-events being an explicitly documented perf case (AMDA shared catalogs,
-ICME_multi_catalog).
-"""
-from .helpers import provider_indexes, provider_index  # noqa: F401
+"""The catalog browser hosts the selected catalogue's event filter: its provider's delegate, else the
+plain text filter. The table keeps what the delegate keeps, a line says how many, each catalogue's
+filter is remembered for the session, and "Show only these on the plots" passes the kept events to
+the catalogue's overlays."""
 from datetime import datetime, timezone
 
-from .fixtures import *
+import pytest
+
+from .fixtures import *  # noqa: F401,F403
+from .helpers import provider_indexes  # noqa: F401
 
 
-def _ev(uuid, meta):
+def _ev(uuid, meta, day=1):
     from SciQLop.components.catalogs.backend.provider import CatalogEvent
-    return CatalogEvent(
-        uuid=uuid,
-        start=datetime(2020, 1, 1, tzinfo=timezone.utc),
-        stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc),
-        meta=meta,
-    )
+    return CatalogEvent(uuid=uuid, start=datetime(2020, 1, day, tzinfo=timezone.utc),
+                        stop=datetime(2020, 1, day, 1, tzinfo=timezone.utc), meta=meta)
 
 
-def test_event_sort_proxy_filters_across_all_columns(qapp):
-    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
-    from SciQLop.components.catalogs.ui.event_table import EventTableModel, EventSortProxy
-
-    provider = DummyProvider(num_catalogs=1, events_per_catalog=0, name="EvFilterProv")
-    cat = provider.catalogs()[0]
-    provider.add_event(cat, _ev("e1", {"class": "solar_wind"}))
-    provider.add_event(cat, _ev("e2", {"class": "magnetosheath"}))
-
-    model = EventTableModel()
-    model.set_context(provider, cat)
-    model.set_events(provider.events(cat))
-    proxy = EventSortProxy()
-    proxy.setSourceModel(model)
-
-    proxy.setFilterFixedString("solar")
-    assert proxy.rowCount() == 1
-    idx = proxy.index(0, len(model._FIXED_COLUMNS))
-    assert proxy.data(idx) == "solar_wind"
-
-    proxy.setFilterFixedString("")
-    assert proxy.rowCount() == 2
-
-
-def test_event_sort_proxy_filter_is_case_insensitive(qapp):
-    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
-    from SciQLop.components.catalogs.ui.event_table import EventTableModel, EventSortProxy
-
-    provider = DummyProvider(num_catalogs=1, events_per_catalog=0, name="EvFilterCaseProv")
-    cat = provider.catalogs()[0]
-    provider.add_event(cat, _ev("e1", {"class": "Solar_Wind"}))
-
-    model = EventTableModel()
-    model.set_context(provider, cat)
-    model.set_events(provider.events(cat))
-    proxy = EventSortProxy()
-    proxy.setSourceModel(model)
-
-    proxy.setFilterFixedString("SOLAR")
-    assert proxy.rowCount() == 1
-
-
-def test_catalog_browser_has_event_filter_bar(qtbot, qapp):
-    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
-    from PySide6.QtWidgets import QLineEdit
-
-    browser = CatalogBrowser()
-    qtbot.addWidget(browser)
-    assert isinstance(browser._event_filter_bar, QLineEdit)
-    assert browser._event_filter_bar.isClearButtonEnabled()
-
-
-def test_event_filter_bar_debounces_rapid_typing(qtbot, qapp):
-    """opencode review: EventSortProxy.filterAcceptsRow is an O(rows *
-    columns) scan (plus per-cell display formatting), run synchronously on
-    every keystroke -- exactly the catalogs this feature targets (AMDA
-    shared catalogs, thousands of events x dozens of meta columns) are the
-    ones documented elsewhere as perf-sensitive to that shape of work. A
-    debounce (matching the existing 200ms idiom in overlay.py) means
-    filterAcceptsRow doesn't re-run per keystroke while typing."""
-    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
-
-    browser = CatalogBrowser()
-    qtbot.addWidget(browser)
-
-    calls = []
-    real = browser._sort_proxy.setFilterFixedString
-
-    def spy(text):
-        calls.append(text)
-        return real(text)
-    browser._sort_proxy.setFilterFixedString = spy
-
-    for ch in "magneto":
-        browser._event_filter_bar.setText(browser._event_filter_bar.text() + ch)
-    assert calls == [], "filtering must not run synchronously per keystroke"
-
-    qtbot.wait(300)
-    assert calls == ["magneto"], "exactly one filter pass once typing settles"
-
-
-def test_catalog_browser_event_filter_bar_filters_the_table(qtbot, qapp):
-    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
-    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
-
-    provider = DummyProvider(num_catalogs=1, events_per_catalog=0, name="EvFilterUIProv")
-    cat = provider.catalogs()[0]
-    provider.add_event(cat, _ev("e1", {"class": "solar_wind"}))
-    provider.add_event(cat, _ev("e2", {"class": "magnetosheath"}))
-
-    browser = CatalogBrowser()
-    qtbot.addWidget(browser)
-    browser._current_provider = provider
-    browser._current_catalog = cat
-    browser._event_model.set_context(provider, cat)
-    browser._event_model.set_events(provider.events(cat))
-
-    assert browser._sort_proxy.rowCount() == 2
-    browser._event_filter_bar.setText("magneto")
-    qtbot.waitUntil(lambda: browser._sort_proxy.rowCount() == 1, timeout=1000)
-
-
-def test_event_filter_bar_clears_when_switching_catalog(qtbot, qapp):
-    """A filter left over from catalog A must not silently hide rows when
-    switching to catalog B -- it looked like B just had fewer events."""
-    from PySide6.QtCore import QModelIndex
-    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
-    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
-
-    provider = DummyProvider(num_catalogs=2, events_per_catalog=1, name="EvFilterSwitchProv")
-    cat_a, cat_b = provider.catalogs()
-
-    browser = CatalogBrowser()
-    qtbot.addWidget(browser)
-
+def _select(browser, catalog):
     model = browser._tree_model
-    prov_idx = None
-    for idx in provider_indexes(model):
-        if model.node_from_index(idx).provider is provider:
-            prov_idx = idx
-            break
-    assert prov_idx is not None
+    for prov_idx in provider_indexes(model):
+        for row in range(model.rowCount(prov_idx)):
+            idx = model.index(row, 0, prov_idx)
+            if model.node_from_index(idx).catalog is catalog:
+                browser._catalog_tree.setCurrentIndex(browser._proxy_model.mapFromSource(idx))
+                return
+    raise AssertionError(f"{catalog.name} not in the tree")
 
-    for row in range(model.rowCount(prov_idx)):
-        cat_idx = model.index(row, 0, prov_idx)
-        node = model.node_from_index(cat_idx)
-        if node.catalog is cat_a:
-            browser._catalog_tree.setCurrentIndex(browser._proxy_model.mapFromSource(cat_idx))
-            break
-    assert browser._current_catalog is cat_a
 
-    browser._event_filter_bar.setText("nonexistent-text")
-    qtbot.waitUntil(lambda: browser._sort_proxy.rowCount() == 0, timeout=1000)
+@pytest.fixture
+def two(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    provider = DummyProvider(num_catalogs=2, events_per_catalog=0, name="EvFilterHost")
+    a, b = provider.catalogs()
+    for i, cls in enumerate(["solar_wind", "magnetosheath", "cusp"]):
+        provider.add_event(a, _ev(f"a{i}", {"class": cls}, day=i + 1))
+    provider.add_event(b, _ev("b0", {"class": "cusp"}))
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    return browser, provider, a, b
 
-    for row in range(model.rowCount(prov_idx)):
-        cat_idx = model.index(row, 0, prov_idx)
-        node = model.node_from_index(cat_idx)
-        if node.catalog is cat_b:
-            browser._catalog_tree.setCurrentIndex(browser._proxy_model.mapFromSource(cat_idx))
-            break
 
-    assert browser._event_filter_bar.text() == ""
+def _type(qtbot, browser, text):
+    with qtbot.waitSignal(browser._event_filter.changed, timeout=2000):
+        browser._event_filter.box.setText(text)
+
+
+def test_the_default_filter_box_filters_the_table(two, qtbot):
+    from SciQLop.components.catalogs.ui.event_filter import PlainTextFilter
+    browser, provider, a, b = two
+    _select(browser, a)
+    assert isinstance(browser._event_filter, PlainTextFilter)
+    assert browser._event_filter.box.placeholderText() == "Filter events…"
+    _type(qtbot, browser, "magneto")
     assert browser._sort_proxy.rowCount() == 1
+    assert browser._filter_count.text() == "1 of 3" and browser._filter_count.isVisibleTo(browser)
+
+
+def test_the_count_line_hides_when_nothing_is_filtered(two, qtbot):
+    browser, provider, a, b = two
+    _select(browser, a)
+    assert not browser._filter_count.isVisibleTo(browser)
+    _type(qtbot, browser, "s")
+    _type(qtbot, browser, "")
+    assert not browser._filter_count.isVisibleTo(browser) and browser._sort_proxy.rowCount() == 3
+
+
+def test_each_catalogue_keeps_its_filter_for_the_session(two, qtbot):
+    browser, provider, a, b = two
+    _select(browser, a)
+    _type(qtbot, browser, "cusp")
+    _select(browser, b)
+    assert browser._event_filter.box.text() == ""   # B had none: it is not A's
+    assert browser._sort_proxy.rowCount() == 1
+    _select(browser, a)
+    assert browser._event_filter.box.text() == "cusp"
+    qtbot.waitUntil(lambda: browser._sort_proxy.rowCount() == 1, timeout=2000)
+
+
+def test_events_arriving_later_are_filtered_too(two, qtbot):
+    browser, provider, a, b = two
+    _select(browser, a)
+    _type(qtbot, browser, "cusp")
+    provider.add_event(a, _ev("a9", {"class": "cusp too"}, day=9))
+    qtbot.waitUntil(lambda: browser._sort_proxy.rowCount() == 2, timeout=2000)
+
+
+def test_a_provider_s_own_filter_is_hosted_and_the_previous_one_disposed(qtbot, qapp):
+    from PySide6.QtWidgets import QLabel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from SciQLop.components.catalogs.ui.event_filter import EventFilter, PlainTextFilter
+    disposed = []
+
+    class OnlyFirst(EventFilter):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+            self._widget = QLabel("own filter")
+            self._kept = None
+
+        def widget(self):
+            return self._widget
+
+        def set_events(self, events):
+            self._kept = {events[0].uuid} if events else None
+            self.changed.emit()
+
+        def accepts(self, event):
+            return self._kept is None or event.uuid in self._kept
+
+        def kept(self):
+            return self._kept
+
+        def dispose(self):
+            disposed.append(self)
+
+    class Own(DummyProvider):
+        def event_filter(self, catalog, parent):
+            return OnlyFirst(parent)
+
+    own = Own(num_catalogs=1, events_per_catalog=0, name="OwnFilterProv")
+    catalog = own.catalogs()[0]
+    for i in range(3):
+        own.add_event(catalog, _ev(f"o{i}", {"n": i}, day=i + 1))
+    plain = DummyProvider(num_catalogs=1, events_per_catalog=2, name="PlainFilterProv")
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    _select(browser, catalog)
+    assert isinstance(browser._event_filter, OnlyFirst)
+    assert browser._event_filter.widget().isVisibleTo(browser)
+    assert browser._sort_proxy.rowCount() == 1
+    _select(browser, plain.catalogs()[0])
+    assert len(disposed) == 1 and isinstance(browser._event_filter, PlainTextFilter)
+    assert browser._sort_proxy.rowCount() == 2
+
+
+def test_show_only_these_on_the_plots_is_off_by_default(two):
+    browser, provider, a, b = two
+    _select(browser, a)
+    assert browser._filter_plots.text() == "Show only these on the plots"
+    assert not browser._filter_plots.isChecked()
+
+
+def test_show_only_these_on_the_plots_filters_the_catalogue_s_overlays(two, qtbot):
+    browser, provider, a, b = two
+    shown = {}
+
+    class Overlay:
+        def set_event_filter(self, uuids):
+            shown["uuids"] = uuids
+
+    class Manager:
+        def overlay(self, uuid):
+            return Overlay() if uuid == a.uuid else None
+
+    class Panel:
+        catalog_manager = Manager()
+
+    browser._panels.append(Panel())
+    _select(browser, a)
+    _type(qtbot, browser, "cusp")
+    assert "uuids" not in shown                    # off: the plots show everything
+    browser._filter_plots.setChecked(True)
+    assert shown["uuids"] == {"a2"}
+    _type(qtbot, browser, "s")
+    assert shown["uuids"] == {"a0", "a1", "a2"}
+    browser._filter_plots.setChecked(False)
+    assert shown["uuids"] is None

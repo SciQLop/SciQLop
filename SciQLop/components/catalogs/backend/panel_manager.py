@@ -41,6 +41,7 @@ class PanelCatalogManager(QObject):
 
     event_clicked = Signal(object)  # CatalogEvent
     catalog_event_clicked = Signal(object, object)  # Catalog, CatalogEvent
+    catalog_added = Signal(object)  # Catalog, once its overlay exists
 
     def __init__(self, panel, parent: QObject | None = None):
         super().__init__(parent or panel)
@@ -118,6 +119,7 @@ class PanelCatalogManager(QObject):
             overlay.read_only = True
         self._update_creation_target_choices()
         self._apply_span_creation_state()
+        self.catalog_added.emit(catalog)
 
     def remove_catalog(self, catalog: Catalog) -> None:
         overlay = self._overlays.pop(catalog.uuid, None)

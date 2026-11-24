@@ -368,6 +368,21 @@ class CatalogProvider(QObject):
         """A catalogue's own tree icon, or None for its colour swatch."""
         return None
 
+    # ---- the event table's filter ----
+
+    def event_filter(self, catalog: "Catalog", parent) -> Any:
+        """The filter shown above this catalogue's events (a ui.event_filter.EventFilter); None for
+        the plain text one. Internal for now: not documented for plugins yet."""
+        return None
+
+    def filter_events(self, catalog: "Catalog", text: str) -> list[CatalogEvent]:
+        """The catalogue's events a filter text keeps, in this provider's own filter language: by
+        default a piece of text found in any column, as the event table shows it."""
+        from .event_text import event_text, text_keeps
+        events = self.events(catalog)
+        kept = text_keeps([(e.uuid, event_text(e)) for e in events], text)
+        return events if kept is None else [e for e in events if e.uuid in kept]
+
     # ---- smart catalogues: only for a provider with Capability.SEARCHES ----
 
     def create_smart_catalog(self, name: str, path: list[str] | None, query: str,

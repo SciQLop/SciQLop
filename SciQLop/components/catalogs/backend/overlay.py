@@ -76,6 +76,7 @@ class CatalogOverlay(QObject):
         self._spans_visible = True
         self._lazy = False
         self._mapper = get_color_mapper(catalog)
+        self._only: set[str] | None = None  # the event filter's kept events; None draws them all
 
         self._span_collection = MultiPlotsVSpanCollection(panel)
         self._event_by_span_id: dict[str, CatalogEvent] = {}
@@ -89,7 +90,7 @@ class CatalogOverlay(QObject):
         catalog.provider.events_changed.connect(self._on_events_changed)
 
         # Decide: lazy or eager
-        all_events = catalog.provider.events(catalog)
+        all_events = self._shown_events()
         self._event_colors = self._mapper(all_events, self._color)
         if len(all_events) >= 5000:
             self._lazy = True
@@ -152,7 +153,7 @@ class CatalogOverlay(QObject):
         elif self._lazy:
             self._refresh_visible()
         else:
-            all_events = self._catalog.provider.events(self._catalog)
+            all_events = self._shown_events()
             self._event_colors = self._mapper(all_events, self._color)
             for event in all_events:
                 self._add_span(event)
@@ -279,7 +280,7 @@ class CatalogOverlay(QObject):
             log.debug("Could not get panel time range for lazy refresh", exc_info=True)
             return
 
-        new_events = self._catalog.provider.events(self._catalog, start, stop)
+        new_events = self._shown_events(start, stop)
         new_uuids = {e.uuid for e in new_events}
         current_uuids = set(self._event_by_span_id.keys())
         # Assign (don't update): keeps the dict bounded to the visible window
@@ -298,14 +299,26 @@ class CatalogOverlay(QObject):
             if event.uuid not in current_uuids:
                 self._add_span(event)
 
+    def _shown_events(self, start=None, stop=None) -> list[CatalogEvent]:
+        events = self._catalog.provider.events(self._catalog, start, stop)
+        return events if self._only is None else [e for e in events if e.uuid in self._only]
+
+    def set_event_filter(self, uuids: set[str] | None) -> None:
+        """Draw only these events of the catalogue (the browser's "Show only these on the plots");
+        None draws them all."""
+        self._only = None if uuids is None else set(uuids)
+        self._resync()
+
     def _on_events_changed(self, changed_catalog: Catalog) -> None:
-        if changed_catalog.uuid != self._catalog.uuid:
-            return
+        if changed_catalog.uuid == self._catalog.uuid:
+            self._resync()
+
+    def _resync(self) -> None:
         if self._lazy:
             self._refresh_visible()
             return
         current_uuids = set(self._event_by_span_id.keys())
-        new_events = self._catalog.provider.events(self._catalog)
+        new_events = self._shown_events()
         new_uuids = {e.uuid for e in new_events}
         self._event_colors = self._mapper(new_events, self._color)
 

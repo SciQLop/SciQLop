@@ -5,48 +5,11 @@ from typing import Any
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyModel, Qt
 
+from ..backend.event_text import _format_meta_value, format_event_time  # noqa: F401  (re-exported)
 from ..backend.provider import Capability, CatalogEvent
 
 
-_SCI_LOWER = 1e-3
-_SCI_UPPER = 1e6
-
-
-def _format_float(value: float) -> str:
-    """Format a float for display: scientific when very small or very large,
-    general otherwise. Default precision is 6 significant digits."""
-    if value == 0.0:
-        return "0"
-    abs_v = abs(value)
-    if abs_v < _SCI_LOWER or abs_v >= _SCI_UPPER:
-        return f"{value:.6e}"
-    return f"{value:.6g}"
-
-
-def _format_meta_value(value: Any) -> str:
-    if isinstance(value, bool) or value is None:
-        return str(value) if value is not None else ""
-    if isinstance(value, Real) and not isinstance(value, int):
-        return _format_float(float(value))
-    if isinstance(value, (list, tuple, set)):
-        return ", ".join(str(v) for v in value)
-    if isinstance(value, str):
-        from datetime import datetime as _dt
-        try:
-            parsed = _dt.fromisoformat(value)
-            return parsed.strftime("%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            pass
-    return str(value)
-
-
 _FIXED_COLUMN_TITLES = ("Start (UTC)", "Stop (UTC)")
-
-
-def format_event_time(dt) -> str:
-    """To the second, and to the millisecond when it has any: two burst events in one second differ."""
-    text = dt.strftime("%Y-%m-%d %H:%M:%S")
-    return f"{text}.{dt.microsecond // 1000:03d}" if dt.microsecond >= 1000 else text
 
 
 class EventTableModel(QAbstractTableModel):
@@ -295,24 +258,21 @@ class EventTableModel(QAbstractTableModel):
 
 
 class EventSortProxy(QSortFilterProxyModel):
-    """Sorts by numeric timestamps for start/stop columns, and filters by a
-    case-insensitive substring against every column (not just one -- the
-    default QSortFilterProxyModel filterKeyColumn), so a catalog with many
-    meta columns can be searched without knowing which column has the
-    match."""
+    """Sorts by numeric timestamps for start/stop columns; keeps the rows the event filter accepts
+    (the hosted delegate's accepts: one cheap call per row, the matching done beforehand)."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setSortRole(EventTableModel.SortRole)
-        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self._accepts = None
+
+    def set_accepts(self, accepts) -> None:
+        """``accepts(event) -> bool``, or None to keep every row."""
+        self._accepts = accepts
+        self.invalidateFilter()
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
-        regex = self.filterRegularExpression()
-        if not regex.pattern():
+        if self._accepts is None:
             return True
-        model = self.sourceModel()
-        for col in range(model.columnCount()):
-            text = model.data(model.index(source_row, col, source_parent), Qt.ItemDataRole.DisplayRole)
-            if text and regex.match(str(text)).hasMatch():
-                return True
-        return False
+        event = self.sourceModel().event_at(source_row)
+        return event is None or self._accepts(event)

@@ -75,27 +75,6 @@ def test_tree_filter_matches_names_with_punctuation(qtbot, qapp):
     assert names == ["mms 1 2024-01"]
 
 
-def test_event_filter_matches_text_with_punctuation(qapp):
-    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
-    from SciQLop.components.catalogs.ui.event_table import EventTableModel, EventSortProxy
-
-    provider = DummyProvider(num_catalogs=1, events_per_catalog=0, name="EvPunctProv")
-    cat = provider.catalogs()[0]
-    provider.add_event(cat, _ev("e1", {"tag": "mms 1 / 2024-01"}))
-    provider.add_event(cat, _ev("e2", {"tag": "cluster"}))
-
-    model = EventTableModel()
-    model.set_context(provider, cat)
-    model.set_events(provider.events(cat))
-    proxy = EventSortProxy()
-    proxy.setSourceModel(model)
-
-    proxy.setFilterFixedString("2024-01")
-    assert proxy.rowCount() == 1
-    proxy.setFilterFixedString("MMS 1")
-    assert proxy.rowCount() == 1
-
-
 # ---- 4. Delete Catalog? must default to No ----
 
 def test_delete_catalog_confirmation_defaults_to_no(qtbot, qapp, monkeypatch):

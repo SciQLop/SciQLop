@@ -6,6 +6,9 @@ from PySide6.QtCore import (
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
+    QHBoxLayout,
+    QLabel,
     QLineEdit,
     QSplitter,
     QStyledItemDelegate,
@@ -34,6 +37,7 @@ import uuid as _uuid
 from SciQLop.core.ui import Metrics
 from ..backend.provider import Capability, CatalogProvider, Catalog, CatalogEvent
 from .catalog_tree import CatalogTreeModel, DIRTY_PROVIDER_ROLE, LOADING_ROLE, SECONDARY_ROLE
+from .event_filter import EventFilter, PlainTextFilter
 from .event_table import EventTableModel, EventSortProxy
 from .link_text import first_url
 
@@ -205,6 +209,10 @@ class CatalogBrowser(QWidget):
         self._events_changed_provider: CatalogProvider | None = None
         self._current_catalog: Catalog | None = None
         self._panels: list = []
+        self._event_filter: EventFilter | None = None
+        self._filter_owner: str | None = None
+        self._filter_memory: dict[str, tuple] = {}         # catalogue uuid -> (filter state, plots on), this session
+        self._plot_filters: dict[str, set[str] | None] = {}  # catalogue uuid -> what its overlays draw
         self._expanded_before_filter: list[QPersistentModelIndex] = []
         self._highlighting = False
         self._manual_widths: dict[str, int] = {}
@@ -334,29 +342,27 @@ class CatalogBrowser(QWidget):
         self._event_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._event_table.customContextMenuRequested.connect(self._on_event_table_context_menu)
 
-        self._event_filter_bar = QLineEdit()
-        self._event_filter_bar.setPlaceholderText("Filter events…")
-        self._event_filter_bar.setClearButtonEnabled(True)
-        self._event_filter_bar.setToolTip(rich_tooltip(
-            "Filter events",
-            "Filter the event table; matches any column."))
-        # simplify: filterAcceptsRow is an O(rows x columns) scan (plus
-        # per-cell display formatting) run on every keystroke -- fine up to
-        # the thousands-of-events catalogs this targets, but a debounce is
-        # cheap insurance. Upgrade path if that's ever not enough: cache a
-        # lowercased searchable string per row, invalidated by dataChanged.
-        self._event_filter_debounce = QTimer(self)
-        self._event_filter_debounce.setSingleShot(True)
-        self._event_filter_debounce.setInterval(200)
-        self._event_filter_debounce.timeout.connect(
-            lambda: self._sort_proxy.setFilterFixedString(self._event_filter_bar.text()))
-        self._event_filter_bar.textChanged.connect(lambda _: self._event_filter_debounce.start())
+        self._filter_slot = QVBoxLayout()
+        self._filter_slot.setContentsMargins(0, 0, 0, 0)
+        self._filter_count = QLabel("")
+        self._filter_count.hide()
+        self._filter_plots = QCheckBox("Show only these on the plots")
+        self._filter_plots.setToolTip(rich_tooltip(
+            "Show only these on the plots",
+            "Panels showing this catalogue draw only the events the filter keeps."))
+        self._filter_plots.toggled.connect(self._push_plot_filter)
+        filter_line = QHBoxLayout()
+        filter_line.setContentsMargins(0, 0, 0, 0)
+        filter_line.addWidget(self._filter_count)
+        filter_line.addStretch()
+        filter_line.addWidget(self._filter_plots)
 
         event_panel = QWidget()
         event_layout = QVBoxLayout(event_panel)
         event_layout.setContentsMargins(0, 0, 0, 0)
         event_layout.addWidget(self._event_toolbar)
-        event_layout.addWidget(self._event_filter_bar)
+        event_layout.addLayout(self._filter_slot)
+        event_layout.addLayout(filter_line)
         event_layout.addWidget(self._event_table, 1)
 
         # --- splitter ---
@@ -503,7 +509,6 @@ class CatalogBrowser(QWidget):
             return
         if node.catalog is not None and node.catalog is self._current_catalog:
             return
-        self._clear_event_filter_immediately()
         # Disconnect from previously connected provider
         if self._events_changed_provider is not None:
             try:
@@ -517,6 +522,7 @@ class CatalogBrowser(QWidget):
             self._event_model.set_context(node.provider, node.catalog)
             events = node.provider.events(node.catalog)
             self._event_model.set_events(events)
+            self._install_event_filter(node.provider, node.catalog, events)
             self._apply_view_state(node.catalog)
             node.provider.events_changed.connect(self._on_events_changed)
             self._events_changed_provider = node.provider
@@ -525,6 +531,7 @@ class CatalogBrowser(QWidget):
             self._current_catalog = None
             self._event_model.set_context(None, None)
             self._event_model.clear()
+            self._install_event_filter(None, None, [])
         self._update_toolbar()
 
     def _on_event_selected(self, current: QModelIndex, previous: QModelIndex) -> None:
@@ -597,14 +604,58 @@ class CatalogBrowser(QWidget):
         finally:
             self._propagating_bulk_edit = False
 
-    def _clear_event_filter_immediately(self) -> None:
-        """Bypass the debounce: a catalog switch is a discrete navigation
-        action, not a keystroke in the middle of typing, and delaying it
-        would leave the OLD catalog's filter briefly applied to the NEW
-        catalog's (just-loaded) events."""
-        self._event_filter_bar.clear()  # emits textChanged, (re)starts the debounce
-        self._event_filter_debounce.stop()
-        self._sort_proxy.setFilterFixedString("")
+    # ---- the event filter: the selected catalogue's provider's delegate ----
+
+    def _install_event_filter(self, provider, catalog, events) -> None:
+        """Remembers the leaving catalogue's filter for the session, then hosts the new one's."""
+        old = self._event_filter
+        if old is not None:
+            if self._filter_owner is not None:
+                self._filter_memory[self._filter_owner] = (old.state(), self._filter_plots.isChecked())
+            old.dispose()
+            old.widget().deleteLater()
+            old.deleteLater()
+        own = provider.event_filter(catalog, self) if provider is not None and catalog is not None else None
+        self._event_filter = own if own is not None else PlainTextFilter(self)
+        self._filter_owner = catalog.uuid if catalog is not None else None
+        self._filter_slot.addWidget(self._event_filter.widget())
+        self._event_filter.changed.connect(self._on_event_filter_changed)
+        state, plots = self._filter_memory.get(self._filter_owner, (None, False))
+        self._filter_plots.blockSignals(True)
+        self._filter_plots.setChecked(plots)
+        self._filter_plots.blockSignals(False)
+        self._sort_proxy.set_accepts(self._event_filter.accepts)
+        self._event_filter.set_events(events)
+        if state is not None:
+            self._event_filter.restore(state)
+        self._show_filter_count()
+
+    def _on_event_filter_changed(self) -> None:
+        self._sort_proxy.invalidateFilter()
+        self._show_filter_count()
+        if self._filter_plots.isChecked():
+            self._push_plot_filter()
+
+    def _show_filter_count(self) -> None:
+        filtering = self._event_filter is not None and self._event_filter.kept() is not None
+        self._filter_count.setVisible(filtering)
+        if filtering:
+            self._filter_count.setText(f"{self._sort_proxy.rowCount():,} of {self._event_model.rowCount():,}")
+
+    def _push_plot_filter(self, *_args) -> None:
+        if self._filter_owner is None:
+            return
+        kept = self._event_filter.kept() if self._filter_plots.isChecked() and self._event_filter else None
+        self._plot_filters[self._filter_owner] = kept
+        for panel in list(self._panels):
+            self._filter_overlay(panel, self._filter_owner)
+
+    def _filter_overlay(self, panel, catalog_uuid: str) -> None:
+        if catalog_uuid not in self._plot_filters:
+            return
+        overlay = panel.catalog_manager.overlay(catalog_uuid)
+        if overlay is not None:
+            overlay.set_event_filter(self._plot_filters[catalog_uuid])
 
     def _on_events_changed(self, catalog: Catalog) -> None:
         """Refresh event table when async loading completes for the selected
@@ -642,6 +693,8 @@ class CatalogBrowser(QWidget):
                     selected_uuids.append(ev.uuid)
 
         self._event_model.set_events(events)
+        if self._event_filter is not None:
+            self._event_filter.set_events(events)
 
         if sm is None or not selected_uuids:
             return
@@ -892,6 +945,8 @@ class CatalogBrowser(QWidget):
         manager = panel.catalog_manager
         self.event_selected.connect(manager.select_event)
         manager.catalog_event_clicked.connect(self._on_plot_event_clicked)
+        if hasattr(manager, "catalog_added"):
+            manager.catalog_added.connect(lambda catalog, p=panel: self._filter_overlay(p, catalog.uuid))
         panel.destroyed.connect(lambda: self._on_panel_destroyed(panel))
 
     def _on_panel_destroyed(self, panel) -> None:

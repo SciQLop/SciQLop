@@ -311,3 +311,21 @@ def test_overlay_update_color_mapper_recreates_spans(qtbot, qapp, tmp_path, monk
     overlay.update_color_mapper(ColorMapper())
     assert overlay.span_count == 5
     assert overlay._mapper.column is None
+
+
+def test_an_event_filter_draws_only_the_kept_events_and_none_draws_all(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.overlay import CatalogOverlay
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    from SciQLop.core import TimeRange
+
+    panel = TimeSyncPanel("filter-panel")
+    base = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    panel.time_range = TimeRange(base.timestamp(), (base + timedelta(days=400)).timestamp())
+    catalog = DummyProvider(num_catalogs=1, events_per_catalog=3).catalogs()[0]
+    overlay = CatalogOverlay(catalog=catalog, panel=panel)
+    first, *rest = catalog.provider.events(catalog)
+    overlay.set_event_filter({first.uuid})
+    assert set(overlay._event_by_span_id) == {first.uuid} and overlay.span_count == 1
+    overlay.set_event_filter(None)
+    assert overlay.span_count == 3
