@@ -884,12 +884,13 @@ class CocatRsProvider(Placing, Rereading, Searching, Following, Linking, Submitt
         export = action("Export…", self._ask_and_export)
         if catalog.uuid in self._links:
             return [action("Unlink", self.unlink), export] if self._can_write(catalog.path[0]) else [export]
+        searches = self._search_catalog_actions(catalog)
         link = [action("Link into My catalogues", self.link_into_personal)] if self._can_link(catalog) else []
         if not self._online() or catalog.path[0] in self._local_ids:
-            return [export, *link]
+            return [*searches, export, *link]
         submit = [action("Submit as a public catalogue…", lambda c: self.offer_submission(c))] \
             if self._cannot_submit(catalog) is None else []
-        return [action("History…", lambda c: self._show_history(c.path[0], c)), export, *link, *submit]
+        return [*searches, action("History…", lambda c: self._show_history(c.path[0], c)), export, *link, *submit]
 
     def _public_actions(self, catalog: Catalog) -> list[ProviderAction]:
         row = self._public_views[catalog.uuid]

@@ -93,3 +93,57 @@ def test_freezing_makes_a_plain_catalogue_of_what_it_holds_now(attached, tagged,
     assert frozen.path == smart.path and attached.catalog_search(frozen) is None
     assert _names(attached, frozen) == ["e0", "e1"]
     assert attached.catalog_search(smart).query == "tag:s"  # the smart one stays as it is
+
+
+def _action_names(actions):
+    return [a.name for a in actions]
+
+
+def test_the_menus_use_the_web_app_s_words(attached, tagged):
+    smart = attached.create_smart_catalog("shocks", ["r"], "tag:s")
+    names = _action_names(attached.actions(smart))
+    assert {"Freeze…", "Remove the search…", "Edit as JSON…"} <= set(names)
+    assert not {"Edit as JSON…", "Freeze…"} & set(_action_names(attached.actions(tagged)))
+
+
+def test_a_read_only_project_offers_no_search_actions(attached, tagged, monkeypatch):
+    smart = attached.create_smart_catalog("shocks", ["r"], "tag:s")
+    monkeypatch.setattr(attached, "_can_write", lambda room_id: False)
+    assert not {"Edit as JSON…", "Remove the search…"} & set(_action_names(attached.actions(smart)))
+
+
+def _run(provider, catalog_or_path, name):
+    actions = provider.actions(catalog_or_path) if not isinstance(catalog_or_path, list) \
+        else provider.folder_actions(catalog_or_path)
+    action = next(a for a in actions if a.name == name)
+    return action.callback(catalog_or_path)
+
+
+def test_edit_as_json_opens_the_rule_editor(attached, tagged, qtbot):
+    from SciQLop.plugins.sciqlop_cocat.rule_editor import RuleEditor
+    smart = attached.create_smart_catalog("shocks", ["r"], "tag:s")
+    dialog = _run(attached, smart, "Edit as JSON…")
+    assert isinstance(dialog, RuleEditor) and dialog.isVisible() and not dialog.isModal()
+    dialog.close()
+
+
+def test_freeze_asks_a_name_then_freezes(attached, tagged, monkeypatch):
+    from SciQLop.plugins.sciqlop_cocat import searches
+    smart = attached.create_smart_catalog("shocks", ["r"], "tag:s")
+    monkeypatch.setattr(searches, "ask_text", lambda parent, title, label, text: text)
+    _run(attached, smart, "Freeze…")
+    frozen = next(c for c in attached.catalogs() if c.name == "shocks (frozen)")
+    assert attached.catalog_search(frozen) is None
+
+
+def test_remove_the_search_asks_first(attached, tagged, monkeypatch):
+    from SciQLop.plugins.sciqlop_cocat import searches
+    smart = attached.create_smart_catalog("shocks", ["r"], "tag:s")
+    asked = []
+    monkeypatch.setattr(searches, "confirm", lambda parent, title, question, button: (asked.append(question), False)[1])
+    _run(attached, smart, "Remove the search…")
+    assert attached.catalog_search(smart) is not None
+    assert "keeps the events it lists and stops adding events" in asked[0]
+    monkeypatch.setattr(searches, "confirm", lambda *a: True)
+    _run(attached, smart, "Remove the search…")
+    assert attached.catalog_search(smart) is None

@@ -14,6 +14,9 @@ STATES = {
 }
 
 ACTIONS = {
+    "Edit as JSON…": "The rule behind the search, for what the search line cannot say (merge, shift, window…)",
+    "Freeze…": "A normal catalogue holding the events this one picks now",
+    "Remove the search…": "It keeps the events it lists and stops adding events",
     "Sign in…": "Sign in through your browser: your catalogues follow you, and you see projects shared with you",
     "Sign out": "Stop syncing; My catalogues stays usable from this computer",
     "Connect": "Load your projects from the server",

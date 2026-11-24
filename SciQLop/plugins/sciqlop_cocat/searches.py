@@ -1,15 +1,23 @@
 """Smart catalogues made and changed from SciQLop, mixed into the provider: a search on all events or
 on one catalogue of the same project, as text or as a rule (JSON), freezing, and removing the
-search."""
+search. The menus use the CoCat web app's words."""
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication
 
 from SciQLop.components.catalogs import Catalog, CatalogSearch
 from SciQLop.components.sciqlop_logging import getLogger
 
 from .convert import SUBPATH_ATTR, encode_subpath
+from .history_dialog import ask_text, confirm
 
 log = getLogger(__name__)
+
+REMOVE_SEARCH_QUESTION = "“{name}” keeps the events it lists and stops adding events. The events the search picked leave it."
+FREEZE_LABEL = "A normal catalogue holding the events this one picks now. Joined intervals become events you " \
+               "can edit. This smart catalogue stays as it is.\n\nName of the normal catalogue:"
+
 
 class Searching:
     """Mixed into the provider: its rooms, catalogues and reads are used as they are."""
@@ -85,3 +93,45 @@ class Searching:
 
     def _can_search_in(self, room_id: str | None) -> bool:
         return room_id in self._rooms and room_id not in self._public_ids and self._can_write(room_id)
+
+    # ---- the tree's menus ----
+
+    def _search_catalog_actions(self, catalog: Catalog) -> list:
+        from .provider import action
+        if catalog.uuid not in self._smart or not self._can_search_in(catalog.path[0] if catalog.path else None):
+            return []
+        return [action("Edit as JSON…", self.open_rule_editor),
+                action("Freeze…", self._ask_and_freeze),
+                action("Remove the search…", self._ask_and_remove_search)]
+
+    def open_rule_editor(self, catalog: Catalog):
+        from .rule_editor import RuleEditor
+        return self._keep_open(RuleEditor(self, catalog, parent=QApplication.activeWindow()))
+
+    def _keep_open(self, dialog):
+        """Held until closed: a dialog without a parent window would otherwise go with its last reference."""
+        dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        open_dialogs = self.__dict__.setdefault("_open_dialogs", set())
+        open_dialogs.add(dialog)
+        dialog.finished.connect(lambda _result: open_dialogs.discard(dialog))
+        dialog.show()
+        dialog.raise_()
+        return dialog
+
+    def _ask_and_freeze(self, catalog: Catalog) -> None:
+        name = ask_text(QApplication.activeWindow(), "Freeze", FREEZE_LABEL, f"{catalog.name} (frozen)")
+        if not name:
+            return
+        try:
+            self.freeze_catalog(catalog, name)
+        except Exception as error:
+            self.error_occurred.emit(f"Cannot freeze '{catalog.name}': {error}")
+
+    def _ask_and_remove_search(self, catalog: Catalog) -> None:
+        if not confirm(QApplication.activeWindow(), "Remove the search", REMOVE_SEARCH_QUESTION.format(name=catalog.name),
+                       "Remove the search"):
+            return
+        try:
+            self.remove_catalog_search(catalog)
+        except Exception as error:
+            self.error_occurred.emit(f"Cannot remove the search of '{catalog.name}': {error}")
