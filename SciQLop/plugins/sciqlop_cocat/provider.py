@@ -1005,6 +1005,12 @@ class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, Import
         synced = any(status == "synced" for status in self._status.values())
         return get_icon("link" if synced else "link_off")
 
+    def catalog_icon(self, catalog: Catalog):
+        if catalog.uuid not in self._smart:
+            return None
+        from SciQLop.components.catalogs.backend.color_palette import catalog_swatch_icon
+        return catalog_swatch_icon(catalog.uuid, shape="funnel")
+
     def _project_icon(self, path):
         if not path or len(path) != 1 or path[0] not in self._room_infos:
             return None

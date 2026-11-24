@@ -311,3 +311,14 @@ def test_a_re_read_brings_new_tags_and_rating_and_says_so(attached, room, qtbot)
     with qtbot.waitSignal(attached.events_changed):
         attached.reload_catalog(smart)
     assert attached.events(smart)[0].meta["rating"] == 9
+
+
+def test_a_smart_catalogue_has_a_funnel_icon_a_plain_one_the_default(attached, room):
+    from SciQLop.components.catalogs.backend.color_palette import catalog_swatch_icon
+    plain = attached.create_catalog("plain", ["r"])
+    smart = attached.create_catalog("smart", ["r"])
+    room.catalogue(smart.uuid).rule = {"filter": {"all": True}, "where": {"contains": ["tags", "s"]}}
+    attached.reload_catalog(smart)
+    assert attached.catalog_icon(plain) is None
+    funnel = catalog_swatch_icon(smart.uuid, shape="funnel").pixmap(16, 16).toImage()
+    assert attached.catalog_icon(smart).pixmap(16, 16).toImage() == funnel

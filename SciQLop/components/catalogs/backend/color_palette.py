@@ -2,8 +2,8 @@ from functools import lru_cache
 from hashlib import md5
 from typing import ClassVar
 
-from PySide6.QtCore import QObject, QPoint, QRect, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QIcon, QIconEngine, QPainter, QPixmap
+from PySide6.QtCore import QObject, QPoint, QPointF, QRect, QRectF, QSize, Qt, Signal
+from PySide6.QtGui import QColor, QIcon, QIconEngine, QPainter, QPixmap, QPolygonF
 
 from SciQLop.components.settings.backend.entry import ConfigEntry, SettingsCategory
 from SciQLop.components.theming.icons import _transparent_argb
@@ -96,9 +96,10 @@ class _CatalogSwatchIconEngine(QIconEngine):
     on demand keeps this crisp at any DPI without baking a fixed-size
     pixmap (and needs no cache: the engine itself holds only a QColor)."""
 
-    def __init__(self, color: QColor):
+    def __init__(self, color: QColor, shape: str = "dot"):
         super().__init__()
         self._color = color
+        self._shape = shape
 
     def paint(self, painter: QPainter, rect: QRect, mode, state):
         painter.save()
@@ -106,7 +107,11 @@ class _CatalogSwatchIconEngine(QIconEngine):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(self._color)
         margin = max(1, min(rect.width(), rect.height()) // 12)
-        painter.drawEllipse(rect.adjusted(margin, margin, -margin, -margin))
+        box = QRectF(rect.adjusted(margin, margin, -margin, -margin))
+        if self._shape == "funnel":
+            painter.drawPolygon(_funnel(box))
+        else:
+            painter.drawEllipse(box)
         painter.restore()
 
     def pixmap(self, size: QSize, mode, state) -> QPixmap:
@@ -126,11 +131,20 @@ class _CatalogSwatchIconEngine(QIconEngine):
         return _CatalogSwatchIconEngine(self._color)
 
 
-def catalog_swatch_icon(uuid: str) -> QIcon:
+def catalog_swatch_icon(uuid: str, shape: str = "dot") -> QIcon:
     """A small filled dot in this catalog's color, for the tree row --
     cheap legend so 'which color is which catalog' is answerable without
     hovering an event on the plot (the only place the color was visible
-    before this)."""
+    before this). ``shape="funnel"`` marks a catalogue whose events a rule
+    selects, keeping the colour."""
     color = QColor(color_for_catalog(uuid))
     color.setAlpha(255)
-    return QIcon(_CatalogSwatchIconEngine(color))
+    return QIcon(_CatalogSwatchIconEngine(color, shape))
+
+
+def _funnel(box: QRectF) -> QPolygonF:
+    """Wide rim, narrowing to a short spout."""
+    x, y, w, h = box.x(), box.y(), box.width(), box.height()
+    return QPolygonF([QPointF(x, y), QPointF(x + w, y), QPointF(x + w * 0.6, y + h * 0.55),
+                      QPointF(x + w * 0.6, y + h), QPointF(x + w * 0.4, y + h * 0.85),
+                      QPointF(x + w * 0.4, y + h * 0.55)])

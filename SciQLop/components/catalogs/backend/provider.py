@@ -354,6 +354,10 @@ class CatalogProvider(QObject):
         """Return a custom icon for a node type, or None for default."""
         return None
 
+    def catalog_icon(self, catalog: Catalog) -> QIcon | None:
+        """A catalogue's own tree icon, or None for its colour swatch."""
+        return None
+
     def node_tooltip(self, node_type: NodeType, path: list[str] | None = None,
                      catalog: Catalog | None = None) -> str | None:
         """Tooltip for a tree node: *path* is given for a folder, *catalog* for a catalog.

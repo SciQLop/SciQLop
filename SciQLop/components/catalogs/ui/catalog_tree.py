@@ -612,7 +612,8 @@ class CatalogTreeModel(QAbstractItemModel):
             return get_icon(SECTION_ICONS[node.section])
         if node.catalog is not None:
             from ..backend.color_palette import catalog_swatch_icon
-            return catalog_swatch_icon(node.catalog.uuid)
+            own = node.provider.catalog_icon(node.catalog) if node.provider is not None else None
+            return own if own is not None else catalog_swatch_icon(node.catalog.uuid)
         return get_icon("dataSourceRoot" if node.is_provider_node else "folder_open")
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
