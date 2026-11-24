@@ -85,6 +85,7 @@ class Capability(str, Enum):
     SAVE_CATALOG = "save_catalog"
     RENAME_CATALOG = "rename_catalog"
     MOVE_CATALOG = "move_catalog"
+    SEARCHES = "searches"  # smart catalogues: a search picks their events (create_smart_catalog...)
 
 
 class NodeType(str, Enum):
@@ -114,6 +115,15 @@ class Catalog:
     name: str
     provider: CatalogProvider | None = None
     path: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class CatalogSearch:
+    """A smart catalogue's search: ``query`` is its text (None when the rule has no text form),
+    ``source`` the catalogue it looks in (None: all events), ``rule`` what is stored."""
+    query: str | None
+    source: "Catalog | None"
+    rule: dict
 
 
 @dataclass
@@ -357,6 +367,30 @@ class CatalogProvider(QObject):
     def catalog_icon(self, catalog: Catalog) -> QIcon | None:
         """A catalogue's own tree icon, or None for its colour swatch."""
         return None
+
+    # ---- smart catalogues: only for a provider with Capability.SEARCHES ----
+
+    def create_smart_catalog(self, name: str, path: list[str] | None, query: str,
+                             source: "Catalog | None" = None) -> "Catalog":
+        """A catalogue whose events a search picks, among all events or those of ``source``."""
+        raise PermissionError(f"{self.name} has no smart catalogues")
+
+    def catalog_search(self, catalog: "Catalog") -> CatalogSearch | None:
+        """None for a catalogue that has no search."""
+        return None
+
+    def set_catalog_search(self, catalog: "Catalog", query: str | None = None, source: "Catalog | None" = None,
+                           rule: dict | None = None) -> None:
+        """Give the catalogue a search, as text (``query``, ``source``) or as a rule; it becomes smart."""
+        raise PermissionError(f"{self.name} has no smart catalogues")
+
+    def remove_catalog_search(self, catalog: "Catalog") -> None:
+        """It keeps the events it lists and stops adding events."""
+        raise PermissionError(f"{self.name} has no smart catalogues")
+
+    def freeze_catalog(self, catalog: "Catalog", name: str) -> "Catalog":
+        """A plain catalogue holding the events this one holds now, beside it."""
+        raise PermissionError(f"{self.name} has no smart catalogues")
 
     def node_tooltip(self, node_type: NodeType, path: list[str] | None = None,
                      catalog: Catalog | None = None) -> str | None:

@@ -39,6 +39,7 @@ from .locks import lock_on
 from .remembered import Remembered
 from .public import PUBLIC, PUBLIC_FOLDER, Following, as_info
 from .links import Linking
+from .searches import Searching
 from .submission import Submitting
 from .tscat_first_start import ImportingTscat
 from .sections import Placing
@@ -111,6 +112,7 @@ CAPABILITIES = frozenset({
     Capability.DELETE_CATALOGS,
     Capability.RENAME_CATALOG,
     Capability.MOVE_CATALOG,
+    Capability.SEARCHES,
 })
 # The server ignores a viewer's writes, so the UI must not offer them.
 WRITE_ROLES = frozenset({"owner", "editor"})
@@ -176,7 +178,7 @@ def _default_project(infos) -> str | None:
     return next((i.id for i in infos if i.personal), infos[0].id if infos else None)
 
 
-class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, ImportingTscat, CatalogProvider):
+class CocatRsProvider(Placing, Rereading, Searching, Following, Linking, Submitting, ImportingTscat, CatalogProvider):
     NAME = PROVIDER_NAME
     DESCRIPTION = "Your catalogues, and the projects shared with you, through cocat-rs."
 
