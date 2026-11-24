@@ -333,3 +333,20 @@ def test_a_smart_catalogue_has_a_funnel_icon_a_plain_one_the_default(attached, r
     assert attached.catalog_icon(plain) is None
     funnel = catalog_swatch_icon(smart.uuid, shape="funnel").pixmap(16, 16).toImage()
     assert attached.catalog_icon(smart).pixmap(16, 16).toImage() == funnel
+
+
+def test_a_range_edited_inside_out_is_refused_alone_and_said(attached, room):
+    """cocat-rs 0.11 refuses a stop before the start: one such edit failed the whole batch of range
+    writes, and the other events' edits were lost with it."""
+    c, good = _catalog_with_event(attached)
+    attached.add_event(c, _new_event())
+    bad = next(e for e in attached.events(c) if e is not good)
+    told = []
+    attached.error_occurred.connect(told.append)
+    good.stop = T0 + 3 * HOUR
+    bad.start = T0 + 5 * HOUR  # after its stop
+    attached.flush_ranges()
+    assert room.event(good.uuid).stop == T0 + 3 * HOUR
+    assert (room.event(bad.uuid).start, room.event(bad.uuid).stop) == (T0, T0 + HOUR)
+    assert (bad.start, bad.stop) == (T0, T0 + HOUR)  # shown as stored again
+    assert len(told) == 1 and "before" in told[0]

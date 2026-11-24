@@ -1414,8 +1414,16 @@ class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, Import
                         self._write_range(room, event)
             self.mark_smart_dirty(room_id)
 
-    @staticmethod
-    def _write_range(room, event: CatalogEvent) -> None:
+    def _write_range(self, room, event: CatalogEvent) -> None:
+        """A stop before the start is refused alone (cocat-rs 0.11 raises, which would undo the whole
+        batch): the event goes back to its stored times, and the status bar says why."""
         stored = _stored_event(room, event.uuid)
-        if stored is not None:
-            stored.range = (event.start, event.stop)
+        if stored is None:
+            return
+        if event.stop < event.start:
+            self.error_occurred.emit(f"Not saved: the event's stop ({event.stop:%Y-%m-%d %H:%M:%S}) is before "
+                                     f"its start ({event.start:%Y-%m-%d %H:%M:%S})")
+            with self.remote_changes():
+                event.apply_remote_range(stored.start, stored.stop)
+            return
+        stored.range = (event.start, event.stop)
