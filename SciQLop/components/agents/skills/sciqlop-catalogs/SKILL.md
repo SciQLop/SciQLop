@@ -39,7 +39,7 @@ for e in cat:
   with others) and "Reference" (public catalogues, AMDA, plugin lists). A
   path still starts with the provider's name, never with a section's.
 - **Write events** as a list of `(start, stop)` or `(start, stop, meta)`
-  tuples, or a speasy `Catalog`:
+  tuples, a list of speasy events, or a speasy `Catalog`:
   - `catalogs.create(path, events)` makes a new catalog; it raises
     `ValueError` if the path exists.
   - `catalogs.add_events(path, events)` appends; `KeyError` if the catalog
@@ -58,6 +58,41 @@ for e in cat:
 - Reads and writes wait for a catalog whose events are still loading in the
   background (right after startup), so `get()` never returns a half-loaded
   catalog.
+
+## Smart catalogues
+
+A smart catalogue's events are those its **search** finds, kept up to date
+as the project changes (only in `Catalogs (cocat-rs)`). Its events cannot be
+edited one by one: change the search instead.
+
+```python
+catalogs.create_smart("Catalogs (cocat-rs)//strong shocks", "tag:shock confidence:>=0.7")
+catalogs.create_smart("Catalogs (cocat-rs)//recent", "created:now-7d",
+                      source="Catalogs (cocat-rs)//shocks")   # search one catalogue only
+catalogs.search_of(path)              # the search line, None for a plain catalogue
+catalogs.set_search(path, "tag:wave") # a plain catalogue becomes smart
+catalogs.freeze(path, "strong shocks, fixed")   # a normal copy of what it holds now; returns its path
+catalogs.remove_search(path)          # keeps the events it lists, stops adding events
+catalogs.rule_of(path) / catalogs.set_rule(path, {...})   # the stored JSON rule
+```
+
+- **Search syntax** (one line, the same as the catalog tree's editor and the
+  CoCat web app): `field:value`, with `>`, `>=`, `<`, `<=`, `=` (exact) after
+  the colon; terms side by side mean AND, `OR` and `NOT` and brackets combine
+  them. Fields: `start`, `stop`, `duration`, `tag`, `status`, `confidence`,
+  `author`, `catalogue`, `created`, `origin`, `product`, ... and any attribute
+  as `#key` (`#density:>10`). Times: `start:>2020-01-01`, `created:now-7d`.
+  `_exists_:field` tests presence: `NOT _exists_:catalogue` is "in no
+  catalogue".
+- A wrong search raises `cocat_rs.QueryError` (a `ValueError`) with
+  `.position`, `.length` and `.suggestion` ("did you mean author?"): fix it
+  and try again rather than guessing.
+- `rating` is not a search field: SciQLop's rating 1-10 is `confidence` 0-1
+  (`rating >= 7` is `confidence:>=0.7`).
+- Searches cannot look at data values (no "where Bz < -5 nT"): compute such
+  intervals in Python and `create()` a normal catalogue.
+- For merging, shifting or windows, use a JSON rule with `set_rule`; ask the
+  user before writing one by hand.
 
 ## Showing a catalog on a panel
 

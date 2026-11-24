@@ -391,6 +391,89 @@ class CatalogService:
         if new_events:
             self._persist(provider, catalog, new_events)
 
+    # ---- smart catalogues ----
+
+    @on_main_thread
+    def create_smart(self, path: str, query: str, source: str | None = None) -> None:
+        """Create a smart catalogue: its events are those its search finds, as the project changes.
+
+        The search is one line, as in the catalog tree's editor and the CoCat web app:
+        ``"tag:shock confidence:>=0.7"``, ``"(tag:shock) OR (#density:>10)"``,
+        ``"created:now-7d"``, ``"NOT _exists_:catalogue"``.
+
+        Parameters
+        ----------
+        path : str
+            Fully-qualified path of the new catalogue.
+        query : str
+            The search.
+        source : str, optional
+            Path of a catalogue of the same project to search in; all events when omitted.
+
+        Raises
+        ------
+        ValueError
+            If a catalog at *path* already exists, or the search is wrong (a
+            ``cocat_rs.QueryError`` for "Catalogs (cocat-rs)", with ``position``,
+            ``length`` and ``suggestion``).
+        PermissionError
+            If the provider has no smart catalogues.
+        """
+        provider, segments, name = self._target(path)
+        if self._find_catalog(provider, segments, name) is not None:
+            raise ValueError(f"Catalog already exists: {path!r}")
+        provider.create_smart_catalog(name, segments, query, source=self._source(provider, source))
+
+    @on_main_thread
+    def search_of(self, path: str) -> str | None:
+        """The catalogue's search as one line; None for a plain catalogue, or a rule the line cannot say
+        (see :meth:`rule_of`)."""
+        provider, catalog = self._resolve(path)
+        search = provider.catalog_search(catalog)
+        return search.query if search is not None else None
+
+    @on_main_thread
+    def rule_of(self, path: str) -> dict | None:
+        """The rule the catalogue's search is stored as (JSON); None for a plain catalogue."""
+        provider, catalog = self._resolve(path)
+        search = provider.catalog_search(catalog)
+        return search.rule if search is not None else None
+
+    @on_main_thread
+    def set_search(self, path: str, query: str, source: str | None = None) -> None:
+        """Give the catalogue this search; a plain catalogue becomes smart. See :meth:`create_smart`."""
+        provider, catalog = self._resolve(path)
+        provider.set_catalog_search(catalog, query, source=self._source(provider, source))
+
+    @on_main_thread
+    def set_rule(self, path: str, rule: dict) -> None:
+        """Give the catalogue a rule as JSON: for what one search line cannot say (``merge``,
+        ``shift``, ``window``...). ``ValueError`` if the rule does not read."""
+        provider, catalog = self._resolve(path)
+        provider.set_catalog_search(catalog, rule=rule)
+
+    @on_main_thread
+    def remove_search(self, path: str) -> None:
+        """The catalogue keeps the events it lists and stops adding events."""
+        provider, catalog = self._resolve(path)
+        provider.remove_catalog_search(catalog)
+
+    @on_main_thread
+    def freeze(self, path: str, name: str) -> str:
+        """A normal catalogue named *name*, beside this one, holding the events it holds now.
+        Returns its path."""
+        provider, catalog = self._resolve(path)
+        frozen = provider.freeze_catalog(catalog, name)
+        return _build_path_string(provider.name, frozen.path, frozen.name)
+
+    def _source(self, provider, source: str | None):
+        if source is None:
+            return None
+        source_provider, catalog = self._resolve(source)
+        if source_provider is not provider:
+            raise ValueError(f"A search looks in a catalogue of the same provider: {source!r}")
+        return catalog
+
     @_on_main_thread_once_loaded
     def add_events(self, path: str, data) -> None:
         """Append events to an existing catalog.

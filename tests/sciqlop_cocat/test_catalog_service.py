@@ -202,3 +202,54 @@ def test_add_events_of_speasy_events_keeps_their_meta(catalogs, path):
     catalogs.add_events(path("t"), [Event("2020-01-01", "2020-01-02", meta={"note": "n"})])
     [event] = catalogs.get(path("t"))
     assert event.meta["note"] == "n"
+
+
+# ---- smart catalogues ----
+
+def _read(catalogs, provider, path, qtbot):
+    provider_, catalog = catalogs._resolve(path)
+    from .conftest import loaded
+    return loaded(provider_, catalog, qtbot)
+
+
+def test_create_smart_makes_a_catalogue_of_what_its_search_finds(catalogs, path, provider, qtbot):
+    catalogs.create(path("all"), [("2020-01-01", "2020-01-02", {"tags": ["shock"]}),
+                                  ("2020-02-01", "2020-02-02", {"tags": ["wave"]})])
+    catalogs.create_smart(path("shocks"), "tag:shock")
+    assert catalogs.search_of(path("shocks")) == "tag:shock"
+    assert len(_read(catalogs, provider, path("shocks"), qtbot)) == 1
+    assert catalogs.search_of(path("all")) is None
+
+
+def test_create_smart_can_look_in_one_catalogue(catalogs, path, provider, qtbot):
+    catalogs.create(path("a"), [("2020-01-01", "2020-01-02", {"tags": ["shock"]})])
+    catalogs.create(path("b"), [("2020-03-01", "2020-03-02", {"tags": ["shock"]})])
+    catalogs.create_smart(path("shocks in a"), "tag:shock", source=path("a"))
+    assert len(_read(catalogs, provider, path("shocks in a"), qtbot)) == 1
+
+
+def test_create_smart_refuses_a_taken_name_and_a_wrong_search(catalogs, path):
+    import cocat_rs
+    catalogs.create(path("a"), [])
+    with pytest.raises(ValueError):
+        catalogs.create_smart(path("a"), "tag:shock")
+    with pytest.raises(cocat_rs.QueryError) as wrong:
+        catalogs.create_smart(path("new"), "auhtor:bob")
+    assert wrong.value.suggestion == "author"
+    assert path("new") not in catalogs.list()
+
+
+def test_set_search_rule_of_remove_search_and_freeze(catalogs, path, provider, qtbot):
+    catalogs.create(path("all"), [("2020-01-01", "2020-01-02", {"tags": ["shock"]}),
+                                  ("2020-02-01", "2020-02-02", {"tags": ["wave"]})])
+    catalogs.create(path("t"), [])
+    catalogs.set_search(path("t"), "tag:wave")
+    assert catalogs.search_of(path("t")) == "tag:wave"
+    assert catalogs.rule_of(path("t"))["where"] == {"contains": ["tags", "wave"]}
+    catalogs.set_rule(path("t"), {"filter": {"all": True}, "where": {"contains": ["tags", "shock"]}})
+    assert catalogs.search_of(path("t")) == "tag:shock"
+    assert len(_read(catalogs, provider, path("t"), qtbot)) == 1
+    frozen = catalogs.freeze(path("t"), "t frozen")
+    assert frozen == path("t frozen") and catalogs.search_of(frozen) is None and len(catalogs.get(frozen)) == 1
+    catalogs.remove_search(path("t"))
+    assert catalogs.search_of(path("t")) is None and catalogs.rule_of(path("t")) is None
