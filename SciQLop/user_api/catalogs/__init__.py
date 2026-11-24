@@ -44,7 +44,7 @@ Input data for ``save``/``create`` accepts a ``speasy.Catalog``, an iterable of
 
 from typing import Any, Iterable, Union
 
-from speasy.products.catalog import Catalog as SpeasyCatalog
+from speasy.products.catalog import Catalog as SpeasyCatalog, Event as SpeasyEvent
 
 from SciQLop.user_api.catalogs._service import CatalogService
 from SciQLop.user_api.catalogs._overlay import (
@@ -56,6 +56,7 @@ from SciQLop.user_api.catalogs._overlay import (
 DateTimeLike = Any
 CatalogInput = Union[
     SpeasyCatalog,
+    Iterable[SpeasyEvent],
     Iterable[tuple[DateTimeLike, DateTimeLike]],
     Iterable[tuple[DateTimeLike, DateTimeLike, dict]],
 ]

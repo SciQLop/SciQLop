@@ -105,7 +105,9 @@ def _normalize_input(data) -> SpeasyCatalog:
         return _reject_inverted_events(data)
     events = []
     for item in data:
-        if len(item) == 2:
+        if isinstance(item, SpeasyEvent):  # before the tuples: an Event also has a length of 2
+            events.append(item)
+        elif len(item) == 2:
             events.append(SpeasyEvent(item[0], item[1]))
         elif len(item) == 3:
             if not isinstance(item[2], dict):
@@ -277,8 +279,9 @@ class CatalogService:
         path : str
             Fully-qualified catalog path.
         data : CatalogInput
-            A ``speasy.Catalog``, an iterable of ``(start, stop)`` tuples,
-            or an iterable of ``(start, stop, meta_dict)`` tuples.
+            A ``speasy.Catalog``, an iterable of ``speasy`` events (their meta
+            and ``__sciqlop_uuid__`` are kept), of ``(start, stop)`` tuples,
+            or of ``(start, stop, meta_dict)`` tuples.
 
         Raises
         ------
@@ -364,8 +367,9 @@ class CatalogService:
         path : str
             Fully-qualified catalog path.
         data : CatalogInput
-            A ``speasy.Catalog``, an iterable of ``(start, stop)`` tuples,
-            or an iterable of ``(start, stop, meta_dict)`` tuples.
+            A ``speasy.Catalog``, an iterable of ``speasy`` events (their meta
+            and ``__sciqlop_uuid__`` are kept), of ``(start, stop)`` tuples,
+            or of ``(start, stop, meta_dict)`` tuples.
 
         Raises
         ------
@@ -400,8 +404,9 @@ class CatalogService:
         path : str
             Fully-qualified catalog path.
         data : CatalogInput
-            A ``speasy.Catalog``, an iterable of ``(start, stop)`` tuples,
-            or an iterable of ``(start, stop, meta_dict)`` tuples.
+            A ``speasy.Catalog``, an iterable of ``speasy`` events (their meta
+            and ``__sciqlop_uuid__`` are kept), of ``(start, stop)`` tuples,
+            or of ``(start, stop, meta_dict)`` tuples.
 
         Raises
         ------

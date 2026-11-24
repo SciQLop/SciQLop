@@ -183,3 +183,22 @@ def test_a_smart_catalogue_nobody_opened_says_it_is_loading_until_read(catalogs,
     assert catalogs._still_loading(path("shocks"))
     qtbot.waitUntil(lambda: not catalogs._still_loading(path("shocks")), timeout=5000)
     assert len(catalogs.get(path("shocks"))) == 1
+
+
+def test_save_of_a_list_of_events_from_get_keeps_their_meta_and_identity(catalogs, path):
+    catalogs.create(path("t"), [("2020-01-01", "2020-01-02", {"tags": ["shock"], "note": "n"})])
+    [event] = catalogs.get(path("t"))
+    uuid = event.meta["__sciqlop_uuid__"]
+    event.meta["note"] = "edited"
+    catalogs.save(path("t"), [event])
+    [again] = catalogs.get(path("t"))
+    assert again.meta["__sciqlop_uuid__"] == uuid
+    assert (again.meta["note"], again.meta["tags"]) == ("edited", ["shock"])
+
+
+def test_add_events_of_speasy_events_keeps_their_meta(catalogs, path):
+    from speasy.products.catalog import Event
+    catalogs.create(path("t"), [])
+    catalogs.add_events(path("t"), [Event("2020-01-01", "2020-01-02", meta={"note": "n"})])
+    [event] = catalogs.get(path("t"))
+    assert event.meta["note"] == "n"
