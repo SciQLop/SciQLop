@@ -231,6 +231,18 @@ def test_get_catalog(catalog_service, dummy_provider):
     assert cat[0].meta["__sciqlop_uuid__"]
 
 
+def test_filter_keeps_the_events_a_text_finds_with_the_provider_s_filter(catalog_service, dummy_provider):
+    from speasy.products.catalog import Catalog as SpeasyCatalog
+    catalog = next(c for c in dummy_provider.catalogs() if c.name == "Catalog-0")
+    first = dummy_provider.events(catalog)[0]
+    stamp = first.start.strftime("%Y-%m-%d %H:%M:%S")
+    kept = catalog_service.filter("IsolatedDummy//room1//Catalog-0", stamp)
+    assert isinstance(kept, SpeasyCatalog)
+    assert [e.meta["__sciqlop_uuid__"] for e in kept] == [first.uuid]
+    assert len(catalog_service.filter("IsolatedDummy//room1//Catalog-0", "")) == 3
+    assert len(catalog_service.filter("IsolatedDummy//room1//Catalog-0", "no such text anywhere")) == 0
+
+
 def test_get_not_found(catalog_service, dummy_provider):
     with pytest.raises(KeyError):
         catalog_service.get("IsolatedDummy//room1//NoSuchCatalog")

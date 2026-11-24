@@ -264,6 +264,29 @@ class CatalogService:
         return SpeasyCatalog(name=catalog.name, events=speasy_events)
 
     @_on_main_thread_once_loaded
+    def filter(self, path: str, text: str) -> SpeasyCatalog:
+        """The catalog's events a filter text keeps, as the catalog browser's filter box would.
+
+        Each provider filters in its own way: by default the text is looked for in any column, as
+        the event table shows it (``"2020-01-01"``, ``"solar_wind"``). An empty text keeps all.
+
+        Parameters
+        ----------
+        path : str
+            Fully-qualified catalog path.
+        text : str
+            The filter.
+
+        Returns
+        -------
+        speasy.products.catalog.Catalog
+            The kept events, with ``meta["__sciqlop_uuid__"]`` like :meth:`get`.
+        """
+        provider, catalog = self._resolve(path)
+        kept = provider.filter_events(catalog, text)
+        return SpeasyCatalog(name=catalog.name, events=[_event_to_speasy(e) for e in kept])
+
+    @_on_main_thread_once_loaded
     def save(self, path: str, data) -> None:
         """Replace the events of a catalog, creating it if it doesn't exist (upsert).
 

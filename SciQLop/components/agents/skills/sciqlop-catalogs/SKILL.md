@@ -59,6 +59,19 @@ for e in cat:
   background (right after startup), so `get()` never returns a half-loaded
   catalog.
 
+## Filtering a catalogue
+
+```python
+kept = catalogs.filter("Remote//ICME_multi_catalog", "2019-03")   # a speasy Catalog of the kept events
+```
+
+`catalogs.filter(path, text)` keeps what the catalog browser's filter box
+would keep for that catalog: for now, on every provider, the events where
+the text appears in any column as the table shows it (dates as
+`2019-03-14 02:00:00`, values, tags). An empty text keeps all. Use it to
+narrow a catalogue before working on it; to make a lasting selection in
+`Catalogs (cocat-rs)`, use a smart catalogue (below).
+
 ## Smart catalogues
 
 A smart catalogue's events are those its **search** finds, kept up to date
