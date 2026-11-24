@@ -105,10 +105,24 @@ def event_rows(arrays: dict, attributes: list[dict]) -> list[EventRow]:
                                             metas, sources)]
 
 
+def confidence_of(rating) -> float | None:
+    return None if rating is None else min(max(float(rating) / RATING_SCALE, 0.0), 1.0)
+
+
+def typed_fields(key: str, value: Any) -> dict:
+    """The cocat-rs fields one edited tag list or rating goes to (``value`` None clears them);
+    {} for any other key, which is a plain attribute."""
+    if key == "tags":
+        return {"tags": set(value or ())}
+    if key == "rating":
+        return {"confidence": confidence_of(value)}
+    return {}
+
+
 def split_typed_meta(meta: dict[str, Any]) -> tuple[dict, dict]:
     typed = {k: v for k, v in meta.items() if k in TYPED_EVENT_FIELDS}
     if meta.get("rating") is not None:
-        typed["confidence"] = min(max(float(meta["rating"]) / RATING_SCALE, 0.0), 1.0)
+        typed["confidence"] = confidence_of(meta["rating"])
     rest = {k: v for k, v in meta.items() if k not in TYPED_EVENT_FIELDS and k != "rating"}
     return typed, rest
 

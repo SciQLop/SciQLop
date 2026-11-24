@@ -52,6 +52,7 @@ from .convert import (
     encode_subpath,
     schema_specs,
     split_typed_meta,
+    typed_fields,
     typed_meta,
 )
 
@@ -139,6 +140,20 @@ def _stored_event(room, uuid: str):
 
 
 TYPED_KEYS = ("tags", "rating")  # what a bulk read tells about an event besides its attributes
+
+
+def _store_meta(stored, key: str, value: Any):
+    """Writes one meta value where a read finds it again: tags and rating in cocat-rs's own fields,
+    the rest as attributes. Returns the value as a read shows it, _SENTINEL when a read shows none."""
+    typed = typed_fields(key, value)
+    if not typed:
+        stored.set_attributes(**{key: value})
+        return value
+    for field, field_value in typed.items():
+        setattr(stored, field, field_value)
+    if key in stored.attributes:  # written as a plain attribute by older SciQLop: it would show again
+        stored.remove_attributes([key])
+    return typed_meta(typed.get("tags"), typed.get("confidence")).get(key, _SENTINEL)
 
 
 def _with_typed_fields(event: CocatRsEvent, meta: dict) -> CocatRsEvent:
@@ -1324,8 +1339,8 @@ class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, Import
         stored = _stored_event(room, event.uuid)
         if stored is None or event.meta.get(key, _SENTINEL) == value:
             return
-        stored.set_attributes(**{key: value})
-        event.set_meta(key, value)
+        shown = _store_meta(stored, key, value)
+        event.set_meta(key, shown) if shown is not _SENTINEL else event.remove_meta(key)
         self.event_meta_changed.emit(catalog, event, key)
         self.mark_smart_dirty(catalog.path[0])
 
@@ -1336,7 +1351,7 @@ class CocatRsProvider(Placing, Rereading, Following, Linking, Submitting, Import
         stored = _stored_event(room, event.uuid)
         if stored is None or key not in event.meta:
             return
-        stored.remove_attributes([key])
+        _store_meta(stored, key, None) if typed_fields(key, None) else stored.remove_attributes([key])
         event.remove_meta(key)
         self.event_meta_changed.emit(catalog, event, key)
         self.mark_smart_dirty(catalog.path[0])

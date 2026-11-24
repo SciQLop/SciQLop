@@ -71,6 +71,49 @@ def test_set_event_meta_updates_wrapper_and_room(attached, room, qtbot):
     assert "k" not in wrapper.meta and "k" not in room.event(wrapper.uuid).attributes
 
 
+def _reread(room, catalog):
+    from SciQLop.plugins.sciqlop_cocat.convert import rows_of
+    [row] = rows_of(room.catalogue(catalog.uuid).event_arrays(attributes=True))
+    return row.meta
+
+
+def test_editing_tags_and_rating_writes_the_typed_fields(attached, room):
+    c, wrapper = _catalog_with_event(attached, tags=["a"], rating=3)
+    attached.set_event_meta(c, wrapper, "tags", ["b", "c"])
+    attached.set_event_meta(c, wrapper, "rating", 7)
+    stored = room.event(wrapper.uuid)
+    assert (stored.tags, stored.confidence, stored.attributes) == ({"b", "c"}, 0.7, {})
+    assert _reread(room, c) == {"tags": ["b", "c"], "rating": 7}
+    assert (wrapper.meta["tags"], wrapper.meta["rating"]) == (["b", "c"], 7)
+
+
+def test_removing_tags_and_rating_clears_the_typed_fields(attached, room):
+    c, wrapper = _catalog_with_event(attached, tags=["a"], rating=3, note="n")
+    attached.remove_event_meta(c, wrapper, "tags")
+    attached.remove_event_meta(c, wrapper, "rating")
+    stored = room.event(wrapper.uuid)
+    assert (stored.tags, stored.confidence) == (set(), None)
+    assert _reread(room, c) == {"note": "n"}
+    assert "tags" not in wrapper.meta and "rating" not in wrapper.meta
+
+
+def test_editing_drops_the_plain_tags_and_rating_older_sciqlop_wrote(attached, room):
+    c, wrapper = _catalog_with_event(attached)
+    room.event(wrapper.uuid).set_attributes(tags=["old"], rating=5)
+    attached.set_event_meta(c, wrapper, "tags", ["new"])
+    attached.set_event_meta(c, wrapper, "rating", 8)
+    assert room.event(wrapper.uuid).attributes == {}
+    attached.remove_event_meta(c, wrapper, "rating")
+    assert _reread(room, c) == {"tags": ["new"]}
+
+
+def test_editing_the_rating_of_several_events_writes_each_confidence(attached, room):
+    c, first = _catalog_with_event(attached, rating=3)
+    attached.add_event(c, _new_event(rating=4))
+    attached.set_events_meta(c, attached.events(c), "rating", 9)
+    assert {room.event(e.uuid).confidence for e in attached.events(c)} == {0.9}
+
+
 def test_set_events_meta_writes_every_event(attached, room):
     c = attached.create_catalog("c", ["r"])
     for _ in range(3):

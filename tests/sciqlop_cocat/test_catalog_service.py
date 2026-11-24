@@ -152,3 +152,21 @@ def test_tags_and_rating_come_back_after_a_restart(catalogs, path, provider, tmp
     finally:
         run(again.close())
         CatalogRegistry.instance()._forget_for_tests(again)
+
+
+def test_tags_and_rating_edited_through_save_survive_a_restart(catalogs, path, provider, tmp_path):
+    catalogs.create(path("t"), [("2020-01-01", "2020-01-02", {"tags": ["shock"], "rating": 7})])
+    catalogue = catalogs.get(path("t"))
+    [event] = catalogue
+    event.meta["tags"], event.meta["rating"] = ["shock", "foreshock"], 2
+    catalogs.save(path("t"), catalogue)
+    run(provider.close())
+    CatalogRegistry.instance()._forget_for_tests(provider)
+    again = under_test(FakeSession(signed_in=False), tmp_path)
+    try:
+        run(again.show_signed_out())
+        [event] = catalogs.get(path("t"))
+        assert (event.meta["tags"], event.meta["rating"]) == (["foreshock", "shock"], 2)
+    finally:
+        run(again.close())
+        CatalogRegistry.instance()._forget_for_tests(again)
