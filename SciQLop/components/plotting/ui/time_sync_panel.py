@@ -4,6 +4,7 @@ import functools
 import math
 import threading
 import time as _time
+import json
 import traceback
 from datetime import timedelta
 import numpy as np
@@ -276,10 +277,11 @@ class _ProductCallbackBase:
 
     def __init__(self, provider: DataProvider, node,
                  post_fetch: Optional["_PostFetchHintsApplier"] = None,
-                 knob_state=None, time_offset: float = 0.0):
+                 knob_state=None, time_offset: float = 0.0, reduce: Optional[list] = None):
         self.provider = provider
         self.node = node
         self.time_offset = time_offset
+        self.reduce = reduce
         self._post_fetch = post_fetch
         self.knob_state = knob_state
         self.last_error: Optional[str] = None
@@ -311,7 +313,7 @@ class _ProductCallbackBase:
         result = self.provider._get_data(self.node, start + self.time_offset,
                                          stop + self.time_offset,
                                          on_variable=observer,
-                                         knobs=self._knob_values())
+                                         knobs=self._knob_values(), reduce=self.reduce)
         return shift_buffers(result, self.time_offset)
 
 
@@ -511,6 +513,12 @@ def _set_product_path(r, product_path_str):
 def _set_time_offset(r, time_offset: float) -> None:
     if time_offset:
         _graph_from_result(r).setProperty("sqp_time_offset", float(time_offset))
+
+
+def _set_reduce(r, reduce: Optional[list]) -> None:
+    """As JSON: a list of dicts would come back from a Qt property as Qt's own types."""
+    if reduce:
+        _graph_from_result(r).setProperty("sqp_reduce", json.dumps(reduce))
 
 
 def shifted_name(name: str, time_offset: float) -> str:
@@ -788,11 +796,12 @@ def _attach_error_reporter(callback, r, target) -> None:
 
 
 def _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
-               product_inputs: Optional[dict] = None, time_offset: float = 0.0):
+               product_inputs: Optional[dict] = None, time_offset: float = 0.0, reduce: Optional[list] = None):
     if not hasattr(r, '__iter__') and existing_plot is not None:
         r = (existing_plot, r)
     _set_product_path(r, product_path_str)
     _set_time_offset(r, time_offset)
+    _set_reduce(r, reduce)
     _attach_error_reporter(callback, r, target)
     callback._post_fetch = _register_graph_hints(provider, node, r, target)
     _attach_knob_state(provider, node, callback, r, target)
@@ -967,6 +976,8 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
     # Parameter values for the product (knobs), never a SciQLopPlots kwarg.
     product_inputs = kwargs.pop("product_inputs", None)
     time_offset = kwargs.pop("time_offset", 0.0) or 0.0
+    reduce = kwargs.pop("reduce", None) or None
+    spectrogram = kwargs.pop("spectrogram", None)
     product_path_str = "//".join(product)
     from SciQLop.components.plotting.backend.remote.registry import remote_registry
     if remote_registry().is_remote(product):
@@ -974,6 +985,9 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
             # simplify: apply the offset where plot_remote builds its request when remote comparisons are needed.
             log.error(f"time_offset is not supported for remote product {product}")
             return None
+        if reduce:
+            # simplify: the remote worker sends arrays, not variables; reduce there when a remote reduction is needed.
+            log.warning(f"'reduce' is not applied to the remote product {product}: plotted unreduced")
         from SciQLop.components.plotting.backend.remote.plot_remote import plot_remote
         from SciQLopPlots import PlotType
         target, _ = _resolve_plot_target(p, kwargs)
@@ -995,8 +1009,9 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
     target, existing_plot = _resolve_plot_target(p, kwargs)
     kind = product_kind_of(node)
     log.debug(f"Product kind: {kind.id if kind else None}")
-    if kind is not None and kind.arity == 2:
-        callback = _plot_product_callback(provider, node, time_offset=time_offset)
+    arity = _arity(kind, spectrogram)
+    if arity == 2:
+        callback = _plot_product_callback(provider, node, time_offset=time_offset, reduce=reduce)
         labels = listify(provider.labels(node))
         log.debug(f"Building plot for {node.name()} with labels: {labels}, kwargs: {kwargs}")
         from SciQLopPlots import PlotType as _SQPPlotType
@@ -1011,15 +1026,23 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
         _graph_from_result(r).set_name(shifted_name(node.display_name(), time_offset))
         _apply_product_color_axis(r, target, provider, node)
         return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
-                          product_inputs=product_inputs, time_offset=time_offset)
-    if kind is not None and kind.arity == 3:
-        callback = _specgram_callback(provider, node, time_offset=time_offset)
+                          product_inputs=product_inputs, time_offset=time_offset, reduce=reduce)
+    if arity == 3:
+        callback = _specgram_callback(provider, node, time_offset=time_offset, reduce=reduce)
         log.debug(f"Building spectrogram plot for {node.name()} with kwargs: {kwargs}")
         r = target.plot(callback, name=shifted_name(node.display_name(), time_offset), graph_type=GraphType.ColorMap,
                         y_log_scale=True, z_log_scale=True, **kwargs)
         return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
-                          product_inputs=product_inputs, time_offset=time_offset)
+                          product_inputs=product_inputs, time_offset=time_offset, reduce=reduce)
     return None
+
+
+def _arity(kind, spectrogram: Optional[bool]) -> Optional[int]:
+    """2 for lines, 3 for a spectrogram. A reduced product says which (``spectrogram``): its node's kind
+    describes the data before reduction, a 3D distribution for an energy spectrogram."""
+    if spectrogram is not None:
+        return 3 if spectrogram else 2
+    return kind.arity if kind is not None else None
 
 
 def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], x, y, z=None, **kwargs):

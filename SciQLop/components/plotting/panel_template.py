@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import shutil
 import copy
+import json
 import math
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,14 +41,18 @@ class ProductModel(BaseModel):
     knobs: dict[str, Any] = {}
     y_axis: Optional[Literal["y", "y2"]] = None  # None: where the graph type draws by default
     time_offset: float = 0.0  # seconds: data fetched this much later, drawn at the panel's time
+    # speasy's SpeasyVariable.reduce operations (speasy.signal.reduction), applied to the data before it is drawn
+    reduce: list[dict[str, Any]] = []
 
     @model_serializer(mode="wrap")
-    def _omit_zero_offset(self, handler):
-        """Unshifted templates keep the exact file they had before time_offset existed.
+    def _omit_defaults(self, handler):
+        """Templates without a shift or a reduction keep the exact file they had before these existed.
         Not Field(exclude_if=...): that needs pydantic >= 2.12, which is not pinned."""
         data = handler(self)
         if not self.time_offset:
             data.pop("time_offset", None)
+        if not self.reduce:
+            data.pop("reduce", None)
         return data
 
     @field_validator("kind", mode="before")
@@ -115,6 +120,8 @@ def _restore_timeseries(panel, plot_model: PlotModel, not_found: list):
         inputs = {"product_inputs": product.knobs} if product.knobs else {}
         if product.time_offset:
             inputs["time_offset"] = product.time_offset
+        if product.reduce:
+            inputs.update(reduce=product.reduce, spectrogram=product.is_colormap if product.graph_type else None)
         if subplot is None:
             r = plot_product(panel, resolved, plot_type=_PlotType.TimeSeries, **inputs)
             if r is not None:
@@ -441,12 +448,13 @@ def _time_range_model(panel) -> Optional[TimeRangeModel]:
 def product_model(graph) -> ProductModel:
     ctx = context_of(graph)
     time_offset = float(graph.property("sqp_time_offset") or 0.0)
+    reduce = json.loads(graph.property("sqp_reduce") or "[]")
     if ctx is None:
         return ProductModel(path=graph.property("sqp_product_path") or "",
-                            label=graph_name(graph), time_offset=time_offset)
+                            label=graph_name(graph), time_offset=time_offset, reduce=reduce)
     return ProductModel(path=context_product_path(ctx), label=graph_name(graph),
                         kind=ctx.kind, speasy_id=ctx.speasy_id,
-                        graph_type=ctx.graph_type, knobs=dict(ctx.knobs), time_offset=time_offset)
+                        graph_type=ctx.graph_type, knobs=dict(ctx.knobs), time_offset=time_offset, reduce=reduce)
 
 
 def context_product_path(ctx: GraphContext) -> str:

@@ -141,6 +141,24 @@ def _sort_variable_by_time(variable: SpeasyVariable) -> SpeasyVariable:
     return variable
 
 
+_said_no_reduce: set[str] = set()
+
+
+def reduced(variable, operations, product: str):
+    """``variable`` after a template's ``reduce`` operations (speasy's SpeasyVariable.reduce, SciQLop/speasy#446).
+    A speasy without it, or data that is not a SpeasyVariable, is drawn as it is: said once per product."""
+    if not operations or variable is None:
+        return variable
+    reduce = getattr(variable, "reduce", None)
+    if reduce is None:
+        if product not in _said_no_reduce:
+            _said_no_reduce.add(product)
+            log.warning(f"{product}: the template asks to reduce it, but this speasy has no SpeasyVariable.reduce "
+                        f"(it comes with speasy's data-reduction release); plotting it unreduced")
+        return variable
+    return reduce(operations)
+
+
 class DataProvider:
     def __init__(self, name: str, data_order: DataOrder = DataOrder.X_FIRST, cacheable: bool = False,
                  owns_fetched_variables: bool = False):
@@ -205,7 +223,7 @@ class DataProvider:
         """Return a list of KnobSpec for this product (empty = not parameterized)."""
         return []
 
-    def _get_data(self, node, start, stop, on_variable=None, knobs=None) -> Union[
+    def _get_data(self, node, start, stop, on_variable=None, knobs=None, reduce=None) -> Union[
         List[np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
         product = _node_label(node)
         try:
@@ -217,6 +235,7 @@ class DataProvider:
                                   start=float(start), stop=float(stop)):
                     v = self.get_data(node, start, stop, knobs=knobs) if knobs is not None \
                         else self.get_data(node, start, stop)
+                v = reduced(v, reduce, product)
                 if v is not None and on_variable is not None:
                     try:
                         on_variable(v.data if isinstance(v, Colored) else v)
