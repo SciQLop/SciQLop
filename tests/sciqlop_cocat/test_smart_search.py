@@ -34,6 +34,14 @@ def test_a_wrong_search_says_why_and_where(project):
     assert ss.problem(project, "tag:shock") is None
 
 
+def test_a_misspelt_field_is_broken_in_the_filter_and_the_preview_alike(project):
+    """cocat-rs 0.12.2+'s query_kind reads "auhtor:bob" as an attribute search; the project refuses it."""
+    for answer in (ss.filter_answer(project, "auhtor:bob", [], []), ss.preview_answer(project, "auhtor:bob", None, 5)):
+        assert answer.kind == "broken"
+        assert (answer.problem.start, answer.problem.length) == (0, 6)
+        assert "did you mean “author”" in answer.problem.message
+
+
 def test_a_problem_with_no_length_underlines_the_word_it_points_at(project):
     wrong = ss.problem(project, "tag:x OR")
     assert wrong.start == 8 and wrong.length >= 1  # past the end: at least one character to see

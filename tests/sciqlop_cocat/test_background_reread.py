@@ -139,3 +139,28 @@ def test_a_re_read_that_finds_nothing_new_says_nothing(attached, room, smart, qt
     attached.refresh_smart_catalogs()
     qtbot.waitUntil(lambda: attached._reading is None, timeout=5000)
     assert changes == []
+
+
+def test_a_read_by_difference_keeps_the_values_cocat_rs_gives_for_the_whole_read():
+    """cocat-rs 0.12.3 adds "capped" (a public search cut at the server's limit): one value for the read,
+    not one per event. An edit's re-read picked it per event and emptied the catalogue."""
+    import numpy as np
+    from SciQLop.plugins.sciqlop_cocat.rereading import read_change
+
+    def arrays(n):
+        hours = np.array([np.datetime64("2020-01-01T00", "ns") + np.timedelta64(i, "h") for i in range(n)])
+        return {"uuid": [f"e{i}" for i in range(n)], "start": hours, "stop": hours + np.timedelta64(1, "h"),
+                "sources": [None] * n, "catalogue": [None] * n, "attributes": [{}] * n, "tags": [[]] * n,
+                "confidence": [None] * n, "capped": False}
+
+    class Read:
+        def __init__(self, n):
+            self.n = n
+
+        def event_arrays(self, attributes=False):
+            return arrays(self.n)
+
+    first = read_change(Read(2), None)
+    again = read_change(Read(3), first.snapshot)
+    assert again.error is None
+    assert [row.uuid for row in again.rows] == ["e2"] and again.gone == []

@@ -59,10 +59,16 @@ def _ids(arrays: dict) -> list:
 
 
 def _subset(arrays: dict, positions: list[int]) -> dict:
-    """The arrays of the given members only, as cocat-rs would have read them."""
+    """The arrays of the given members only, as cocat-rs would have read them. A value for the whole read
+    (cocat-rs 0.12.3's "capped") is kept as it is."""
     picked = np.asarray(positions, dtype=int)
-    return {key: (values[picked] if isinstance(values, np.ndarray) else [values[i] for i in positions])
-            if values is not None else None for key, values in arrays.items()}
+
+    def members(values):
+        if isinstance(values, np.ndarray):
+            return values[picked]
+        return [values[i] for i in positions] if isinstance(values, list) else values
+
+    return {key: members(values) for key, values in arrays.items()}
 
 
 @dataclass

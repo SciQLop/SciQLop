@@ -91,7 +91,7 @@ all = [
     # The bundled plugins' python_dependencies, at the versions their plugin.json asks for
     # (tests/test_bundled_plugin_pins.py): the launcher doesn't install them, it may be an older
     # SciQLop. cocat-rs for SciQLop/plugins/sciqlop_cocat; tscat only to import the old catalogues.
-    "cocat-rs>=0.12,<0.13",
+    "cocat-rs>=0.12.4,<0.13",
     "tscat>=0.5.1",
 ]
 

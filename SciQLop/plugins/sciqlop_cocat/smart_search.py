@@ -42,8 +42,12 @@ def problem(project, text: str, source: str | None = None) -> Problem | None:
     try:
         project.parse_query(text, source=source)
     except cocat_rs.QueryError as error:
-        return Problem(_sentence(error.message), error.position, _length(text, error.position, error.length))
+        return _problem_of(text, error)
     return None
+
+
+def _problem_of(text: str, error: cocat_rs.QueryError) -> Problem:
+    return Problem(_sentence(error.message), error.position, _length(text, error.position, error.length))
 
 
 def _length(text: str, position: int, length: int | None) -> int:
@@ -99,7 +103,10 @@ def filter_answer(project, text: str, items: list, ids: list[str]) -> Answer:
     kind = project.query_kind(text)
     if kind == "broken":
         return Answer(kind, problem(project, text))
-    return Answer(kind, kept=kept_ids(project, kind, text, items, ids))
+    try:
+        return Answer(kind, kept=kept_ids(project, kind, text, items, ids))
+    except cocat_rs.QueryError as error:  # query_kind reads the grammar only: a misspelt field is "rule"
+        return Answer("broken", _problem_of(text, error))
 
 
 def preview_answer(project, text: str, source: str | None, limit: int, public: bool = False) -> Answer:
@@ -108,4 +115,7 @@ def preview_answer(project, text: str, source: str | None, limit: int, public: b
         return Answer(kind, problem(project, text, source))
     if kind == "empty":
         return Answer(kind)
-    return Answer(kind, preview=preview(project, text, source, limit, public=public))
+    try:
+        return Answer(kind, preview=preview(project, text, source, limit, public=public))
+    except cocat_rs.QueryError as error:  # as in filter_answer
+        return Answer("broken", _problem_of(text, error))
