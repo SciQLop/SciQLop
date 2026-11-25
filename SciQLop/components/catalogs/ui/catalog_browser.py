@@ -30,8 +30,10 @@ from SciQLop.components.command_palette.arg_types import catalog_arg_value
 from SciQLop.components.command_palette.menu_entries import add_menu_entries
 from SciQLop.core.menus import CATALOG_EVENTS, CATALOG_TREE
 from SciQLop.components.theming.icons import get_icon
+from SciQLop.components.sciqlop_logging import getLogger
 
 import math
+import traceback
 from datetime import datetime, timezone, timedelta
 import uuid as _uuid
 from SciQLop.core.ui import Metrics
@@ -40,6 +42,8 @@ from .catalog_tree import CatalogTreeModel, DIRTY_PROVIDER_ROLE, LOADING_ROLE, S
 from .event_filter import EventFilter, PlainTextFilter
 from .event_table import EventTableModel
 from .link_text import first_url
+
+log = getLogger(__name__)
 
 
 class _CatalogFilterProxy(QSortFilterProxyModel):
@@ -638,7 +642,7 @@ class CatalogBrowser(QWidget):
             old.dispose()
             self._drop_filter_widget(old.widget())
             old.deleteLater()
-        own = provider.event_filter(catalog, self) if provider is not None and catalog is not None else None
+        own = self._provider_event_filter(provider, catalog)
         self._event_filter = own if own is not None else PlainTextFilter(self)
         self._filter_owner = catalog.uuid if catalog is not None else None
         self._filter_slot.addWidget(self._event_filter.widget())
@@ -652,6 +656,18 @@ class CatalogBrowser(QWidget):
         if state is not None:
             self._event_filter.restore(state)
         self._show_filter_count()
+
+    def _provider_event_filter(self, provider, catalog) -> EventFilter | None:
+        """The provider's own filter; None (the plain one) when it has none or fails to make it: a
+        broken plugin must not leave the browser half-switched, with no filter at all."""
+        if provider is None or catalog is None:
+            return None
+        try:
+            return provider.event_filter(catalog, self)
+        except Exception:
+            log.error(f"The {provider.name} filter failed to open; using the plain text filter instead.\n"
+                      f"{traceback.format_exc()}")
+            return None
 
     def _drop_filter_widget(self, widget) -> None:
         """Out of the slot at once: deleteLater alone leaves it drawn above the new box until then."""

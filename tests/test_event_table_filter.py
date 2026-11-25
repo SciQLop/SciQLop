@@ -30,6 +30,10 @@ def _select(browser, catalog):
 
 @pytest.fixture
 def two(qtbot, qapp):
+    return _two(qtbot)
+
+
+def _two(qtbot):
     from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
     from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
     provider = DummyProvider(num_catalogs=2, events_per_catalog=0, name="EvFilterHost")
@@ -302,3 +306,27 @@ def test_the_filter_box_sits_in_the_browser_never_in_a_window_of_its_own(two, qt
     box = browser._event_filter.widget()
     assert box.window() is browser
     qtbot.waitUntil(box.isVisible, timeout=2000)
+
+
+def test_a_provider_whose_filter_fails_gets_the_plain_filter_and_the_error_is_logged(qtbot, qapp):
+    from SciQLop.components.catalogs.ui import catalog_browser
+    from SciQLop.components.catalogs.ui.event_filter import PlainTextFilter
+    logged = []
+    catalog_browser.log.push_log.connect(logged.append)
+
+    def broken(_parent):
+        raise AttributeError("module 'cocat_rs' has no attribute 'presets'")
+
+    own = _own_filter_provider(broken, "BrokenFilterProv")
+    catalog = own.catalogs()[0]
+    own.add_event(catalog, _ev("mine", {"class": "cusp"}))
+    browser, provider, a, b = _two(qtbot)
+    _select(browser, a)
+    _select(browser, catalog)
+    assert isinstance(browser._event_filter, PlainTextFilter)
+    assert browser._filter_slot.indexOf(browser._event_filter.widget()) >= 0 and browser._filter_slot.count() == 1
+    assert browser._current_catalog is catalog and browser._event_model.rowCount() == 1
+    catalog_browser.log.push_log.disconnect(logged.append)
+    assert any("BrokenFilterProv filter failed" in line and "cocat_rs" in line for line in logged)
+    _type(qtbot, browser, "nothing like it")
+    assert browser._sort_proxy.rowCount() == 0
