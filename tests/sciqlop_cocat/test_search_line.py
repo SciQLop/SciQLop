@@ -140,3 +140,53 @@ def test_shift_tab_always_moves_back(qtbot):
     qtbot.keyClick(line.completer.popup(), Qt.Key.Key_Backtab, Qt.KeyboardModifier.ShiftModifier)
     qtbot.waitUntil(before.hasFocus)
     assert line.toPlainText() == "tag:sh" and not line.completer.popup().isVisible()
+
+
+# ---- each suggestion's kind, beside it (cocat-rs 0.12.5's "detail") ----
+
+def _completing(monkeypatch, suggestions):
+    import cocat_rs
+    monkeypatch.setattr(cocat_rs, "complete",
+                        lambda text, cursor, vocabulary: {"from": 0, "to": len(text), "suggestions": suggestions})
+
+
+def test_the_list_carries_each_suggestion_s_kind_and_inserts_the_text(qtbot, monkeypatch):
+    from SciQLop.plugins.sciqlop_cocat.search_line import DETAIL_ROLE
+    _completing(monkeypatch, [{"insert": "#origin:", "detail": "attribute"},
+                              {"insert": "OR ", "detail": "keyword"}])
+    line = _line(qtbot, "o")
+    line.complete_now()
+    model = line.completer.model()
+    rows = [(model.index(i, 0).data(), model.index(i, 0).data(DETAIL_ROLE)) for i in range(model.rowCount())]
+    assert rows == [("#origin:", "attribute"), ("OR ", "keyword")]
+    assert line.completion_words() == ["#origin:", "OR "]
+
+
+def test_a_suggestion_without_a_kind_shows_none(qtbot, monkeypatch):
+    """cocat-rs before 0.12.5 gives no detail."""
+    from SciQLop.plugins.sciqlop_cocat.search_line import DETAIL_ROLE
+    _completing(monkeypatch, [{"insert": "tag:"}])
+    line = _line(qtbot, "t")
+    line.complete_now()
+    assert line.completer.model().index(0, 0).data(DETAIL_ROLE) is None
+    assert line.completion_words() == ["tag:"]
+
+
+def test_the_kind_widens_the_list(qtbot, monkeypatch):
+    from SciQLop.plugins.sciqlop_cocat.search_line import DETAIL_ROLE
+    _completing(monkeypatch, [{"insert": "#origin:", "detail": "attribute"}])
+    line = _line(qtbot, "o")
+    line.complete_now()
+    popup = line.completer.popup()
+    delegate = popup.itemDelegate()
+    index = line.completer.model().index(0, 0)
+    without = popup.fontMetrics().horizontalAdvance("#origin:")
+    assert delegate.sizeHint(_option(popup), index).width() > without + popup.fontMetrics().horizontalAdvance("attr")
+    assert index.data(DETAIL_ROLE) == "attribute"
+
+
+def _option(view):
+    from PySide6.QtWidgets import QStyleOptionViewItem
+    option = QStyleOptionViewItem()
+    view.initViewItemOption(option)
+    return option

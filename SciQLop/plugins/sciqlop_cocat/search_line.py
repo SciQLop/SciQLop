@@ -1,14 +1,16 @@
 """One line of CoCat search text, as the web app's search box: coloured by parts (cocat_rs.pieces),
 completes the word at the cursor from the project's vocabulary (cocat_rs.complete/accept),
-underlines a wrong part, never takes a second line. Tab completes: the highlighted suggestion (or the
-first) when the list is open; else the only one, or opens the list; with nothing to complete it moves
-on, and Shift+Tab always moves back."""
+underlines a wrong part, never takes a second line. Each suggestion shows its kind (cocat-rs 0.12.5's
+"detail": field, attribute, tag...) small and dimmed at the right of its row. Tab completes: the
+highlighted suggestion (or the first) when the list is open; else the only one, or opens the list; with
+nothing to complete it moves on, and Shift+Tab always moves back."""
 from __future__ import annotations
 
 import cocat_rs
-from PySide6.QtCore import QEvent, QStringListModel, Qt
-from PySide6.QtGui import QColor, QKeyEvent, QSyntaxHighlighter, QTextCharFormat, QTextCursor
-from PySide6.QtWidgets import QCompleter, QPlainTextEdit, QTextEdit
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtGui import (QColor, QFont, QFontMetrics, QKeyEvent, QPalette, QStandardItem, QStandardItemModel,
+                           QSyntaxHighlighter, QTextCharFormat, QTextCursor)
+from PySide6.QtWidgets import QCompleter, QPlainTextEdit, QStyle, QStyledItemDelegate, QTextEdit
 
 # mid tones, readable on the light and the dark themes
 TONES = {"field": QColor("#3d7fd6"), "op": QColor("#8a8a8a"), "value": QColor("#2e9e6a"),
@@ -42,6 +44,55 @@ def coloured_spans(text: str) -> list[tuple[int, int, str]]:
     return spans
 
 
+DETAIL_ROLE = Qt.ItemDataRole.UserRole + 1
+DETAIL_PADDING = 8
+
+
+def _small(font: QFont) -> QFont:
+    smaller = QFont(font)
+    smaller.setPointSizeF(font.pointSizeF() * 0.85)
+    return smaller
+
+
+def _dimmed(colour: QColor) -> QColor:
+    """The row's own text colour, faded: readable on the light and the dark themes, selected or not."""
+    faded = QColor(colour)
+    faded.setAlphaF(0.6)
+    return faded
+
+
+class _WithDetail(QStyledItemDelegate):
+    """A suggestion's kind at the right of its row; the row's text stays what is inserted."""
+
+    def paint(self, painter, option, index) -> None:
+        super().paint(painter, option, index)
+        detail = index.data(DETAIL_ROLE)
+        if not detail:
+            return
+        selected = option.state & QStyle.StateFlag.State_Selected
+        role = QPalette.ColorRole.HighlightedText if selected else QPalette.ColorRole.Text
+        painter.save()
+        painter.setFont(_small(option.font))
+        painter.setPen(_dimmed(option.palette.color(role)))
+        painter.drawText(option.rect.adjusted(0, 0, -DETAIL_PADDING, 0),
+                         Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, detail)
+        painter.restore()
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        detail = index.data(DETAIL_ROLE)
+        if detail:
+            size.setWidth(size.width() + 2 * DETAIL_PADDING
+                          + QFontMetrics(_small(option.font)).horizontalAdvance(detail))
+        return size
+
+
+def _suggestion_item(suggestion: dict) -> QStandardItem:
+    item = QStandardItem(suggestion["insert"])
+    item.setData(suggestion.get("detail"), DETAIL_ROLE)  # none before cocat-rs 0.12.5
+    return item
+
+
 class _Colours(QSyntaxHighlighter):
     def highlightBlock(self, text: str) -> None:
         for start, length, tone in coloured_spans(text):
@@ -60,10 +111,11 @@ class SearchLine(QPlainTextEdit):
         self._colours = _Colours(self.document())
         self._vocabulary: dict = {}
         self._completion: dict | None = None
-        self.completer = QCompleter(QStringListModel(self), self)  # parented, or Python collects it
+        self.completer = QCompleter(QStandardItemModel(self), self)  # parented, or Python collects it
         self.completer.setWidget(self)
         self.completer.setCompletionMode(QCompleter.CompletionMode.UnfilteredPopupCompletion)
         self.completer.activated.connect(self.accept_completion)
+        self.completer.popup().setItemDelegate(_WithDetail(self.completer.popup()))
         # after the completer's own filter, so this one runs first: the completer only hides on Tab
         self.completer.popup().installEventFilter(self)
 
@@ -72,7 +124,8 @@ class SearchLine(QPlainTextEdit):
         self._vocabulary = vocabulary
 
     def completion_words(self) -> list[str]:
-        return self.completer.model().stringList()
+        model = self.completer.model()
+        return [model.item(row).text() for row in range(model.rowCount())]
 
     def underline(self, start: int | None, length: int = 0) -> None:
         if start is None:
@@ -89,7 +142,10 @@ class SearchLine(QPlainTextEdit):
         self._completion = cocat_rs.complete(self.toPlainText(), self.textCursor().position(), self._vocabulary)
         if not self._completion:
             return self.completer.popup().hide()
-        self.completer.model().setStringList([s["insert"] for s in self._completion["suggestions"]])
+        model = self.completer.model()
+        model.setRowCount(0)
+        for suggestion in self._completion["suggestions"]:
+            model.appendRow(_suggestion_item(suggestion))
         rect = self.cursorRect()
         rect.setWidth(self.completer.popup().sizeHintForColumn(0) + 24)
         self.completer.complete(rect)
