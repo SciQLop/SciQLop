@@ -253,6 +253,7 @@ class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following
         self._show_all_events(room_id)
         if room_id not in self._room_infos:  # a listed project's folder is shown from the listing
             self.folder_added.emit([room_id])
+        self.capabilities_changed.emit(None)  # the tree placed it from the listing, before it was writable
 
     def listen_room(self, room_id: str) -> None:
         """Must run on the qasync loop: cocat-rs calls the listener back on the loop running now."""
@@ -273,7 +274,9 @@ class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following
         self._wrappers.pop(room_id, None)
         self._status.pop(room_id, None)
         self._smart_dirty.discard(room_id)
-        return self._rooms.pop(room_id, None)
+        room = self._rooms.pop(room_id, None)
+        self.capabilities_changed.emit(None)  # its creation rows go, and the provider's with the last writable one
+        return room
 
     def _watch_for_stall(self, room_id: str) -> None:
         timer = QTimer(self)

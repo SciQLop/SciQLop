@@ -86,6 +86,7 @@ def test_a_role_change_keeps_the_catalogues_and_announces_new_capabilities(make_
     p.catalog_removed.connect(removed.append)
     run(p.connect())
     catalog = p.create_catalog("kept", ["a"])
+    announced.clear()  # joining announced its capabilities too
     opened["a"].role = "viewer"
     p.room_status_changed("a", "synced")
     assert announced == [None] and removed == []
