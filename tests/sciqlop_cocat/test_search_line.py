@@ -62,3 +62,81 @@ def test_return_does_not_add_a_line(qtbot):
     line = _line(qtbot, "tag:s")
     qtbot.keyClick(line, Qt.Key.Key_Return)
     assert line.toPlainText() == "tag:s"
+
+
+# ---- Tab ----
+
+def _between(qtbot, text=""):
+    """The line between two other fields, shown, with the focus and the cursor at the end."""
+    from PySide6.QtWidgets import QLineEdit, QVBoxLayout, QWidget
+    from SciQLop.plugins.sciqlop_cocat.search_line import SearchLine
+    host = QWidget()
+    layout = QVBoxLayout(host)
+    before, line, after = QLineEdit(), SearchLine(), QLineEdit()
+    for part in (before, line, after):
+        layout.addWidget(part)
+    line.set_vocabulary(VOCABULARY)
+    qtbot.addWidget(host)
+    line.host = host  # the test holds the line: the window must live as long
+    host.show()
+    qtbot.waitExposed(host)
+    host.activateWindow()
+    qtbot.waitUntil(host.isActiveWindow)
+    line.setPlainText(text)
+    line.moveCursor(line.textCursor().MoveOperation.End)
+    line.setFocus()
+    qtbot.waitUntil(line.hasFocus)
+    return before, line, after
+
+
+def test_tab_takes_the_highlighted_suggestion(qtbot):
+    _, line, _ = _between(qtbot, "tag:sh")
+    line.complete_now()
+    popup = line.completer.popup()
+    qtbot.waitUntil(popup.isVisible)
+    popup.setCurrentIndex(popup.model().index(1, 0))
+    qtbot.keyClick(popup, Qt.Key.Key_Tab)
+    assert line.toPlainText() == "tag:shock " and not popup.isVisible() and line.hasFocus()
+
+
+def test_tab_takes_the_first_suggestion_when_none_is_highlighted(qtbot):
+    _, line, _ = _between(qtbot, "tag:sh")
+    line.complete_now()
+    popup = line.completer.popup()
+    qtbot.waitUntil(popup.isVisible)
+    popup.setCurrentIndex(popup.model().index(-1, -1))
+    qtbot.keyClick(popup, Qt.Key.Key_Tab)
+    assert line.toPlainText() == "tag:sheath " and not popup.isVisible()
+
+
+def test_tab_takes_the_only_suggestion(qtbot):
+    _, line, _ = _between(qtbot, "ta")
+    qtbot.keyClick(line, Qt.Key.Key_Tab)
+    assert line.toPlainText() == "tag:" and line.hasFocus()
+
+
+def test_tab_opens_the_list_when_several_fit(qtbot):
+    _, line, _ = _between(qtbot, "tag:sh")
+    qtbot.keyClick(line, Qt.Key.Key_Tab)
+    qtbot.waitUntil(line.completer.popup().isVisible)
+    assert line.toPlainText() == "tag:sh" and line.completion_words() == ["tag:sheath ", "tag:shock "]
+
+
+def test_tab_moves_on_when_there_is_nothing_to_complete(qtbot):
+    for text in ("", "xyz", "tag:shock "):
+        _, line, after = _between(qtbot, text)
+        qtbot.keyClick(line, Qt.Key.Key_Tab)
+        qtbot.waitUntil(after.hasFocus)
+        assert line.toPlainText() == text, text
+
+
+def test_shift_tab_always_moves_back(qtbot):
+    before, line, _ = _between(qtbot, "tag:sh")
+    qtbot.keyClick(line, Qt.Key.Key_Backtab, Qt.KeyboardModifier.ShiftModifier)
+    qtbot.waitUntil(before.hasFocus)
+    before, line, _ = _between(qtbot, "tag:sh")
+    line.complete_now()
+    qtbot.waitUntil(line.completer.popup().isVisible)
+    qtbot.keyClick(line.completer.popup(), Qt.Key.Key_Backtab, Qt.KeyboardModifier.ShiftModifier)
+    qtbot.waitUntil(before.hasFocus)
+    assert line.toPlainText() == "tag:sh" and not line.completer.popup().isVisible()

@@ -1,10 +1,12 @@
 """One line of CoCat search text, as the web app's search box: coloured by parts (cocat_rs.pieces),
 completes the word at the cursor from the project's vocabulary (cocat_rs.complete/accept),
-underlines a wrong part, never takes a second line."""
+underlines a wrong part, never takes a second line. Tab completes: the highlighted suggestion (or the
+first) when the list is open; else the only one, or opens the list; with nothing to complete it moves
+on, and Shift+Tab always moves back."""
 from __future__ import annotations
 
 import cocat_rs
-from PySide6.QtCore import QStringListModel, Qt
+from PySide6.QtCore import QEvent, QStringListModel, Qt
 from PySide6.QtGui import QColor, QKeyEvent, QSyntaxHighlighter, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QCompleter, QPlainTextEdit, QTextEdit
 
@@ -62,6 +64,8 @@ class SearchLine(QPlainTextEdit):
         self.completer.setWidget(self)
         self.completer.setCompletionMode(QCompleter.CompletionMode.UnfilteredPopupCompletion)
         self.completer.activated.connect(self.accept_completion)
+        # after the completer's own filter, so this one runs first: the completer only hides on Tab
+        self.completer.popup().installEventFilter(self)
 
     def set_vocabulary(self, vocabulary: dict) -> None:
         """What the project's searches can name (Project.vocabulary)."""
@@ -100,6 +104,48 @@ class SearchLine(QPlainTextEdit):
         cursor = self.textCursor()
         cursor.setPosition(position)
         self.setTextCursor(cursor)
+
+    def event(self, event: QEvent) -> bool:
+        """Tab before Qt's focus handling, which tabChangesFocus would apply first."""
+        if event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Tab \
+                and not event.modifiers() & ~Qt.KeyboardModifier.KeypadModifier and self._complete_on_tab():
+            return True
+        return super().event(event)
+
+    def eventFilter(self, watched, event: QEvent) -> bool:
+        if watched is self.completer.popup() and event.type() == QEvent.Type.KeyPress:
+            if event.key() == Qt.Key.Key_Tab:
+                self._take_highlighted()
+                return True
+            if event.key() == Qt.Key.Key_Backtab:
+                self.completer.popup().hide()
+                self.focusPreviousChild()
+                return True
+        return super().eventFilter(watched, event)
+
+    def _complete_on_tab(self) -> bool:
+        """The list open: take a suggestion. Else one suggestion for the word at the cursor: take it;
+        several: open the list. False when there is no word to complete: the focus moves on."""
+        if self.completer.popup().isVisible():
+            self._take_highlighted()
+            return True
+        completion = cocat_rs.complete(self.toPlainText(), self.textCursor().position(), self._vocabulary)
+        if not completion or completion["from"] == completion["to"] or not completion["suggestions"]:
+            return False
+        if len(completion["suggestions"]) > 1:
+            self.complete_now()
+            return True
+        self._completion = completion
+        self.accept_completion(completion["suggestions"][0]["insert"])
+        return True
+
+    def _take_highlighted(self) -> None:
+        popup = self.completer.popup()
+        highlighted = popup.currentIndex()
+        words = self.completion_words()
+        popup.hide()
+        if words:
+            self.accept_completion(highlighted.data() if highlighted.isValid() else words[0])
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         popup_keys = (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Escape, Qt.Key.Key_Tab)
