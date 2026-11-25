@@ -43,8 +43,8 @@ def _kept_after(qtbot, f, text):
     return f.kept()
 
 
-def test_an_empty_box_keeps_everything(plain, events):
-    assert plain.kept() is None and all(plain.accepts(e) for e in events)
+def test_an_empty_box_keeps_everything(plain):
+    assert plain.kept() is None
 
 
 def test_any_column_matches_case_insensitively(plain, qtbot):

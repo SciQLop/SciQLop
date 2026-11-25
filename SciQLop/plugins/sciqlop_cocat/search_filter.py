@@ -231,11 +231,11 @@ class CocatSearchFilter(BackgroundEventFilter):
         text = self.line.toPlainText()
         if self._mode == SEARCH:
             return self._preview(text)
-        if not text.strip() or self._data is None:
+        if not text.strip() or self._events is None:
             self._show_problem(None)
             self.save_as.hide()
             return BackgroundEventFilter._apply(self, None)
-        room, (items, ids) = self._room, self._data
+        room, (items, ids) = self._room, self.prepared()
         self._worker.submit(lambda: smart_search.filter_answer(room, text, items, ids))
 
     def _apply(self, answer: smart_search.Answer) -> None:

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import itertools
+import operator
 from numbers import Real
 from typing import Any
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyModel, Qt
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QTimer, Qt
 
 from ..backend.event_text import _format_meta_value, format_event_time  # noqa: F401  (re-exported)
 from ..backend.provider import Capability, CatalogEvent
@@ -12,20 +14,47 @@ from ..backend.provider import Capability, CatalogEvent
 _FIXED_COLUMN_TITLES = ("Start (UTC)", "Stop (UTC)")
 
 
-class EventTableModel(QAbstractTableModel):
-    """Table model for catalog events: start, stop, then dynamic meta columns."""
+def _sort_value(value) -> tuple:
+    """Numbers before text, each in its own order: one column may hold both."""
+    if isinstance(value, Real) and not isinstance(value, bool):
+        return 0, float(value)
+    return 1, str(value)
 
-    SortRole = Qt.ItemDataRole.UserRole + 1
+
+def _meta_keys(events) -> list[str]:
+    keys: set[str] = set()
+    for e in events:
+        keys.update(e.meta.keys())
+    return sorted(keys)
+
+
+class EventTableModel(QAbstractTableModel):
+    """Table model for catalog events: start, stop, then dynamic meta columns.
+
+    It sorts and filters itself, once per request: rows are the events the filter keeps (set_kept),
+    in the table's order (sort). A QSortFilterProxyModel asked data() for every comparison and
+    filterAcceptsRow() for every row, from Python: seconds on 100,000 events."""
+
     _FIXED_COLUMNS = ("start", "stop")
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._events: list[CatalogEvent] = []
+        self._all: list[CatalogEvent] = []      # the catalogue's events (or a preview), in the table's order
+        self._uuids: list[str] = []             # theirs, read once: a list pass in C, not a property per row
+        self._events: list[CatalogEvent] = []   # the rows: those of _all the filter keeps
+        self._row_uuids: list[str] = []
+        self._kept: set[str] | None = None
+        self._rows: dict[str, int] | None = None  # uuid -> row, built when first asked
+        self._sort_column: int | None = None
+        self._sort_order = Qt.SortOrder.AscendingOrder
+        self._resort = QTimer(self)  # one re-sort after a burst of edits (a bulk edit of many rows)
+        self._resort.setSingleShot(True)
+        self._resort.setInterval(0)
+        self._resort.timeout.connect(self._sort_again)
         self._meta_keys: list[str] = []
         self._provider = None
         self._catalog = None
-        self._meta_signal_provider = None
-        self._followed_events: list[CatalogEvent] = []
+        self._signals_provider = None
         self._editable = False
         self._read_only = False
 
@@ -34,8 +63,9 @@ class EventTableModel(QAbstractTableModel):
         self.beginResetModel()
         self._provider = provider
         self._catalog = catalog
+        self._kept = None  # another catalogue: its own filter decides
         self._editable = self._can_edit()
-        self._connect_provider_meta_signal()
+        self._connect_provider_signals()
         self.endResetModel()
 
     def set_read_only(self, read_only: bool) -> None:
@@ -55,55 +85,103 @@ class EventTableModel(QAbstractTableModel):
             self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, self.columnCount() - 1))
 
     def set_events(self, events: list[CatalogEvent]) -> None:
+        """The catalogue's events (all of them: the kept set, if any, still applies)."""
         self.beginResetModel()
-        self._disconnect_events()
-        self._events = list(events)
-        keys: set[str] = set()
-        for e in self._events:
-            keys.update(e.meta.keys())
-        self._meta_keys = sorted(keys)
-        self._connect_events()
+        self._meta_keys = _meta_keys(events)
+        self._arrange(self._sorted(events))
+        self._keep()
         self.endResetModel()
 
-    def _connect_events(self) -> None:
-        # A method slot and sender(), not a closure per event: PySide scans every connection to a
-        # closure each time a sender dies, which made closing a big catalog quadratic.
-        self._followed_events = list(self._events)
-        for e in self._followed_events:
-            e.range_changed.connect(self._on_shown_event_range_changed)
+    def set_kept(self, kept: set[str] | None) -> None:
+        """The uuids the filter keeps; None keeps every event."""
+        self._kept = kept
+        self._relayout(self._keep)
 
-    def _disconnect_events(self) -> None:
-        for e in self._followed_events:
-            try:
-                e.range_changed.disconnect(self._on_shown_event_range_changed)
-            except RuntimeError:
-                pass
-        self._followed_events = []
+    def sort(self, column: int, order: Qt.SortOrder = Qt.SortOrder.AscendingOrder) -> None:
+        self._sort_column, self._sort_order = column, order
+        self._sort_again()
 
-    def _on_shown_event_range_changed(self) -> None:
-        self._on_event_range_changed(self.row_for_event(self.sender()))
+    def _sort_again(self) -> None:
+        self._relayout(lambda: (self._arrange(self._sorted(self._all)), self._keep()))
 
-    def _connect_provider_meta_signal(self) -> None:
-        if self._meta_signal_provider is not None:
-            try:
-                self._meta_signal_provider.event_meta_changed.disconnect(self._on_event_meta_changed)
-            except RuntimeError:
-                pass
-            self._meta_signal_provider = None
+    def _sorted(self, events) -> list[CatalogEvent]:
+        if self._sort_column is None or not 0 <= self._sort_column < self.columnCount():
+            return list(events)
+        return sorted(events, key=self._sort_key(self._sort_column),
+                      reverse=self._sort_order == Qt.SortOrder.DescendingOrder)
+
+    def _sort_key(self, column: int):
+        if column < len(self._FIXED_COLUMNS):
+            return operator.attrgetter(self._FIXED_COLUMNS[column])
+        key = self._meta_keys[column - len(self._FIXED_COLUMNS)]
+        return lambda event: _sort_value(event.meta.get(key, ""))
+
+    def _arrange(self, ordered: list[CatalogEvent]) -> None:
+        self._all, self._uuids = ordered, [e.uuid for e in ordered]
+
+    def _keep(self) -> None:
+        if self._kept is None:
+            self._events, self._row_uuids = self._all, self._uuids
+        else:
+            kept = list(map(self._kept.__contains__, self._uuids))
+            self._events = list(itertools.compress(self._all, kept))
+            self._row_uuids = list(itertools.compress(self._uuids, kept))
+        self._rows = None
+
+    def _relayout(self, change) -> None:
+        """New rows without a reset: the selection and the current row follow their events."""
+        self.layoutAboutToBeChanged.emit()
+        old = self.persistentIndexList()
+        held = [(self._row_uuids[i.row()], i.column()) for i in old]
+        change()
+        self.changePersistentIndexList(old, [self._index_of(uuid, column) for uuid, column in held])
+        self.layoutChanged.emit()
+
+    def _index_of(self, uuid: str, column: int) -> QModelIndex:
+        row = self.row_for_uuid(uuid)
+        return self.index(row, column) if row >= 0 else QModelIndex()
+
+    def total_count(self) -> int:
+        """The catalogue's events, kept or not."""
+        return len(self._all)
+
+    def all_events(self) -> list[CatalogEvent]:
+        return list(self._all)
+
+    def _connect_provider_signals(self) -> None:
+        """The provider's signals tell which event moved or changed: connecting to each event took
+        about 0.3 s for a catalogue of 100,000."""
+        self._disconnect_provider_signals()
         if self._provider is not None:
             self._provider.event_meta_changed.connect(self._on_event_meta_changed)
-            self._meta_signal_provider = self._provider
+            self._provider.event_range_changed.connect(self._on_event_range_changed)
+            self._signals_provider = self._provider
 
-    def _on_event_range_changed(self, row: int) -> None:
-        if row < 0:
+    def _disconnect_provider_signals(self) -> None:
+        if self._signals_provider is None:
             return
-        left = self.index(row, 0)
-        right = self.index(row, 1)
-        self.dataChanged.emit(left, right, [int(Qt.ItemDataRole.DisplayRole)])
+        for signal, slot in ((self._signals_provider.event_meta_changed, self._on_event_meta_changed),
+                             (self._signals_provider.event_range_changed, self._on_event_range_changed)):
+            try:
+                signal.disconnect(slot)
+            except RuntimeError:
+                pass
+        self._signals_provider = None
+
+    def _on_event_range_changed(self, catalog, event) -> None:
+        if self._catalog is None or catalog.uuid != self._catalog.uuid:
+            return
+        row = self.row_for_event(event)
+        if row >= 0:
+            self.dataChanged.emit(self.index(row, 0), self.index(row, 1), [int(Qt.ItemDataRole.DisplayRole)])
+        if self._sort_column in (0, 1):
+            self._resort.start()
 
     def _on_event_meta_changed(self, catalog, event, key: str) -> None:
         if self._catalog is None or catalog.uuid != self._catalog.uuid:
             return
+        if self._sort_column is not None and self._column_key(self._sort_column) == key:
+            self._resort.start()  # kept or not: a filter change shows it in its place
         row = self.row_for_event(event)
         if row < 0:
             return
@@ -119,16 +197,14 @@ class EventTableModel(QAbstractTableModel):
         idx = self.index(row, col)
         self.dataChanged.emit(idx, idx, [int(Qt.ItemDataRole.DisplayRole)])
 
+    def _column_key(self, column: int) -> str | None:
+        meta = column - len(self._FIXED_COLUMNS)
+        return self._meta_keys[meta] if 0 <= meta < len(self._meta_keys) else None
+
     def clear(self) -> None:
         self.beginResetModel()
-        self._disconnect_events()
-        if self._meta_signal_provider is not None:
-            try:
-                self._meta_signal_provider.event_meta_changed.disconnect(self._on_event_meta_changed)
-            except RuntimeError:
-                pass
-            self._meta_signal_provider = None
-        self._events = []
+        self._disconnect_provider_signals()
+        self._all, self._uuids, self._events, self._row_uuids, self._rows = [], [], [], [], None
         self._meta_keys = []
         self.endResetModel()
 
@@ -139,10 +215,12 @@ class EventTableModel(QAbstractTableModel):
 
     def row_for_event(self, event) -> int:
         """Return the row index of the event matching by uuid, or -1 if not found."""
-        for i, e in enumerate(self._events):
-            if e.uuid == event.uuid:
-                return i
-        return -1
+        return self.row_for_uuid(event.uuid)
+
+    def row_for_uuid(self, uuid: str) -> int:
+        if self._rows is None:
+            self._rows = dict(zip(self._row_uuids, itertools.count()))
+        return self._rows.get(uuid, -1)
 
     # ---- QAbstractTableModel interface ----
 
@@ -217,17 +295,6 @@ class EventTableModel(QAbstractTableModel):
             else:
                 key = self._meta_keys[col - len(self._FIXED_COLUMNS)]
                 return _format_meta_value(event.meta.get(key, ""))
-        elif role == self.SortRole:
-            if col == 0:
-                return event.start.timestamp()
-            elif col == 1:
-                return event.stop.timestamp()
-            else:
-                key = self._meta_keys[col - len(self._FIXED_COLUMNS)]
-                value = event.meta.get(key, "")
-                if isinstance(value, Real) and not isinstance(value, bool):
-                    return float(value)
-                return str(value)
         return None
 
     def setData(self, index: QModelIndex, value: Any, role: int = Qt.ItemDataRole.EditRole) -> bool:
@@ -261,24 +328,3 @@ class EventTableModel(QAbstractTableModel):
                 return _FIXED_COLUMN_TITLES[section]
             return self._meta_keys[section - len(self._FIXED_COLUMNS)]
         return str(section + 1)
-
-
-class EventSortProxy(QSortFilterProxyModel):
-    """Sorts by numeric timestamps for start/stop columns; keeps the rows the event filter accepts
-    (the hosted delegate's accepts: one cheap call per row, the matching done beforehand)."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setSortRole(EventTableModel.SortRole)
-        self._accepts = None
-
-    def set_accepts(self, accepts) -> None:
-        """``accepts(event) -> bool``, or None to keep every row."""
-        self._accepts = accepts
-        self.invalidateFilter()
-
-    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
-        if self._accepts is None:
-            return True
-        event = self.sourceModel().event_at(source_row)
-        return event is None or self._accepts(event)

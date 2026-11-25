@@ -146,6 +146,7 @@ class CatalogProvider(QObject):
     error_occurred = Signal(str)
     dirty_changed = Signal(object, bool)  # (catalog, is_dirty)
     event_meta_changed = Signal(object, object, str)  # (catalog, event, key)
+    event_range_changed = Signal(object, object)  # (catalog, event): one signal, not a connection per event
     loading_started = Signal(object)   # catalog
     loading_finished = Signal(object)  # catalog
     folder_added = Signal(list)    # path segments for an explicit folder
@@ -459,6 +460,7 @@ class CatalogProvider(QObject):
         event = self.sender()
         for catalog in list(self._catalogs_following.get(event, {}).values()):
             self._on_event_range_changed(event, catalog)
+            self.event_range_changed.emit(catalog, event)
 
     def _set_events(self, catalog: Catalog, events: list[CatalogEvent]) -> None:
         self._unfollow_ranges_of(catalog.uuid)

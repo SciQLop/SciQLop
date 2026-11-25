@@ -107,9 +107,6 @@ def test_a_provider_s_own_filter_is_hosted_and_the_previous_one_disposed(qtbot, 
             self._kept = {events[0].uuid} if events else None
             self.changed.emit()
 
-        def accepts(self, event):
-            return self._kept is None or event.uuid in self._kept
-
         def kept(self):
             return self._kept
 
@@ -201,9 +198,6 @@ class _Previewing:
             def set_events(self, events):
                 pass
 
-            def accepts(self, event):
-                return True
-
             def kept(self):
                 return None
 
@@ -240,3 +234,61 @@ def test_a_provider_asks_to_show_a_catalogue_with_its_filter_box_focused(two, qt
     provider.open_requested.emit(b)
     assert browser._current_catalog is b
     qtbot.waitUntil(lambda: browser.focusWidget() is browser._event_filter.box, timeout=2000)
+
+
+def _shown(browser):
+    model, proxy = browser._event_model, browser._sort_proxy
+    return [model.event_at(proxy.mapToSource(proxy.index(row, 0)).row()).uuid for row in range(proxy.rowCount())]
+
+
+def test_the_kept_rows_stay_in_the_table_s_order_and_follow_a_new_sort(two, qtbot):
+    browser, provider, a, b = two
+    _select(browser, a)
+    _type(qtbot, browser, "a")                      # solar_wind (day 1), magnetosheath (day 2)
+    assert _shown(browser) == ["a0", "a1"]
+    browser._event_table.sortByColumn(0, Qt.SortOrder.DescendingOrder)
+    assert _shown(browser) == ["a1", "a0"]
+    _type(qtbot, browser, "")
+    assert _shown(browser) == ["a2", "a1", "a0"]
+
+
+def test_a_selected_event_stays_selected_while_the_filter_changes(two, qtbot):
+    from PySide6.QtCore import QItemSelectionModel
+    browser, provider, a, b = two
+    _select(browser, a)
+    browser._event_table.selectionModel().select(
+        browser._sort_proxy.index(1, 0),
+        QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows)
+
+    def selected():
+        return [browser._event_model.event_at(browser._sort_proxy.mapToSource(i).row()).uuid
+                for i in browser._event_table.selectionModel().selectedRows()]
+
+    assert selected() == ["a1"]
+    _type(qtbot, browser, "magneto")
+    assert selected() == ["a1"]
+    _type(qtbot, browser, "")
+    assert selected() == ["a1"]
+
+
+def test_an_event_moved_while_filtered_takes_its_sorted_place(two, qtbot):
+    browser, provider, a, b = two
+    _select(browser, a)
+    _type(qtbot, browser, "a")
+    event = browser._event_model.event_at(browser._sort_proxy.mapToSource(browser._sort_proxy.index(0, 0)).row())
+    event.start, event.stop = datetime(2020, 1, 5, tzinfo=timezone.utc), datetime(2020, 1, 5, 1, tzinfo=timezone.utc)
+    qtbot.waitUntil(lambda: _shown(browser) == ["a1", "a0"], timeout=2000)
+
+
+def test_adding_and_deleting_while_filtered_keep_the_count_right(two, qtbot):
+    browser, provider, a, b = two
+    _select(browser, a)
+    _type(qtbot, browser, "magneto")
+    assert browser._filter_count.text() == "1 of 3"
+    provider.add_event(a, _ev("a9", {"class": "magnetopause"}, day=9))
+    qtbot.waitUntil(lambda: browser._filter_count.text() == "2 of 4", timeout=2000)
+    assert _shown(browser) == ["a1", "a9"]
+    gone = next(e for e in provider.events(a) if e.uuid == "a1")
+    provider.remove_event(a, gone)
+    qtbot.waitUntil(lambda: browser._filter_count.text() == "1 of 3", timeout=2000)
+    assert _shown(browser) == ["a9"]

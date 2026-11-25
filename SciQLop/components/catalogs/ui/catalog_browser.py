@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import (
-    QModelIndex, QPersistentModelIndex, QSortFilterProxyModel, Signal, QRect, QEvent,
+    QIdentityProxyModel, QModelIndex, QPersistentModelIndex, QSortFilterProxyModel, Signal, QRect, QEvent,
     QItemSelectionModel, QTimer,
 )
 from PySide6.QtWidgets import (
@@ -38,7 +38,7 @@ from SciQLop.core.ui import Metrics
 from ..backend.provider import Capability, CatalogProvider, Catalog, CatalogEvent
 from .catalog_tree import CatalogTreeModel, DIRTY_PROVIDER_ROLE, LOADING_ROLE, SECONDARY_ROLE
 from .event_filter import EventFilter, PlainTextFilter
-from .event_table import EventTableModel, EventSortProxy
+from .event_table import EventTableModel
 from .link_text import first_url
 
 
@@ -270,7 +270,9 @@ class CatalogBrowser(QWidget):
 
         # --- event table (right) ---
         self._event_model = EventTableModel()
-        self._sort_proxy = EventSortProxy(self)
+        # The model sorts and filters itself; an identity proxy keeps the view's indexes apart from the
+        # model's, and forwards the view's sort requests to it (QAbstractProxyModel.sort).
+        self._sort_proxy = QIdentityProxyModel(self)
         self._sort_proxy.setSourceModel(self._event_model)
         self._event_table = QTableView()
         self._event_table.setModel(self._sort_proxy)
@@ -646,7 +648,6 @@ class CatalogBrowser(QWidget):
         self._filter_plots.blockSignals(True)
         self._filter_plots.setChecked(plots)
         self._filter_plots.blockSignals(False)
-        self._sort_proxy.set_accepts(self._event_filter.accepts)
         self._event_filter.set_events(events)
         if state is not None:
             self._event_filter.restore(state)
@@ -659,7 +660,7 @@ class CatalogBrowser(QWidget):
         widget.deleteLater()
 
     def _on_event_filter_changed(self) -> None:
-        self._sort_proxy.invalidateFilter()
+        self._event_model.set_kept(self._event_filter.kept())
         self._show_filter_count()
         if self._filter_plots.isChecked():
             self._push_plot_filter()
@@ -677,7 +678,7 @@ class CatalogBrowser(QWidget):
         filtering = self._event_filter is not None and self._event_filter.kept() is not None
         self._filter_count.setVisible(filtering)
         if filtering:
-            self._filter_count.setText(f"{self._sort_proxy.rowCount():,} of {self._event_model.rowCount():,}")
+            self._filter_count.setText(f"{self._event_model.rowCount():,} of {self._event_model.total_count():,}")
 
     def _push_plot_filter(self, *_args) -> None:
         if self._filter_owner is None:
@@ -706,13 +707,6 @@ class CatalogBrowser(QWidget):
             return
         self._set_events_preserving_selection(events)
 
-    def _row_for_uuid(self, uuid: str) -> int:
-        for row in range(self._event_model.rowCount()):
-            ev = self._event_model.event_at(row)
-            if ev is not None and ev.uuid == uuid:
-                return row
-        return -1
-
     def _set_events_preserving_selection(self, events) -> None:
         """set_events() is a full model reset, which drops the table's
         selection -- surprising for a refresh the user didn't ask for (an
@@ -739,7 +733,7 @@ class CatalogBrowser(QWidget):
             return
         first_proxy_idx = None
         for uuid in selected_uuids:
-            row = self._row_for_uuid(uuid)
+            row = self._event_model.row_for_uuid(uuid)
             if row < 0:
                 continue
             proxy_idx = self._sort_proxy.mapFromSource(self._event_model.index(row, 0))
@@ -1372,7 +1366,7 @@ class CatalogBrowser(QWidget):
         right-clicked catalog needs a real (sampled) backend call."""
         from .color_menus import sample_events
         if self._current_catalog is not None and catalog.uuid == self._current_catalog.uuid:
-            return list(self._event_model._events)
+            return self._event_model.all_events()
         return sample_events(catalog, self._report_failure)
 
     def _apply_color_mapper(self, catalog: Catalog, mapper) -> None:
