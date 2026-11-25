@@ -634,7 +634,7 @@ class CatalogBrowser(QWidget):
             if self._filter_owner is not None:
                 self._filter_memory[self._filter_owner] = (old.state(), self._filter_plots.isChecked())
             old.dispose()
-            old.widget().deleteLater()
+            self._drop_filter_widget(old.widget())
             old.deleteLater()
         own = provider.event_filter(catalog, self) if provider is not None and catalog is not None else None
         self._event_filter = own if own is not None else PlainTextFilter(self)
@@ -651,6 +651,12 @@ class CatalogBrowser(QWidget):
         if state is not None:
             self._event_filter.restore(state)
         self._show_filter_count()
+
+    def _drop_filter_widget(self, widget) -> None:
+        """Out of the slot at once: deleteLater alone leaves it drawn above the new box until then."""
+        self._filter_slot.removeWidget(widget)
+        widget.hide()
+        widget.deleteLater()
 
     def _on_event_filter_changed(self) -> None:
         self._sort_proxy.invalidateFilter()

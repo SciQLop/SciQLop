@@ -131,8 +131,10 @@ def test_a_provider_s_own_filter_is_hosted_and_the_previous_one_disposed(qtbot, 
     assert isinstance(browser._event_filter, OnlyFirst)
     assert browser._event_filter.widget().isVisibleTo(browser)
     assert browser._sort_proxy.rowCount() == 1
+    old_widget = browser._event_filter.widget()
     _select(browser, plain.catalogs()[0])
     assert len(disposed) == 1 and isinstance(browser._event_filter, PlainTextFilter)
+    assert not old_widget.isVisibleTo(browser) and browser._filter_slot.count() == 1  # gone at once
     assert browser._sort_proxy.rowCount() == 2
 
 
