@@ -41,7 +41,7 @@ class ProductModel(BaseModel):
     knobs: dict[str, Any] = {}
     y_axis: Optional[Literal["y", "y2"]] = None  # None: where the graph type draws by default
     time_offset: float = 0.0  # seconds: data fetched this much later, drawn at the panel's time
-    # [{op: mean, axis: phi, ...}]: each calls the variable's method named by op (data_provider.reduced) before drawing
+    # [{op: mean, axis: phi, ...}], applied by speasy's template code before drawing (data_provider.reduced)
     reduce: list[dict[str, Any]] = []
 
     @model_serializer(mode="wrap")

@@ -142,34 +142,47 @@ def _sort_variable_by_time(variable: SpeasyVariable) -> SpeasyVariable:
 
 
 _said_no_reduce: set[str] = set()
-REDUCE_OPS = ("isel", "sel", "sum", "mean", "integrate")
+REDUCE_OPS = ("isel", "sel", "sum", "mean", "integrate")  # speasy.plotting.sciqlop_template.OPERATIONS
 
 
-def _reduce_step(operation: dict) -> tuple[str, dict]:
-    kwargs = dict(operation)
-    name = kwargs.pop("op", None)
-    if name not in REDUCE_OPS:
-        raise ValueError(f"unknown reduce operation {name!r}: expected one of {', '.join(REDUCE_OPS)}")
-    return name, kwargs
+def _checked_op_names(operations) -> None:
+    """Said even when this speasy cannot reduce: a template naming an op nobody has is wrong anywhere."""
+    for op in operations:
+        name = op.get("op") if isinstance(op, dict) else None
+        if name not in REDUCE_OPS:
+            raise ValueError(f"unknown reduce operation {name!r}: expected one of {', '.join(REDUCE_OPS)}")
+
+
+def _speasy_apply_operations():
+    """speasy's own template code (SciQLop/speasy#446), so SciQLop reduces exactly as speasy's quicklooks do;
+    None with an older speasy (no speasy.signal.reduction.dimension, no n-dimension indexing either)."""
+    try:
+        from speasy.plotting.sciqlop_template import apply_operations
+        from speasy.signal.reduction import dimension  # noqa: F401
+    except ImportError:
+        return None
+    return apply_operations
+
+
+def _unreduced(variable, product: str, why: str):
+    if product not in _said_no_reduce:
+        _said_no_reduce.add(product)
+        log.warning(f"{product}: the template asks to reduce it, but {why}; plotting it unreduced")
+    return variable
 
 
 def reduced(variable, operations, product: str):
-    """``variable`` after a template's ``reduce`` operations: each calls the variable's method named by its
-    ``op`` with its other keys. A variable without one of these methods (an older speasy, or data that is not
-    a SpeasyVariable) is drawn as it is, said once per product."""
+    """``variable`` after a template's ``reduce`` operations, applied by speasy's template code. An older
+    speasy, or data that is not a SpeasyVariable, is drawn as it is, said once per product."""
     if not operations or variable is None:
         return variable
-    steps = [_reduce_step(op) for op in operations]
-    missing = sorted({name for name, _ in steps if not callable(getattr(variable, name, None))})
-    if missing:
-        if product not in _said_no_reduce:
-            _said_no_reduce.add(product)
-            log.warning(f"{product}: the template asks to reduce it, but its data has no {', '.join(missing)} "
-                        f"(a newer speasy has them); plotting it unreduced")
-        return variable
-    for name, kwargs in steps:
-        variable = getattr(variable, name)(**kwargs)
-    return variable
+    _checked_op_names(operations)
+    apply_operations = _speasy_apply_operations()
+    if apply_operations is None:
+        return _unreduced(variable, product, "this speasy cannot reduce (a newer one, with SciQLop/speasy#446, can)")
+    if not isinstance(variable, SpeasyVariable):
+        return _unreduced(variable, product, "its data is not a SpeasyVariable")
+    return apply_operations(variable, operations)
 
 
 class DataProvider:
