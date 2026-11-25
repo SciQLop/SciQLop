@@ -1,7 +1,8 @@
-"""A template product's ``reduce`` (speasy's SpeasyVariable.reduce operations, SciQLop/speasy#446): kept when a
-template is read and written, v2 and v3, and applied to the data before it is drawn, so a 3D particle
-distribution averaged over its angles plots as an energy spectrogram. A speasy without reduce plots it
-unreduced, and says so once."""
+"""A template product's ``reduce``, a list of operations ({op: mean, axis: phi, ...}): kept when a template is
+read and written, v2 and v3, and applied by SciQLop before the data is drawn, each op calling the variable's
+method of that name (isel, sel, sum, mean, integrate) with the other keys. A 3D particle distribution averaged
+over its angles plots as an energy spectrogram. A variable without the method an op names (an older speasy)
+is plotted unreduced, said once; an unknown op is an error on the graph."""
 import json
 
 import numpy as np
@@ -11,7 +12,7 @@ from .fixtures import *  # noqa: F401,F403
 
 REDUCE = [{"op": "mean", "axis": "phi"}, {"op": "mean", "axis": "theta", "weights": [0.25, 0.5, 0.25]}]
 ENERGY = np.logspace(1, 4, 8)
-SPEASY_REDUCES = hasattr(__import__("speasy.products", fromlist=["SpeasyVariable"]).SpeasyVariable, "reduce")
+SPEASY_REDUCES = hasattr(__import__("speasy.products", fromlist=["SpeasyVariable"]).SpeasyVariable, "mean")
 
 
 def distribution(start: float, stop: float, cls=None):
@@ -27,19 +28,19 @@ def distribution(start: float, stop: float, cls=None):
 
 
 def _reducible():
-    """A SpeasyVariable with the reduce speasy#446 adds, for the speasy installed here, which may not have it."""
+    """A SpeasyVariable with the mean method a newer speasy has, for the speasy installed here, which may not."""
     from speasy.products import SpeasyVariable
 
     class Reducible(SpeasyVariable):
         calls = []
 
-        def reduce(self, operations):
+        def mean(self, axis, weights=None):
             from speasy.core.data_containers import DataContainer
-            Reducible.calls.append(operations)
-            names = [a.name for a in self.axes]
-            dims = tuple(sorted(names.index(op["axis"]) for op in operations))
-            kept = [a for i, a in enumerate(self.axes) if i not in dims]
-            return SpeasyVariable(axes=kept, values=DataContainer(values=self.values.mean(axis=dims), name="omni"))
+            Reducible.calls.append(("mean", {"axis": axis} | ({"weights": weights} if weights else {})))
+            dim = [a.name for a in self.axes].index(axis)
+            kept = [a for i, a in enumerate(self.axes) if i != dim]
+            values = np.average(self.values, axis=dim, weights=weights)
+            return Reducible(axes=kept, values=DataContainer(values=values, name="omni"))
 
     Reducible.calls = []
     return Reducible
@@ -93,12 +94,22 @@ def test_a_reduced_distribution_comes_out_as_an_energy_spectrogram(qapp):
     provider = _Provider.make(distribution(0.0, 100.0, cls))
     provider._name, provider._owns_fetched_variables = "test", False
     time, energy, values = DataProvider._get_data(provider, "dist", 0.0, 100.0, reduce=REDUCE)
-    assert cls.calls == [REDUCE]
+    assert cls.calls == [("mean", {"axis": "phi"}), ("mean", {"axis": "theta", "weights": [0.25, 0.5, 0.25]})]
     assert list(energy) == list(ENERGY) and values.shape == (len(time), len(ENERGY))
     assert np.allclose(values[0], np.arange(len(ENERGY)))
 
 
-@pytest.mark.skipif(SPEASY_REDUCES, reason="this speasy has SpeasyVariable.reduce")
+def test_an_unknown_operation_is_an_error_on_the_graph_naming_it(qapp):
+    from SciQLop.components.plotting.ui.time_sync_panel import _plot_product_callback
+    provider = _Provider.make(distribution(0.0, 100.0, _reducible()))
+    provider._name, provider._owns_fetched_variables = "test", False
+    callback = _plot_product_callback(provider, "dist", reduce=[{"op": "mean", "axis": "phi"},
+                                                                {"op": "median", "axis": "theta"}])
+    assert callback(0.0, 100.0) == []
+    assert "'median'" in callback.last_error and "isel, sel, sum, mean, integrate" in callback.last_error
+
+
+@pytest.mark.skipif(SPEASY_REDUCES, reason="this speasy has SpeasyVariable.mean")
 def test_without_reduce_in_speasy_it_is_drawn_unreduced_and_said_once(qapp):
     from SciQLop.components.plotting.backend import data_provider
     provider = _Provider.make(distribution(0.0, 100.0))
@@ -112,7 +123,7 @@ def test_without_reduce_in_speasy_it_is_drawn_unreduced_and_said_once(qapp):
     finally:
         data_provider.log.push_log.disconnect(logged.append)
     assert result[-1].ndim == 4
-    said = [line for line in logged if "SpeasyVariable.reduce" in line]
+    said = [line for line in logged if "has no mean" in line]
     assert len(said) == 1 and "unreduced" in said[0]
 
 
@@ -142,7 +153,7 @@ def test_a_template_plots_its_reduced_product_as_a_spectrogram_and_saves_reduce_
     assert saved.plots[0].products[0].reduce == REDUCE
 
 
-@pytest.mark.skipif(not SPEASY_REDUCES, reason="needs a speasy with SpeasyVariable.reduce (SciQLop/speasy#446)")
+@pytest.mark.skipif(not SPEASY_REDUCES, reason="needs a speasy with SpeasyVariable.mean")
 def test_speasy_s_own_reduce_averages_the_angles(qapp):
     from SciQLop.components.plotting.backend.data_provider import DataProvider
     provider = _Provider.make(distribution(0.0, 100.0))
@@ -152,7 +163,7 @@ def test_speasy_s_own_reduce_averages_the_angles(qapp):
 
 
 def test_a_template_whose_product_cannot_be_reduced_still_opens(qtbot, main_window):
-    """This speasy has no reduce: the distribution reaches the spectrogram unreduced, which refuses it, and
+    """This speasy has no mean: the distribution reaches the spectrogram unreduced, which refuses it, and
     SciQLop goes on."""
     from SciQLop.components.plotting.backend import data_provider
     from SciQLop.components.plotting.panel_template import (

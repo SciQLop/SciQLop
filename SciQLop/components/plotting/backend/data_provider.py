@@ -142,21 +142,34 @@ def _sort_variable_by_time(variable: SpeasyVariable) -> SpeasyVariable:
 
 
 _said_no_reduce: set[str] = set()
+REDUCE_OPS = ("isel", "sel", "sum", "mean", "integrate")
+
+
+def _reduce_step(operation: dict) -> tuple[str, dict]:
+    kwargs = dict(operation)
+    name = kwargs.pop("op", None)
+    if name not in REDUCE_OPS:
+        raise ValueError(f"unknown reduce operation {name!r}: expected one of {', '.join(REDUCE_OPS)}")
+    return name, kwargs
 
 
 def reduced(variable, operations, product: str):
-    """``variable`` after a template's ``reduce`` operations (speasy's SpeasyVariable.reduce, SciQLop/speasy#446).
-    A speasy without it, or data that is not a SpeasyVariable, is drawn as it is: said once per product."""
+    """``variable`` after a template's ``reduce`` operations: each calls the variable's method named by its
+    ``op`` with its other keys. A variable without one of these methods (an older speasy, or data that is not
+    a SpeasyVariable) is drawn as it is, said once per product."""
     if not operations or variable is None:
         return variable
-    reduce = getattr(variable, "reduce", None)
-    if reduce is None:
+    steps = [_reduce_step(op) for op in operations]
+    missing = sorted({name for name, _ in steps if not callable(getattr(variable, name, None))})
+    if missing:
         if product not in _said_no_reduce:
             _said_no_reduce.add(product)
-            log.warning(f"{product}: the template asks to reduce it, but this speasy has no SpeasyVariable.reduce "
-                        f"(it comes with speasy's data-reduction release); plotting it unreduced")
+            log.warning(f"{product}: the template asks to reduce it, but its data has no {', '.join(missing)} "
+                        f"(a newer speasy has them); plotting it unreduced")
         return variable
-    return reduce(operations)
+    for name, kwargs in steps:
+        variable = getattr(variable, name)(**kwargs)
+    return variable
 
 
 class DataProvider:
