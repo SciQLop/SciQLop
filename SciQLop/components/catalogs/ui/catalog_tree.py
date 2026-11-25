@@ -15,7 +15,7 @@ from typing import Any
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal
 
 from ..backend.color_palette import catalog_color_changed
-from ..backend.provider import Capability, Catalog, CatalogProvider, NodeType, Placement, Section
+from ..backend.provider import Capability, Catalog, CatalogProvider, Creation, NodeType, Placement, Section
 from ..backend.registry import CatalogRegistry
 
 DIRTY_PROVIDER_ROLE = Qt.ItemDataRole.UserRole + 1
@@ -222,8 +222,7 @@ class CatalogTreeModel(QAbstractItemModel):
 
     def _group_placeholders_allowed(self, provider: CatalogProvider, path: list[str]) -> bool:
         placement = self._placements.get((provider, self._group_of(provider, path)))
-        return (placement is not None and placement.can_create
-                and Capability.CREATE_CATALOGS in provider.capabilities())
+        return placement is not None and placement.can_create and Creation.CATALOG in provider.creations(list(path))
 
     # ---- folders and catalogues ----
 
@@ -304,7 +303,8 @@ class CatalogTreeModel(QAbstractItemModel):
         mine = [c for c in node.children if c.is_placeholder and c.provider is provider]
         if self._group_placeholders_allowed(provider, path):
             if not mine:
-                for kind, text in ((_PlaceholderType.CATALOG, "New catalog…"), (_PlaceholderType.FOLDER, "New folder…")):
+                for kind, text in ((_PlaceholderType.CATALOG, f"New {provider.CATALOG_WORD}…"),
+                                   (_PlaceholderType.FOLDER, "New folder…")):
                     self._insert(node, len(node.children),
                                  _Node(text, kind=_Kind.PLACEHOLDER, provider=provider, path=path, placeholder_type=kind))
         else:

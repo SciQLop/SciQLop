@@ -3,7 +3,6 @@ on one catalogue of the same project, as text or as a rule (JSON), freezing, and
 search. The menus use the CoCat web app's words."""
 from __future__ import annotations
 
-import cocat_rs
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
@@ -16,7 +15,6 @@ from .history_dialog import ask_text, confirm
 
 log = getLogger(__name__)
 
-NEW_SMART = "New smart catalogue"
 REMOVE_SEARCH_QUESTION = "“{name}” keeps the events it lists and stops adding events. The events the search picked leave it."
 FREEZE_LABEL = "A normal catalogue holding the events this one picks now. Joined intervals become events you " \
                "can edit. This smart catalogue stays as it is.\n\nName of the normal catalogue:"
@@ -140,20 +138,6 @@ class Searching:
                 action("Edit as JSON…", self.open_rule_editor),
                 action("Freeze…", self._ask_and_freeze),
                 action("Remove the search…", self._ask_and_remove_search)]
-
-    def _preset_actions(self, room_id: str) -> list:
-        from .provider import action
-        if not self._can_search_in(room_id):
-            return []
-        return [action(p["name"], lambda path, p=p: self._new_smart_catalogue(path, p["name"], p["query"]),
-                       p["query"], group=NEW_SMART) for p in cocat_rs.presets(self._author)]
-
-    def _new_smart_catalogue(self, path: list[str], name: str, query: str) -> None:
-        try:
-            made = self.create_smart_catalog(name, [path[0]], query)
-        except Exception as error:
-            return self.error_occurred.emit(f"Cannot make the smart catalogue '{name}': {error}")
-        self.open_requested.emit(made)
 
     def open_rule_editor(self, catalog: Catalog):
         from .rule_editor import RuleEditor

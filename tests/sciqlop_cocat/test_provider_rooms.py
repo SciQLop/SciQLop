@@ -91,7 +91,7 @@ class RecordingRoom:
 
 PROJECT_ACTIONS = ["Leave", "Save version of the whole project…", "History…", "Import…", "Import tscat catalogues", "Open in browser"]
 SHARED_ACTIONS = ["Leave", "History…", "Sharing…", "Open in browser"]  # a project shared with the person, read-only
-CONNECTED_ACTIONS = ["Sign out", "New project…", "Open CoCat in browser"]
+CONNECTED_ACTIONS = ["Sign out", "Open CoCat in browser"]  # New > Project… is in the tree's New menu
 PUBLIC = [{"id": "public.bow-shocks", "name": "Bow shocks", "folder": "MMS", "source": "", "description": "",
            "role": "viewer", "changed": "", "count": 12}]
 

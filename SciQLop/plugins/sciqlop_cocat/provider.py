@@ -24,7 +24,7 @@ from PySide6.QtCore import QObject, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QApplication, QInputDialog, QMessageBox
 
-from SciQLop.components.catalogs import Capability, Catalog, CatalogEvent, CatalogProvider, ProviderAction
+from SciQLop.components.catalogs import Capability, Catalog, CatalogEvent, CatalogProvider, Creation, ProviderAction
 from SciQLop.components.catalogs.backend.provider import _SENTINEL, NodeType
 from SciQLop.components.sciqlop_logging import getLogger
 from speasy.core import make_utc_datetime
@@ -181,6 +181,7 @@ def _default_project(infos) -> str | None:
 
 class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following, Linking, Submitting, ImportingTscat, CatalogProvider):
     NAME = PROVIDER_NAME
+    CATALOG_WORD = "catalogue"
     DESCRIPTION = "Your catalogues, and the projects shared with you, through cocat-rs."
 
     def __init__(self, author: str = "SciQLop", session=None, cache_dir: Path | None = None,
@@ -849,8 +850,7 @@ class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following
         reconnect = action("Reconnect", lambda _: asyncio.ensure_future(self.reconnect()))
         if self._connected:
             actions = [reconnect] if self._offline else []
-            actions += [sign_out,
-                        action("New project…", lambda _: self._ask_and_create_project())]
+            actions += [sign_out]
         elif self._session is not None and self._session.signed_in:
             actions = [action("Connect", lambda _: asyncio.ensure_future(self.connect())),
                        sign_out]
@@ -862,10 +862,21 @@ class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following
         return actions
 
     def folder_actions(self, path: list[str]) -> list[ProviderAction]:
-        if len(path) != 1:
+        if len(path) != 1 or path[0] not in self._room_infos:
             return []
-        presets = self._preset_actions(path[0])
-        return [*presets, *self._project_actions(path)] if path[0] in self._room_infos else presets
+        return self._project_actions(path)
+
+    def creations(self, path: list[str] | None) -> frozenset[Creation]:
+        """The tree's "New" menu: a project once connected; catalogues, smart ones and folders in a project the
+        person can write to (not a viewer's, not the public catalogues)."""
+        if path is None:
+            return frozenset({Creation.PROJECT}) if self._connected else frozenset()
+        if not self._can_search_in(path[0] if path else None):
+            return frozenset()
+        return frozenset({Creation.CATALOG, Creation.SMART_CATALOG, Creation.FOLDER})
+
+    def new_project(self) -> None:
+        self._ask_and_create_project()
 
     def _project_actions(self, path: list[str]) -> list[ProviderAction]:
         if path[0] in self._local_ids:

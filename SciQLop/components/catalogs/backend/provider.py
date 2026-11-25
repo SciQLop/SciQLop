@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from speasy.core import make_utc_datetime
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, ClassVar
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QIcon
 
@@ -88,6 +88,14 @@ class Capability(str, Enum):
     SEARCHES = "searches"  # smart catalogues: a search picks their events (create_smart_catalog...)
 
 
+class Creation(str, Enum):
+    """What the tree's "New" menu can make at a place; the menu lists them in this order."""
+    CATALOG = "catalog"
+    SMART_CATALOG = "smart_catalog"  # an empty catalogue, its search box opened to search all events
+    FOLDER = "folder"
+    PROJECT = "project"              # asked of the provider as a whole: new_project()
+
+
 class NodeType(str, Enum):
     PROVIDER = "provider"
     FOLDER = "folder"
@@ -139,6 +147,8 @@ class ProviderAction:
 
 class CatalogProvider(QObject):
     """Abstract base class for catalog data providers."""
+
+    CATALOG_WORD: ClassVar[str] = "catalog"  # how its menus and rows spell it ("catalogue" for some)
 
     catalog_added = Signal(object)
     catalog_removed = Signal(object)
@@ -337,6 +347,20 @@ class CatalogProvider(QObject):
     def folder_display_name(self, path: list[str]) -> str | None:
         """Custom display name for an explicit folder. Return None to use the default."""
         return None
+
+    def creations(self, path: list[str] | None) -> frozenset[Creation]:
+        """What the tree's "New" menu offers at ``path``; None asks for the provider as a whole (a new
+        project). By default catalogues and folders where it can create catalogues, a smart catalogue
+        too when it has searches. The placement can still refuse a place (Placement.can_create)."""
+        caps = self.capabilities()
+        if path is None or Capability.CREATE_CATALOGS not in caps:
+            return frozenset()
+        smart = {Creation.SMART_CATALOG} if Capability.SEARCHES in caps else set()
+        return frozenset({Creation.CATALOG, Creation.FOLDER, *smart})
+
+    def new_project(self) -> None:
+        """Make a new project, asking what it needs (its name): offered when creations(None) has PROJECT."""
+        raise NotImplementedError(f"{self.name} makes no projects")
 
     def placement(self, folder: str | None) -> Placement | None:
         """Where this provider shows in the catalogue tree.

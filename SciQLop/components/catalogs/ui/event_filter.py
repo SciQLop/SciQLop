@@ -51,6 +51,11 @@ class EventFilter(QObject):
         """Ready for typing: a provider asked to show its catalogue (a search to edit)."""
         self.widget().setFocus()
 
+    def start_search(self) -> None:
+        """Ready to type the search of a catalogue just made with "New > Smart catalogue…": a delegate
+        that searches beyond the catalogue opens there; by default the box just takes the focus."""
+        self.focus()
+
     def dispose(self) -> None:
         """Stop the work in flight; the browser then deletes the widget."""
 

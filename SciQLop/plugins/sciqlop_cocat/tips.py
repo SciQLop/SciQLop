@@ -22,7 +22,6 @@ ACTIONS = {
     "Sign out": "Stop syncing; My catalogues stays usable from this computer",
     "Connect": "Load your projects from the server",
     "Reconnect": "Try the server again now",
-    "New project…": "A project of yours, which you can share",
     "Open CoCat in browser": "The CoCat web app, which also manages groups",
     "Leave": "Hide this project here; Join brings it back",
     "Join": "Load this project and keep it in sync",

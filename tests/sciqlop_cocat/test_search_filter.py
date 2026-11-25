@@ -239,13 +239,17 @@ def _action(actions, name):
     return next(a for a in actions if a.name == name)
 
 
-def test_new_smart_catalogue_offers_the_presets_and_opens_the_one_made(attached, qtbot):
-    presets = [a for a in attached.folder_actions(["r"]) if a.group == "New smart catalogue"]
-    assert [a.name for a in presets] == [p["name"] for p in cocat_rs.presets("me")]
-    with qtbot.waitSignal(attached.open_requested, timeout=3000) as opened:
-        _action(presets, "Mine").callback(["r"])
-    [made] = opened.args
-    assert made.name == "Mine" and attached.catalog_search(made).query == "author:=me"
+def test_a_project_declares_catalogues_smart_ones_and_folders_for_the_new_menu(attached):
+    from SciQLop.components.catalogs import Creation
+    assert attached.creations(["r"]) == {Creation.CATALOG, Creation.SMART_CATALOG, Creation.FOLDER}
+    assert attached.CATALOG_WORD == "catalogue"
+
+
+def test_start_search_opens_all_events_with_the_focus(attached, tagged, qtbot):
+    box = _box(attached, tagged, qtbot)
+    box.widget().show()
+    box.start_search()
+    assert box.scope() == "all"
 
 
 def test_edit_search_opens_its_box(attached, smart, qtbot):
@@ -254,9 +258,9 @@ def test_edit_search_opens_its_box(attached, smart, qtbot):
     assert opened.args == [smart]
 
 
-def test_a_read_only_project_offers_no_new_smart_catalogue(attached, monkeypatch):
+def test_a_read_only_project_offers_nothing_new(attached, monkeypatch):
     monkeypatch.setattr(attached, "_can_write", lambda room_id: False)
-    assert not [a for a in attached.folder_actions(["r"]) if a.group == "New smart catalogue"]
+    assert attached.creations(["r"]) == frozenset()
 
 
 def test_catalogs_filter_speaks_cocat(attached, tagged, qtbot):

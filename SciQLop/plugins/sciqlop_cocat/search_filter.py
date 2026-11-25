@@ -216,6 +216,12 @@ class CocatSearchFilter(BackgroundEventFilter):
             self._enter(self._saved_scope())
         self.line.setFocus()
 
+    def start_search(self) -> None:
+        """A catalogue just made with New > Smart catalogue…: its search over all events, typed here, then Save."""
+        if self._editable:
+            self._enter(ALL)
+        self.line.setFocus()
+
     def dispose(self) -> None:
         super().dispose()
         self._previewer.stop()

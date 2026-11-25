@@ -37,7 +37,7 @@ import traceback
 from datetime import datetime, timezone, timedelta
 import uuid as _uuid
 from SciQLop.core.ui import Metrics
-from ..backend.provider import Capability, CatalogProvider, Catalog, CatalogEvent
+from ..backend.provider import Capability, CatalogProvider, Catalog, CatalogEvent, Creation
 from .catalog_tree import CatalogTreeModel, DIRTY_PROVIDER_ROLE, LOADING_ROLE, SECONDARY_ROLE
 from .event_filter import EventFilter, PlainTextFilter
 from .event_table import EventTableModel
@@ -1238,6 +1238,8 @@ class CatalogBrowser(QWidget):
         node_caps = node.provider.capabilities(node.catalog) if node.catalog is not None else caps
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
+        if node.catalog is None and not node.is_placeholder:
+            self._add_new_menu(menu, node)
 
         # Provider-level actions, on the node of a provider placed as a whole
         if node.is_provider_node:
@@ -1256,9 +1258,6 @@ class CatalogBrowser(QWidget):
             path = self._folder_path(node)
             for action in node.provider.folder_actions(path):
                 _add_provider_action(menu, action, lambda checked, cb=action.callback, p=path: cb(p))
-
-        if node.catalog is None and not node.is_placeholder and Capability.CREATE_CATALOGS in caps:
-            self._add_creation_actions(menu, node)
 
         if Capability.SAVE in caps and node.provider.is_dirty():
             if (node.catalog is not None
@@ -1295,22 +1294,79 @@ class CatalogBrowser(QWidget):
         add_menu_entries(menu, CATALOG_TREE, self._menu_context(node))
         return menu
 
-    def _add_creation_actions(self, menu: QMenu, node) -> None:
-        """The node's own creation rows, as menu entries: present only where creating is allowed."""
+    # ---- the "New" submenu: what can be made at a place, declared by the providers ----
+
+    def _add_new_menu(self, menu: QMenu, node) -> None:
+        entries = sorted(self._new_entries(node), key=lambda entry: list(Creation).index(entry[0]))
+        if not entries:
+            return
+        new = menu.addMenu("New")
+        new.setToolTipsVisible(True)
+        for _, text, tip, run in entries:
+            action = new.addAction(text)
+            action.setToolTip(rich_tooltip(text, tip))
+            action.triggered.connect(lambda checked=False, run=run: run())
+
+    def _new_entries(self, node) -> list[tuple]:
+        """(creation, label, tooltip, what to run) for this node: a section, a provider's node, a group or a folder."""
+        entries = []
+        for provider, path in self._places_of(node):
+            entries += self._entries_at(provider, path, node)
+        for provider in self._project_makers(node):
+            entries.append((Creation.PROJECT, "Project…", f"A new project of {provider.name}, which you can share.",
+                            provider.new_project))
+        return entries
+
+    def _places_of(self, node) -> list[tuple]:
+        if self._tree_model.is_section(node):
+            return self._tree_model.inline_groups(node)
+        return [(node.provider, list(node.path))] if node.provider is not None else []
+
+    def _project_makers(self, node) -> list:
+        if self._tree_model.is_section(node):
+            providers = self._tree_model.providers_in(node)
+        else:
+            providers = [node.provider] if node.is_provider_node else []
+        return [p for p in providers if Creation.PROJECT in p.creations(None)]
+
+    def _entries_at(self, provider, path: list[str], node) -> list[tuple]:
+        """What the tree's own rows allow here (they say whether the place takes new catalogues), and a smart
+        catalogue when the provider declares one."""
         from .catalog_tree import _PlaceholderType
-        for kind, text, tip in ((_PlaceholderType.CATALOG, "New catalog…", "Create an empty catalog here."),
-                                (_PlaceholderType.FOLDER, "New folder…", "Create an empty folder here.")):
-            placeholder = next((c for c in node.children if c.placeholder_type == kind), None)
-            if placeholder is not None:
-                action = menu.addAction(text)
-                action.setToolTip(rich_tooltip(text, tip))
-                action.triggered.connect(lambda checked, ph=placeholder: self._trigger_placeholder_edit(ph))
+        rows = {c.placeholder_type: c for c in node.children if c.is_placeholder and c.provider is provider}
+        if _PlaceholderType.CATALOG not in rows:
+            return []
+        word = provider.CATALOG_WORD
+        entries = [(Creation.CATALOG, word.capitalize(), f"An empty {word} here: type its name.",
+                    lambda ph=rows[_PlaceholderType.CATALOG]: self._trigger_placeholder_edit(ph))]
+        if Creation.SMART_CATALOG in provider.creations(path):
+            entries.append((Creation.SMART_CATALOG, f"Smart {word}…",
+                            f"A {word} whose search picks its events: type the search, then Save.",
+                            lambda: self._new_smart_catalog(provider, path)))
+        if _PlaceholderType.FOLDER in rows:
+            entries.append((Creation.FOLDER, "Folder", "An empty folder here: type its name.",
+                            lambda ph=rows[_PlaceholderType.FOLDER]: self._trigger_placeholder_edit(ph)))
+        return entries
+
+    def _new_smart_catalog(self, provider, path: list[str]) -> None:
+        """An empty catalogue there, selected, its search box opened to search beyond it: what is typed shows in
+        the table, and Save makes it the catalogue's own search. Not a search saved empty: that picks every event."""
+        name = self._tree_model._unique_catalog_name(provider, list(path), f"Smart {provider.CATALOG_WORD}")
+        try:
+            made = provider.create_catalog(name, path=list(path) or None)
+        except Exception as error:
+            self.provider_error.emit(f"Could not create '{name}': {error}")
+            return
+        self._open_catalog_in_tree(made)
+        if self._current_catalog is not None and self._current_catalog.uuid == made.uuid:
+            QTimer.singleShot(0, self._event_filter, self._event_filter.start_search)
 
     def _section_menu(self, node) -> QMenu:
         """A section header: the actions of the providers that place their folders in it (sign in,
         new project...), those of the project shown inline in it, and its creation rows."""
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
+        self._add_new_menu(menu, node)
         for provider in self._tree_model.providers_in(node):
             for action in provider.actions(None) or ():
                 _add_provider_action(menu, action, lambda checked, cb=action.callback: cb(None))
@@ -1318,7 +1374,6 @@ class CatalogBrowser(QWidget):
             if path:
                 for action in provider.folder_actions(path):
                     _add_provider_action(menu, action, lambda checked, cb=action.callback, p=path: cb(p))
-        self._add_creation_actions(menu, node)
         return menu
 
     @staticmethod
