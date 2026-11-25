@@ -132,6 +132,7 @@ class ProviderAction:
     callback: Callable[[Catalog], None]
     icon: QIcon | None = None
     tooltip: str | None = None
+    group: str | None = None  # the submenu it goes in: actions of one group are listed together
 
 
 class CatalogProvider(QObject):

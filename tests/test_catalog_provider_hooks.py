@@ -208,3 +208,16 @@ def test_provider_catalogue_and_folder_actions_carry_their_tooltips(qtbot, qapp)
 def test_an_action_without_tooltip_still_builds(qtbot, qapp):
     from SciQLop.components.catalogs.backend.provider import ProviderAction
     assert ProviderAction("Connect", lambda _: None).tooltip is None
+
+
+def test_actions_of_one_group_go_in_a_submenu(qapp):
+    from PySide6.QtWidgets import QMenu
+    from SciQLop.components.catalogs.backend.provider import ProviderAction
+    from SciQLop.components.catalogs.ui.catalog_browser import _add_provider_action
+    menu = QMenu()
+    for name, group in (("Recently added", "New smart catalogue"), ("Export…", None), ("Mine", "New smart catalogue")):
+        _add_provider_action(menu, ProviderAction(name, lambda _: None, group=group), lambda checked: None)
+    [submenu] = [a.menu() for a in menu.actions() if a.menu() is not None]
+    assert submenu.title() == "New smart catalogue"
+    assert [a.text() for a in submenu.actions()] == ["Recently added", "Mine"]
+    assert [a.text() for a in menu.actions()] == ["New smart catalogue", "Export…"]

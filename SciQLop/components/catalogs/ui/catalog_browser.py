@@ -186,12 +186,23 @@ class _SaveButtonDelegate(QStyledItemDelegate):
 
 
 def _add_provider_action(menu, action, trigger) -> None:
-    a = menu.addAction(action.name)
+    a = _group_menu(menu, action.group).addAction(action.name)
     if action.icon is not None:
         a.setIcon(action.icon)
     if action.tooltip:
         a.setToolTip(action.tooltip)
     a.triggered.connect(trigger)
+
+
+def _group_menu(menu: QMenu, group: str | None) -> QMenu:
+    if group is None:
+        return menu
+    found = next((a.menu() for a in menu.actions() if a.menu() is not None and a.text() == group), None)
+    if found is not None:
+        return found
+    submenu = menu.addMenu(group)
+    submenu.setToolTipsVisible(True)
+    return submenu
 
 
 class CatalogBrowser(QWidget):
