@@ -46,3 +46,33 @@ def test_stop_drops_what_is_still_to_come(qtbot):
     worker.stop()
     qtbot.wait(150)
     assert answers == []
+
+
+def _started_slow_job(worker, seconds, value="late"):
+    started = threading.Event()
+    worker.submit(lambda: (started.set(), time.sleep(seconds), value)[2])
+    assert started.wait(2)
+
+
+def test_stop_does_not_wait_for_the_job_in_flight(qtbot):
+    from SciQLop.components.catalogs.ui.latest_only import LatestOnly
+    worker = LatestOnly()
+    _started_slow_job(worker, 0.4)
+    began = time.perf_counter()
+    worker.stop()
+    assert time.perf_counter() - began < 0.05
+
+
+def test_a_worker_deleted_while_its_job_runs_hears_nothing(qtbot):
+    import shiboken6
+    from PySide6.QtCore import QObject
+    from SciQLop.components.catalogs.ui.latest_only import LatestOnly
+    owner = QObject()
+    worker = LatestOnly(owner)
+    answers = []
+    worker.done.connect(answers.append)
+    _started_slow_job(worker, 0.2)
+    worker.stop()
+    shiboken6.delete(owner)
+    qtbot.wait(400)
+    assert answers == []
