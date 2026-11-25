@@ -3,6 +3,8 @@ import platform
 import sys
 from pathlib import Path
 
+from SciQLop.core import startup_timing
+
 if platform.system() == 'Windows':
     import matplotlib.pyplot as plt
 
@@ -179,9 +181,12 @@ def start_sciqlop():
     from PySide6.QtWidgets import QApplication
     main_windows = build_sciqlop()
     app = QApplication.instance()
-    _signal_ready_and_wait_for_splash()
+    with startup_timing.phase("waiting for the launcher's splash to close"):
+        _signal_ready_and_wait_for_splash()
     main_windows.show()
     app.processEvents()
+    startup_timing.mark("window shown")
+    main_windows._startup_watch = startup_timing.watch_gui()
     _notify_dropped_dependencies(main_windows)
     _notify_incompatible_plugins(main_windows)
     _notify_repaired_settings(main_windows)
@@ -214,7 +219,8 @@ def build_sciqlop():
 
     print(str(QtPrintSupport) + str(QtQml))
 
-    app = sciqlop_app()
+    with startup_timing.phase("Qt application and theme"):
+        app = sciqlop_app()
     from SciQLop.core.main_thread_gc import install as install_main_thread_gc
     install_main_thread_gc(parent=app)
     from SciQLop.components.settings.backend.network import apply_qt_application_proxy
@@ -226,19 +232,22 @@ def build_sciqlop():
     from SciQLop.components.products import register_smart_search_domain
     register_smart_search_domain()
     from SciQLop.components.smart_search import initialize as initialize_smart_search
-    initialize_smart_search()
+    with startup_timing.phase("smart search"):
+        initialize_smart_search()
     from SciQLop.components.plotting.ui.plot_shortcuts import enable_plot_shortcuts_everywhere
     enable_plot_shortcuts_everywhere(app)
     sciqlop_event_loop()
 
-    from SciQLop.core.ui.mainwindow import SciQLopMainWindow
-    from SciQLop.components.plugins.backend.loader.loader import kernel_plugins_view
-    app.processEvents()
-    main_windows = SciQLopMainWindow()
-    app.processEvents()
+    with startup_timing.phase("main window"):
+        from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+        from SciQLop.components.plugins.backend.loader.loader import kernel_plugins_view
+        app.processEvents()
+        main_windows = SciQLopMainWindow()
+        app.processEvents()
     from SciQLop.components.extension_points import prepare_extension_points, start_plugins
     prepare_extension_points()
-    start_plugins(app, main_windows)
+    with startup_timing.phase("plugins"):
+        start_plugins(app, main_windows)
     from SciQLop.components.plugins.backend.live_loader import PluginsLiveLoader
     main_windows._plugins_live_loader = PluginsLiveLoader(main_windows, parent=main_windows)
 
@@ -249,13 +258,15 @@ def build_sciqlop():
     return main_windows
 
 def main():
+    startup_timing.mark("main() reached")
     from SciQLop.core.session_log import enable_crash_traces
     enable_crash_traces()
     configure_qt_messages()
-    from PySide6.QtCore import QTimer
-    from PySide6.QtWidgets import QApplication
-    from SciQLop.core.sciqlop_application import sciqlop_event_loop
-    from SciQLop.core.batch import BatchRequest
+    with startup_timing.phase("imports (speasy starts its data providers here: network, inventories)"):
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QApplication
+        from SciQLop.core.sciqlop_application import sciqlop_event_loop
+        from SciQLop.core.batch import BatchRequest
 
     loop = sciqlop_event_loop()
     batch = BatchRequest.from_env(os.environ)
@@ -269,7 +280,8 @@ def main():
     def _run_interactive():
         main_windows = start_sciqlop()
         try:
-            main_windows.start()
+            with startup_timing.phase("workspace start (kernel, notebooks)"):
+                main_windows.start()
         except Exception as e:
             print(e)
 

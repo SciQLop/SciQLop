@@ -229,8 +229,7 @@ def get_components(param: ParameterIndex) -> Optional[List[str]]:
     return [param.spz_name()]
 
 
-def count_components(param: ParameterIndex):
-    labels = get_components(param)
+def count_components(param: ParameterIndex, labels: Optional[List[str]]):
     if labels is not None:
         return len(labels)
     if hasattr(param, "size"):
@@ -240,7 +239,8 @@ def count_components(param: ParameterIndex):
     return 0
 
 
-def data_serie_type(param: ParameterIndex):
+def data_serie_type(param: ParameterIndex, components: Optional[List[str]] = None):
+    """``components``: get_components(param), when the caller already has them."""
     if hasattr(param, "display_type"):
         display_type = param.display_type
     elif hasattr(param, "DISPLAY_TYPE"):
@@ -249,7 +249,7 @@ def data_serie_type(param: ParameterIndex):
         display_type = 'timeseries'
     else:
         display_type = None
-    components_cnt = count_components(param)
+    components_cnt = count_components(param, components if components is not None else get_components(param))
     if display_type is not None or components_cnt != 0:
         if (display_type or '').lower().strip().startswith('spectrogram'):
             return ParameterType.Spectrogram
@@ -279,10 +279,11 @@ def get_node_meta(node):
 
 
 def make_product(name, node: ParameterIndex, provider, instrument_description: str = ""):
-    p_type = data_serie_type(node)
+    components = get_components(node)
+    p_type = data_serie_type(node, components)
     meta = get_node_meta(node)
     meta["uid"] = node.spz_uid()
-    meta["components"] = get_components(node)
+    meta["components"] = components
     meta["provider"] = node.spz_provider()
     meta["speasy_id"] = f"{node.spz_provider()}/{node.spz_uid()}"
     meta["stable_id"] = meta["speasy_id"]

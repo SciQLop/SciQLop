@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 from types import SimpleNamespace
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.core import extensions
+from SciQLop.core import extensions, startup_timing
 from SciQLop.core.extensions import owned_by
 from .context import STATES, PluginContext, PluginState, active_versions
 from .provides import provides_drift
@@ -318,10 +318,10 @@ def _activate_one(entry: _Entry, main_window, declared, ep_plugins) -> PluginSta
     version = entry.candidate.version
     ctx = PluginContext(entry.name, version, main_window, declared)
     try:
-        with owned_by(entry.name):
+        with owned_by(entry.name), startup_timing.phase(f"plugin {entry.name}"):
             mod = _import(entry, ep_plugins)
-        log.info(f"Loading {entry.name}")
-        api = _call_entry_function(mod, ctx, main_window)
+            log.info(f"Loading {entry.name}")
+            api = _call_entry_function(mod, ctx, main_window)
     except Exception as e:
         log.error(f"Plugin {entry.name} failed to load: {e}")
         log.error(f"Traceback: {traceback.format_exc()}")

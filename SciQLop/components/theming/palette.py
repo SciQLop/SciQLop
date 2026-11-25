@@ -1,7 +1,6 @@
 from PySide6 import QtGui
 from PySide6.QtCore import QDirIterator
 from PySide6.QtGui import QColor
-from seaborn import color_palette as color_palette
 
 from .settings import SciQLopStyle
 from .icons import build_icon_set_for_palette

@@ -105,3 +105,14 @@ def test_get_data_lets_a_speasy_failure_propagate(monkeypatch):
     plugin = _plugin(_Index("cdpp3dview", "ACE"))
     with pytest.raises(RuntimeError, match="server down"):
         plugin.get_data(_Node("cdpp3dview/ACE"), 0.0, 3600.0)
+
+
+def test_a_product_reads_its_components_once(monkeypatch, qapp):
+    """81,000 products at each start: reading the components twice cost about 0.4 s."""
+    calls = []
+    real = sp.get_components
+    monkeypatch.setattr(sp, "get_components", lambda param: calls.append(param) or real(param))
+    index = _Index("cdpp3dview", "ACE", description="ACE trajectories")
+    product = sp.make_product("ACE", index, provider="Speasy")
+    assert calls == [index]
+    assert product.metadata("components") == ["x", "y", "z"]

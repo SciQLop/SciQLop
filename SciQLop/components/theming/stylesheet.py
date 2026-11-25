@@ -4,7 +4,6 @@ from typing import List, Optional, Dict
 from glob import glob
 from PySide6 import QtGui, QtCore
 from jinja2 import Template, Environment, FileSystemLoader
-from seaborn import color_palette
 
 import SciQLop
 from SciQLop.components.sciqlop_logging import getLogger

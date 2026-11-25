@@ -1,5 +1,4 @@
 from PySide6.QtGui import QColor
-from seaborn import color_palette as seaborn_color_palette
 
 
 def _to_qcolor(r: float, g: float, b: float):
@@ -10,7 +9,8 @@ class Palette:
     _palette_index: int = 0
 
     def __init__(self, n_colors=32):
-        self._palette = seaborn_color_palette(n_colors=n_colors)
+        from seaborn import color_palette  # here, not at import: seaborn costs ~1 s at startup, before any panel
+        self._palette = color_palette(n_colors=n_colors)
 
     def next(self) -> QColor:
         color = self._palette[self._palette_index]

@@ -15,6 +15,7 @@ from pathlib import Path
 from SciQLop.components.plugins.backend.folders import plugins_folders
 from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
 from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
+from SciQLop.core import startup_timing
 from SciQLop.components.plugins.plugin_registry import resolve_plugin_updates
 from SciQLop.components.workspaces.backend.workspace_archive import IMPORT_MARKER_NAME
 from SciQLop.components.workspaces.backend.workspace_lock import workspace_lock
@@ -653,11 +654,12 @@ def prepare_workspace(
     # pitfall-uv-lock-freezes-git-main-forever). Force a fresh resolve of
     # just that one package on every launch instead.
     upgrade_package = "sciqlop" if is_dev_build_version(resolved_version) else None
-    synced = _sync_or_move_to_running_release(
-        venv, manifest, plugin_deps + appstore_deps, pyproject_path, effective_locked, on_output,
-        strict=strict, upgrade_package=upgrade_package,
-        manifest_path=manifest_path if manifest_on_disk else None,
-    )
+    with startup_timing.phase(f"workspace uv sync{' (upgrading sciqlop from git)' if upgrade_package else ''}"):
+        synced = _sync_or_move_to_running_release(
+            venv, manifest, plugin_deps + appstore_deps, pyproject_path, effective_locked, on_output,
+            strict=strict, upgrade_package=upgrade_package,
+            manifest_path=manifest_path if manifest_on_disk else None,
+        )
     if synced and import_marker.exists():
         try:
             import_marker.unlink()
