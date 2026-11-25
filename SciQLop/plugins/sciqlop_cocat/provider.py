@@ -1076,10 +1076,11 @@ class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following
     def _row_event(self, room_id: str, row, shown: dict) -> CocatRsEvent:
         if not row.derived:
             return _with_typed_fields(self._wrapper(room_id, row.uuid, row.start, row.stop, row.meta), row.meta)
+        meta = self._named_public(row.meta)
         kept = shown.get(row.uuid)
-        if kept is not None and (kept.start, kept.stop, kept.meta) == (row.start, row.stop, row.meta):
+        if kept is not None and (kept.start, kept.stop, kept.meta) == (row.start, row.stop, meta):
             return kept
-        return CocatRsEvent(uuid=row.uuid, start=row.start, stop=row.stop, meta=row.meta)
+        return CocatRsEvent(uuid=row.uuid, start=row.start, stop=row.stop, meta=meta)
 
     def _read_now(self, catalog: Catalog, cocat_cat) -> tuple:
         """(rows, snapshot, error), read here, on the Qt thread: a link or public catalogue's first

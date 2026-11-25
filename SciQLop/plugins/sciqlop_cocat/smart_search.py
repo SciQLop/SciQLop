@@ -60,11 +60,12 @@ def _sentence(text: str) -> str:
     return text[:1].upper() + text[1:]
 
 
-def preview(project, search, source: str | None = None, limit: int = 50) -> Preview:
-    """What a search (text, or a rule dict) would hold, saving nothing. Safe off the GUI thread:
+def preview(project, search, source: str | None = None, limit: int = 50, public: bool = False) -> Preview:
+    """What a search (text, or a rule dict) would hold, saving nothing; ``public``: in the public
+    catalogues, which the server searches (cocat-rs raises when signed out). Safe off the GUI thread:
     cocat-rs evaluates without the GIL and touches nothing of SciQLop's."""
-    found = project.preview(search, source=source, limit=limit, attributes=True) if not isinstance(search, dict) \
-        else project.preview(search, limit=limit, attributes=True)
+    found = project.preview(search, source=source, public=public, limit=limit, attributes=True) \
+        if not isinstance(search, dict) else project.preview(search, limit=limit, attributes=True)
     return Preview(found["count"], event_rows(found))
 
 
@@ -101,10 +102,10 @@ def filter_answer(project, text: str, items: list, ids: list[str]) -> Answer:
     return Answer(kind, kept=kept_ids(project, kind, text, items, ids))
 
 
-def preview_answer(project, text: str, source: str | None, limit: int) -> Answer:
+def preview_answer(project, text: str, source: str | None, limit: int, public: bool = False) -> Answer:
     kind = project.query_kind(text)
     if kind == "broken":
         return Answer(kind, problem(project, text, source))
     if kind == "empty":
         return Answer(kind)
-    return Answer(kind, preview=preview(project, text, source, limit))
+    return Answer(kind, preview=preview(project, text, source, limit, public=public))

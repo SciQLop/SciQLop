@@ -120,10 +120,12 @@ class Catalog:
 @dataclass(frozen=True)
 class CatalogSearch:
     """A smart catalogue's search: ``query`` is its text (None when the rule has no text form),
-    ``source`` the catalogue it looks in (None: all events), ``rule`` what is stored."""
+    ``source`` the catalogue it looks in (None: all events), ``rule`` what is stored, ``public``
+    whether it searches the public catalogues on the server instead."""
     query: str | None
     source: "Catalog | None"
     rule: dict
+    public: bool = False
 
 
 @dataclass

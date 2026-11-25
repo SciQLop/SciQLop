@@ -1,23 +1,12 @@
 """The CoCat search box above a cocat-rs catalogue's events: the cocat-rs search language and the web
 app's plain words as a live filter, errors in plain words, presets, "Save as smart catalogue…", and a
-smart catalogue's own search edited in place ("Its search": preview, Save changes, Revert)."""
+smart catalogue's own search edited in place (preview, Save, Revert). "Search in" has test_search_in.py."""
 import cocat_rs
 import pytest
 from PySide6.QtWidgets import QMenu, QWidget
 
-from SciQLop.components.catalogs import CatalogEvent
-
 from ..helpers import windows_shown_while
-from .conftest import HOUR, T0, loaded
-
-
-@pytest.fixture
-def tagged(attached):
-    plain = attached.create_catalog("plain", ["r"])
-    for i, tag in enumerate(["s", "s", "w"]):
-        attached.add_event(plain, CatalogEvent(uuid=f"e{i}", start=T0 + i * HOUR, stop=T0 + (i + 1) * HOUR,
-                                               meta={"tags": [tag]}))
-    return plain
+from .conftest import loaded
 
 
 def _box(provider, catalog, qtbot):
@@ -155,11 +144,6 @@ def test_a_read_only_project_offers_no_save_as(attached, tagged, qtbot, monkeypa
 
 
 # ---- a smart catalogue: its search, edited in place ----
-
-@pytest.fixture
-def smart(attached, tagged):
-    return attached.create_smart_catalog("shocks", ["r"], "tag:s")
-
 
 def test_a_smart_catalogue_opens_on_its_search(attached, smart, qtbot):
     box = _box(attached, smart, qtbot)
@@ -325,7 +309,7 @@ def test_its_box_and_mode_buttons_sit_in_the_browser_never_in_windows_of_their_o
 
     assert windows_shown_while(qapp, open_switch_and_change_mode) == []
     box = browser._event_filter
-    parts = [*box._modes.buttons(), box.line]
+    parts = [b for b in box._scopes.buttons() if not b.isHidden()] + [box.line]
     assert all(part.window() is browser for part in parts)
     qtbot.waitUntil(lambda: all(part.isVisible() for part in parts), timeout=3000)
     assert not [w for w in box.widget().findChildren(QWidget) if w.isWindow() and not isinstance(w, QMenu)]

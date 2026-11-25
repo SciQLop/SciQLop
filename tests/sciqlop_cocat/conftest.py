@@ -60,6 +60,23 @@ def attached(provider, room):
     return provider
 
 
+@pytest.fixture
+def tagged(attached):
+    """A plain catalogue of three events: e0 and e1 tagged s, e2 tagged w."""
+    from SciQLop.components.catalogs import CatalogEvent
+    plain = attached.create_catalog("plain", ["r"])
+    for i, tag in enumerate(["s", "s", "w"]):
+        attached.add_event(plain, CatalogEvent(uuid=f"e{i}", start=T0 + i * HOUR, stop=T0 + (i + 1) * HOUR,
+                                               meta={"tags": [tag]}))
+    return plain
+
+
+@pytest.fixture
+def smart(attached, tagged):
+    """A smart catalogue searching all events for tag:s."""
+    return attached.create_smart_catalog("shocks", ["r"], "tag:s")
+
+
 def loaded(provider, catalog, qtbot):
     """A smart catalogue's events, once its first read (started by asking) has been shown."""
     provider.events(catalog)

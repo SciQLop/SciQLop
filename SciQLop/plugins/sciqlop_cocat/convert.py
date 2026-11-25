@@ -72,6 +72,7 @@ def _utc(times) -> list[datetime]:
 
 
 DERIVED_PREFIX = "derived:"
+PUBLIC_CATALOGUE = "public catalogue"  # an event a search found on the server: its public catalogue
 
 
 def _derived_id(start: datetime, sources) -> str:
@@ -104,8 +105,16 @@ def event_rows(arrays: dict, attributes: list[dict]) -> list[EventRow]:
     typed = [typed_meta(*fields) for fields in zip(arrays.get("tags") or [None] * len(uuids),
                                                    arrays.get("confidence") or [None] * len(uuids))]
     metas = [{**extra, **fields} for extra, fields in zip(attributes, typed)]
+    metas = _with_public_catalogue(metas, arrays.get("catalogue"))
     return [_row(*fields) for fields in zip(uuids, _utc(arrays["start"]), _utc(arrays["stop"]),
                                             metas, sources)]
+
+
+def _with_public_catalogue(metas: list[dict], catalogues) -> list[dict]:
+    """The id of the public catalogue each event comes from, when a search read the server's."""
+    if catalogues is None:
+        return metas
+    return [meta if found is None else {**meta, PUBLIC_CATALOGUE: found} for meta, found in zip(metas, catalogues)]
 
 
 def confidence_of(rating) -> float | None:

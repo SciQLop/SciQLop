@@ -47,15 +47,17 @@ class Searching:
         if rule is None:
             return None
         source = cocat_cat.query_source
-        return CatalogSearch(cocat_cat.query, self._catalogs.get(source.uuid) if source is not None else None, rule)
+        return CatalogSearch(cocat_cat.query, self._catalogs.get(source.uuid) if source is not None else None, rule,
+                             public=cocat_cat.searches_public)
 
     def set_catalog_search(self, catalog: Catalog, query: str | None = None, source: Catalog | None = None,
-                           rule: dict | None = None) -> None:
+                           rule: dict | None = None, public: bool = False) -> None:
+        """``public``: the search looks in every public catalogue on the server (needs signing in)."""
         cocat_cat = self._searchable_catalogue(catalog)
         if rule is not None:
             cocat_cat.rule = rule
         else:
-            cocat_cat.set_query(query, source=self._source_uuid(catalog.path[0], source))
+            cocat_cat.set_query(query, source=self._source_uuid(catalog.path[0], source), public=public)
         self._search_changed(catalog, cocat_cat)
 
     def remove_catalog_search(self, catalog: Catalog) -> None:
@@ -91,8 +93,9 @@ class Searching:
         kept = smart_search.kept_ids(room, kind, text, smart_search.match_items(events), [e.uuid for e in events])
         return events if kept is None else [e for e in events if e.uuid in kept]
 
-    def _can_edit_search(self, catalog: Catalog) -> bool:
-        return catalog.uuid in self._smart and self._can_save_search_from(catalog) and not self._is_all_events(catalog)
+    def _can_hold_search(self, catalog: Catalog) -> bool:
+        """Its box can save a search as its own: any catalogue of a writable project, but All events."""
+        return self._can_save_search_from(catalog) and not self._is_all_events(catalog)
 
     def _can_save_search_from(self, catalog: Catalog) -> bool:
         """A search typed in its box can become a smart catalogue of the same project."""

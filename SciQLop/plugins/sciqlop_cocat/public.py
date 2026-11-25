@@ -12,6 +12,7 @@ import cocat_rs
 from SciQLop.components.catalogs import Catalog
 from SciQLop.components.sciqlop_logging import getLogger
 
+from .convert import PUBLIC_CATALOGUE
 from .sharing_dialog import describe
 
 log = getLogger(__name__)
@@ -33,6 +34,15 @@ def as_info(row: dict):
 
 class Following:
     """Mixed into the provider: its rooms, infos and remembered state are used as they are."""
+
+    def _named_public(self, meta: dict) -> dict:
+        """An event found on the server names its public catalogue, as the web app's table does; the
+        id stays when the catalogue is not listed here (signed out, or not listed any more)."""
+        found = meta.get(PUBLIC_CATALOGUE)
+        if found is None:
+            return meta
+        names = {row["id"]: row["name"] for row in self._public_views.values()}
+        return {**meta, PUBLIC_CATALOGUE: names.get(found, found)}
 
     async def _public_rows(self) -> list[dict]:
         """The server's list, plus the followed ones it no longer lists (their room says if they are
