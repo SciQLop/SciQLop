@@ -1,11 +1,22 @@
-"""One line of CoCat search text: underlines a wrong part, completes the word at the cursor, never
-takes a second line. Kept for the CoCat search box of the event table (cocat-rs 0.12 brings its
-colouring and completion data); tested on its own until then."""
+"""One line of CoCat search text, as the web app's search box: coloured by parts (cocat_rs.pieces),
+completes the word at the cursor from the project's vocabulary (cocat_rs.complete/accept),
+underlines a wrong part, never takes a second line."""
 from __future__ import annotations
 
+import cocat_rs
 from PySide6.QtCore import QStringListModel, Qt
-from PySide6.QtGui import QColor, QKeyEvent, QTextCharFormat, QTextCursor
+from PySide6.QtGui import QColor, QKeyEvent, QSyntaxHighlighter, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QCompleter, QPlainTextEdit, QTextEdit
+
+# mid tones, readable on the light and the dark themes
+TONES = {"field": QColor("#3d7fd6"), "op": QColor("#8a8a8a"), "value": QColor("#2e9e6a"),
+         "keyword": QColor("#b0569e")}
+
+
+def _tone(name: str) -> QTextCharFormat:
+    fmt = QTextCharFormat()
+    fmt.setForeground(TONES[name])
+    return fmt
 
 
 def _underline() -> QTextCharFormat:
@@ -15,23 +26,46 @@ def _underline() -> QTextCharFormat:
     return fmt
 
 
-class SearchLine(QPlainTextEdit):
-    """One line of search text: underlines a wrong part, completes the word at the cursor, and never
-    takes a second line."""
+def coloured_spans(text: str) -> list[tuple[int, int, str]]:
+    """(start, length, tone) for the parts of a search that are coloured."""
+    spans, at = [], 0
+    for piece in cocat_rs.pieces(text):
+        if piece["kind"] == "keyword":
+            spans.append((at, len(piece["text"]), "keyword"))
+        elif piece["kind"] == "term":
+            field, op = len(piece["field"]), len(piece["op"])
+            spans += [(at, field, "field"), (at + field, op, "op"),
+                      (at + field + op, len(piece["text"]) - field - op, "value")]
+        at += len(piece["text"])
+    return spans
 
-    def __init__(self, words: list[str], parent=None):
+
+class _Colours(QSyntaxHighlighter):
+    def highlightBlock(self, text: str) -> None:
+        for start, length, tone in coloured_spans(text):
+            self.setFormat(start, length, _tone(tone))
+
+
+class SearchLine(QPlainTextEdit):
+    def __init__(self, parent=None):
         super().__init__(parent)
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setTabChangesFocus(True)
-        self.setPlaceholderText("tag:shock confidence:>=0.7")
         margins = 2 * (self.document().documentMargin() + self.frameWidth())
         self.setFixedHeight(int(self.fontMetrics().lineSpacing() + margins))
-        self.completer = QCompleter(QStringListModel(words, self), self)  # parented, or Python collects it
+        self._colours = _Colours(self.document())
+        self._vocabulary: dict = {}
+        self._completion: dict | None = None
+        self.completer = QCompleter(QStringListModel(self), self)  # parented, or Python collects it
         self.completer.setWidget(self)
-        self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.completer.setCompletionMode(QCompleter.CompletionMode.UnfilteredPopupCompletion)
         self.completer.activated.connect(self.accept_completion)
+
+    def set_vocabulary(self, vocabulary: dict) -> None:
+        """What the project's searches can name (Project.vocabulary)."""
+        self._vocabulary = vocabulary
 
     def completion_words(self) -> list[str]:
         return self.completer.model().stringList()
@@ -47,24 +81,24 @@ class SearchLine(QPlainTextEdit):
         selection.format = _underline()
         self.setExtraSelections([selection])
 
-    def _word_at_cursor(self) -> str:
-        text = self.toPlainText()[:self.textCursor().position()]
-        return text[len(text.rstrip().rsplit(" ", 1)[0]) if " " in text.strip() else 0:].lstrip()
-
     def complete_now(self) -> None:
-        prefix = self._word_at_cursor()
-        if not prefix:
+        self._completion = cocat_rs.complete(self.toPlainText(), self.textCursor().position(), self._vocabulary)
+        if not self._completion:
             return self.completer.popup().hide()
-        self.completer.setCompletionPrefix(prefix)
+        self.completer.model().setStringList([s["insert"] for s in self._completion["suggestions"]])
         rect = self.cursorRect()
         rect.setWidth(self.completer.popup().sizeHintForColumn(0) + 24)
         self.completer.complete(rect)
 
-    def accept_completion(self, word: str) -> None:
+    def accept_completion(self, insert: str) -> None:
+        suggestion = next((s for s in (self._completion or {}).get("suggestions", ()) if s["insert"] == insert), None)
+        if suggestion is None:
+            return
+        text, position = cocat_rs.accept(self.toPlainText(), self._completion, suggestion)
+        self._completion = None
+        self.setPlainText(text)
         cursor = self.textCursor()
-        cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor,
-                            len(self.completer.completionPrefix()))
-        cursor.insertText(word)
+        cursor.setPosition(position)
         self.setTextCursor(cursor)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:

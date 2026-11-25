@@ -6,7 +6,7 @@ import pytest
 from SciQLop.components.catalogs import CatalogEvent, CatalogRegistry
 from SciQLop.plugins.sciqlop_cocat import provider as provider_module
 from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
-from .conftest import HOUR, T0, own_catalogs
+from .conftest import HOUR, T0, own_catalogs, project_actions
 
 
 class FakeSignIn:
@@ -136,7 +136,7 @@ def test_connect_lists_rooms_with_personal_first(make_provider):
     assert p.folder_display_name(["a"]) == "My catalogues"
     assert p.folder_display_name(["b"]) == "Team"
     assert [a.name for a in p.actions()] == CONNECTED_ACTIONS
-    assert [a.name for a in p.folder_actions(["a"])] == PROJECT_ACTIONS
+    assert [a.name for a in project_actions(p, ["a"])] == PROJECT_ACTIONS
 
 
 def test_the_own_project_is_the_default_whatever_its_name(make_provider):
@@ -210,7 +210,7 @@ def test_join_room_opens_local_copy_and_connects(make_provider, opened, tmp_path
     run(go())
     assert [c.name for c in own_catalogs(p)] == ["kept"]
     assert opened["a"].connected_with == ("https://h", "token")
-    assert [a.name for a in p.folder_actions(["a"])] == PROJECT_ACTIONS
+    assert [a.name for a in project_actions(p, ["a"])] == PROJECT_ACTIONS
     assert p.create_catalog("n").path == ["a"]
 
 
@@ -578,7 +578,7 @@ def test_offline_only_local_actions_are_offered(make_provider, opened):
     session.reachable = False
     p = make_provider(session)
     run(p.connect())
-    assert [a.name for a in p.folder_actions(["a"])] == ["Leave", "Import…", "Import tscat catalogues",
+    assert [a.name for a in project_actions(p, ["a"])] == ["Leave", "Import…", "Import tscat catalogues",
                                                          "Open in browser"]
     catalog = p.create_catalog("c", ["a"])
     assert [a.name for a in p.actions(catalog)] == ["Export…"]

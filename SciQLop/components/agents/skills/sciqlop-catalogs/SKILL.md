@@ -69,11 +69,23 @@ kept = catalogs.filter("Remote//ICME_multi_catalog", "2019-03")   # a speasy Cat
 ```
 
 `catalogs.filter(path, text)` keeps what the catalog browser's filter box
-would keep for that catalog: for now, on every provider, the events where
-the text appears in any column as the table shows it (dates as
-`2019-03-14 02:00:00`, values, tags). An empty text keeps all. Use it to
-narrow a catalogue before working on it; to make a lasting selection in
-`Catalogs (cocat-rs)`, use a smart catalogue (below).
+would keep for that catalog, in that catalog's provider's language. An empty
+text keeps all.
+
+- `Catalogs (cocat-rs)`: plain words (each word part of a tag, the status,
+  the author, an attribute value, or the start of the start time), or a
+  search in the smart catalogue language below (`tag:shock
+  confidence:>=0.7`, `#density:>5`, `OR`, `NOT`). A wrong search raises
+  `cocat_rs.QueryError`.
+- Every other provider: the events where the text appears in any column as
+  the table shows it (dates as `2019-03-14 02:00:00`, values, tags).
+
+Use it to narrow a catalogue before working on it; to make a lasting
+selection in `Catalogs (cocat-rs)`, use a smart catalogue (below).
+
+```python
+catalogs.filter("Catalogs (cocat-rs)//events", "tag:shock duration:>1h")
+```
 
 ## Smart catalogues
 

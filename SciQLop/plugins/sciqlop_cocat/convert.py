@@ -71,9 +71,12 @@ def _utc(times) -> list[datetime]:
     return [t.replace(tzinfo=timezone.utc) for t in times.astype("datetime64[us]").tolist()]
 
 
+DERIVED_PREFIX = "derived:"
+
+
 def _derived_id(start: datetime, sources) -> str:
     """Stable across reads, so the same merged interval keeps one id while the rule holds."""
-    return f"derived:{start.isoformat()}:{','.join(sources or [])}"
+    return f"{DERIVED_PREFIX}{start.isoformat()}:{','.join(sources or [])}"
 
 
 def typed_meta(tags, confidence) -> dict:

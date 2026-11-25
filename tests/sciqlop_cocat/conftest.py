@@ -75,3 +75,8 @@ def own_catalogs(provider):
 def only(provider):
     [catalog] = own_catalogs(provider)
     return catalog
+
+
+def project_actions(provider, path):
+    """A project's own menu entries, without the "New smart catalogue" presets."""
+    return [a for a in provider.folder_actions(path) if a.group is None]

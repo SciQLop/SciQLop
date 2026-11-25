@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import cocat_rs
 
-from .convert import EventRow, rows_of as event_rows
+from .convert import DERIVED_PREFIX, EventRow, rows_of as event_rows
 
 
 @dataclass(frozen=True)
@@ -66,3 +66,45 @@ def preview(project, search, source: str | None = None, limit: int = 50) -> Prev
     found = project.preview(search, source=source, limit=limit, attributes=True) if not isinstance(search, dict) \
         else project.preview(search, limit=limit, attributes=True)
     return Preview(found["count"], event_rows(found))
+
+
+def match_items(events) -> list:
+    """What Project.matches and filter_words test for each event: its uuid, or the range of an
+    interval a rule derived, which has no event behind it."""
+    return [(e.start, e.stop) if e.uuid.startswith(DERIVED_PREFIX) else e.uuid for e in events]
+
+
+def kept_ids(project, kind: str, text: str, items: list, ids: list[str]) -> set[str] | None:
+    """The ids a search box text keeps (kind from Project.query_kind): plain words as the web app's
+    table filter, a search as a smart catalogue would; None when the text is empty. Safe off the GUI
+    thread: cocat-rs tests without the GIL."""
+    if kind == "empty":
+        return None
+    mask = project.filter_words(text, items) if kind == "words" else project.matches(text, items)
+    return {i for i, keep in zip(ids, mask) if keep}
+
+
+@dataclass(frozen=True)
+class Answer:
+    """What the search box shows for a text, worked out off the GUI thread: reading a text in a
+    project reads all of it (about 45 ms on 100 000 events)."""
+    kind: str                       # Project.query_kind's
+    problem: Problem | None = None  # when broken
+    kept: set[str] | None = None    # a filter's
+    preview: Preview | None = None  # a smart catalogue's search's
+
+
+def filter_answer(project, text: str, items: list, ids: list[str]) -> Answer:
+    kind = project.query_kind(text)
+    if kind == "broken":
+        return Answer(kind, problem(project, text))
+    return Answer(kind, kept=kept_ids(project, kind, text, items, ids))
+
+
+def preview_answer(project, text: str, source: str | None, limit: int) -> Answer:
+    kind = project.query_kind(text)
+    if kind == "broken":
+        return Answer(kind, problem(project, text, source))
+    if kind == "empty":
+        return Answer(kind)
+    return Answer(kind, preview=preview(project, text, source, limit))

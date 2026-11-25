@@ -268,7 +268,9 @@ class CatalogService:
         """The catalog's events a filter text keeps, as the catalog browser's filter box would.
 
         Each provider filters in its own way: by default the text is looked for in any column, as
-        the event table shows it (``"2020-01-01"``, ``"solar_wind"``). An empty text keeps all.
+        the event table shows it (``"2020-01-01"``, ``"solar_wind"``). "Catalogs (cocat-rs)" takes
+        plain words or a search (``"tag:shock confidence:>=0.7"``), as its smart catalogues; a wrong
+        search raises ``cocat_rs.QueryError``. An empty text keeps all.
 
         Parameters
         ----------

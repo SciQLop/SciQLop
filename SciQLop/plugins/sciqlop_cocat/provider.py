@@ -100,8 +100,8 @@ def ask_project_name() -> str | None:
     return name.strip() if ok and name.strip() else None
 
 
-def action(name: str, callback, tooltip: str | None = None) -> ProviderAction:
-    return ProviderAction(name=name, callback=callback, tooltip=tooltip or tips.ACTIONS.get(name))
+def action(name: str, callback, tooltip: str | None = None, group: str | None = None) -> ProviderAction:
+    return ProviderAction(name=name, callback=callback, tooltip=tooltip or tips.ACTIONS.get(name), group=group)
 
 
 EVENT_CAPABILITIES = frozenset({Capability.EDIT_EVENTS, Capability.CREATE_EVENTS, Capability.DELETE_EVENTS})
@@ -845,8 +845,12 @@ class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following
         return actions
 
     def folder_actions(self, path: list[str]) -> list[ProviderAction]:
-        if len(path) != 1 or path[0] not in self._room_infos:
+        if len(path) != 1:
             return []
+        presets = self._preset_actions(path[0])
+        return [*presets, *self._project_actions(path)] if path[0] in self._room_infos else presets
+
+    def _project_actions(self, path: list[str]) -> list[ProviderAction]:
         if path[0] in self._local_ids:
             return self._local_actions(path[0])
         if path[0] in self._rooms:

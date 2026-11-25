@@ -8,7 +8,7 @@ from SciQLop.components.catalogs import CatalogEvent, CatalogRegistry
 from SciQLop.components.catalogs.backend.provider import NodeType
 from SciQLop.plugins.sciqlop_cocat import provider as provider_module
 from SciQLop.plugins.sciqlop_cocat.provider import CocatRsProvider
-from .conftest import HOUR, T0, own_catalogs
+from .conftest import HOUR, T0, own_catalogs, project_actions
 from .test_provider_rooms import ROOMS, FakeSession, RecordingRoom, opened, run  # noqa: F401
 
 SIGNED_OUT_ACTIONS = ["Sign in…", "Open CoCat in browser"]
@@ -97,10 +97,10 @@ def test_declined_local_catalogues_stay_and_can_move_later(make, answers):
     p._session.signed_in = True
     run(p.connect())
     assert p.folder_display_name([local_id]) == "On this computer"
-    assert [a.name for a in p.folder_actions([local_id])][0] == "Move into My catalogues"
+    assert [a.name for a in project_actions(p, [local_id])][0] == "Move into My catalogues"
     run(p.reconnect())
     assert len(asked) == 1
-    p.folder_actions([local_id])[0].callback([local_id])
+    project_actions(p, [local_id])[0].callback([local_id])
     assert local_id not in p._room_infos
     assert [c.path for c in own_catalogs(p) if c.uuid == catalog.uuid] == [["a", "MMS"]]
 
