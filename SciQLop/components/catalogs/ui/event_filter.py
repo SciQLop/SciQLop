@@ -22,6 +22,7 @@ DEBOUNCE_MS = 150
 class EventFilter(QObject):
     """What the browser asks of a filter delegate."""
     changed = Signal()  # the kept events changed: the table filters again
+    shown_events = Signal(object)  # show these instead of the catalogue's, read-only (a preview); None: back
 
     def widget(self) -> QWidget:
         raise NotImplementedError
@@ -47,6 +48,10 @@ class EventFilter(QObject):
 
     def clear(self) -> None:
         """Empty, at once: nothing filtered out."""
+
+    def focus(self) -> None:
+        """Ready for typing: a provider asked to show its catalogue (a search to edit)."""
+        self.widget().setFocus()
 
     def dispose(self) -> None:
         """Stop the work in flight; the browser then deletes the widget."""

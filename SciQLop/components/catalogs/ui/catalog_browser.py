@@ -213,6 +213,7 @@ class CatalogBrowser(QWidget):
         self._filter_owner: str | None = None
         self._filter_memory: dict[str, tuple] = {}         # catalogue uuid -> (filter state, plots on), this session
         self._plot_filters: dict[str, set[str] | None] = {}  # catalogue uuid -> what its overlays draw
+        self._previewing = False                             # the table shows the delegate's events, read-only
         self._expanded_before_filter: list[QPersistentModelIndex] = []
         self._highlighting = False
         self._manual_widths: dict[str, int] = {}
@@ -401,6 +402,13 @@ class CatalogBrowser(QWidget):
         provider.error_occurred.connect(self.provider_error)
         provider.notice.connect(self.provider_notice)
         provider.capabilities_changed.connect(self._on_capabilities_changed)
+        provider.open_requested.connect(self._on_open_requested)
+
+    def _on_open_requested(self, catalog) -> None:
+        self._open_catalog_in_tree(catalog)
+        if self._current_catalog is not None and self._current_catalog.uuid == catalog.uuid:
+            # a new delegate's widget shows on the next turn; a hidden widget takes no focus
+            QTimer.singleShot(0, self._event_filter, self._event_filter.focus)
 
     def _on_capabilities_changed(self, catalog) -> None:
         """The open table and the toolbar re-read capabilities; the table keeps its rows and selection."""
@@ -608,6 +616,8 @@ class CatalogBrowser(QWidget):
 
     def _install_event_filter(self, provider, catalog, events) -> None:
         """Remembers the leaving catalogue's filter for the session, then hosts the new one's."""
+        self._previewing = False
+        self._event_model.set_read_only(False)
         old = self._event_filter
         if old is not None:
             if self._filter_owner is not None:
@@ -620,6 +630,7 @@ class CatalogBrowser(QWidget):
         self._filter_owner = catalog.uuid if catalog is not None else None
         self._filter_slot.addWidget(self._event_filter.widget())
         self._event_filter.changed.connect(self._on_event_filter_changed)
+        self._event_filter.shown_events.connect(self._show_filter_events)
         state, plots = self._filter_memory.get(self._filter_owner, (None, False))
         self._filter_plots.blockSignals(True)
         self._filter_plots.setChecked(plots)
@@ -635,6 +646,15 @@ class CatalogBrowser(QWidget):
         self._show_filter_count()
         if self._filter_plots.isChecked():
             self._push_plot_filter()
+
+    def _show_filter_events(self, events) -> None:
+        """A delegate's preview, read-only, in place of the catalogue's events; None gives them back."""
+        if self._current_catalog is None:
+            return
+        self._previewing = events is not None
+        self._event_model.set_read_only(self._previewing)
+        self._event_model.set_events(events if self._previewing else self._current_provider.events(self._current_catalog))
+        self._update_toolbar()
 
     def _show_filter_count(self) -> None:
         filtering = self._event_filter is not None and self._event_filter.kept() is not None
@@ -692,9 +712,11 @@ class CatalogBrowser(QWidget):
                 if ev is not None:
                     selected_uuids.append(ev.uuid)
 
-        self._event_model.set_events(events)
         if self._event_filter is not None:
             self._event_filter.set_events(events)
+        if self._previewing:  # the catalogue's events come back with the preview's end
+            return
+        self._event_model.set_events(events)
 
         if sm is None or not selected_uuids:
             return
@@ -889,7 +911,7 @@ class CatalogBrowser(QWidget):
             self._add_attr_action.setVisible(False)
             return
         self._columns_action.setVisible(self._event_model.columnCount() > 0)
-        if self._current_catalog is None:
+        if self._current_catalog is None or self._previewing:
             # These are catalog-scoped operations. Without a target catalog
             # (e.g. a provider/folder node is selected) they'd stay visible
             # yet inert -- including in the table's right-click menu, which

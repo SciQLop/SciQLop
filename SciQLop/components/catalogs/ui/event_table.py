@@ -27,6 +27,7 @@ class EventTableModel(QAbstractTableModel):
         self._meta_signal_provider = None
         self._followed_events: list[CatalogEvent] = []
         self._editable = False
+        self._read_only = False
 
     def set_context(self, provider, catalog) -> None:
         """Bind the model to a provider/catalog so setData can route through them."""
@@ -37,8 +38,13 @@ class EventTableModel(QAbstractTableModel):
         self._connect_provider_meta_signal()
         self.endResetModel()
 
+    def set_read_only(self, read_only: bool) -> None:
+        """Shown but not the catalogue's own (a preview): nothing to edit."""
+        self._read_only = read_only
+        self.refresh_editable()
+
     def _can_edit(self) -> bool:
-        return (self._provider is not None and self._catalog is not None
+        return (not self._read_only and self._provider is not None and self._catalog is not None
                 and Capability.EDIT_EVENTS in self._provider.capabilities(self._catalog))
 
     def refresh_editable(self) -> None:

@@ -5,6 +5,7 @@ the catalogue's overlays."""
 from datetime import datetime, timezone
 
 import pytest
+from PySide6.QtCore import Qt
 
 from .fixtures import *  # noqa: F401,F403
 from .helpers import provider_indexes  # noqa: F401
@@ -167,3 +168,73 @@ def test_show_only_these_on_the_plots_filters_the_catalogue_s_overlays(two, qtbo
     assert shown["uuids"] == {"a0", "a1", "a2"}
     browser._filter_plots.setChecked(False)
     assert shown["uuids"] is None
+
+
+def _own_filter_provider(filter_class, name):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    class Own(DummyProvider):
+        def event_filter(self, catalog, parent):
+            return filter_class(parent)
+
+    return Own(num_catalogs=1, events_per_catalog=0, name=name)
+
+
+class _Previewing:
+    """A delegate that shows other events in the table, as a search's preview does."""
+
+    @staticmethod
+    def make():
+        from PySide6.QtWidgets import QLineEdit
+        from SciQLop.components.catalogs.ui.event_filter import EventFilter
+
+        class Previewing(EventFilter):
+            def __init__(self, parent=None):
+                super().__init__(parent)
+                self._widget = QLineEdit()
+
+            def widget(self):
+                return self._widget
+
+            def set_events(self, events):
+                pass
+
+            def accepts(self, event):
+                return True
+
+            def kept(self):
+                return None
+
+        return Previewing
+
+
+def test_a_delegate_shows_other_events_read_only_until_it_gives_the_table_back(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    own = _own_filter_provider(_Previewing.make(), "PreviewFilterProv")
+    catalog = own.catalogs()[0]
+    own.add_event(catalog, _ev("mine", {"n": 1}))
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    _select(browser, catalog)
+    assert browser._event_model.flags(browser._event_model.index(0, 0)) & Qt.ItemFlag.ItemIsEditable
+    preview = [_ev("p1", {"n": 2}, day=2), _ev("p2", {"n": 3}, day=3)]
+    browser._event_filter.shown_events.emit(preview)
+    assert browser._sort_proxy.rowCount() == 2
+    assert not browser._event_model.flags(browser._event_model.index(0, 0)) & Qt.ItemFlag.ItemIsEditable
+    assert not browser._add_event_action.isVisible() and not browser._delete_action.isVisible()
+    own.add_event(catalog, _ev("mine too", {"n": 4}, day=4))   # the catalogue changes meanwhile
+    assert browser._sort_proxy.rowCount() == 2                   # the preview stays
+    browser._event_filter.shown_events.emit(None)
+    assert browser._sort_proxy.rowCount() == 2 and {browser._event_model.event_at(r).uuid for r in range(2)} == \
+        {"mine", "mine too"}
+    assert browser._event_model.flags(browser._event_model.index(0, 0)) & Qt.ItemFlag.ItemIsEditable
+
+
+def test_a_provider_asks_to_show_a_catalogue_with_its_filter_box_focused(two, qtbot):
+    browser, provider, a, b = two
+    browser.show()
+    qtbot.waitExposed(browser)
+    _select(browser, a)
+    provider.open_requested.emit(b)
+    assert browser._current_catalog is b
+    qtbot.waitUntil(lambda: browser.focusWidget() is browser._event_filter.box, timeout=2000)
