@@ -183,3 +183,27 @@ def test_plugin_not_found_in_any_folder(tmp_path):
         enabled_plugins=["nonexistent_plugin"],
     )
     assert deps == []
+
+
+def test_a_stale_launcher_s_bundled_pins_never_reach_the_workspace(tmp_path, monkeypatch):
+    """The launcher runs its own, maybe older, SciQLop: its bundled plugin.json pins must not land in
+    the workspace's pyproject.toml. The workspace's sciqlop[all] brings the bundled plugins' deps."""
+    from SciQLop.components.plugins.backend import folders
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+    from SciQLop.components.workspaces.backend.workspace_project import generate_pyproject_toml
+
+    def plugin(folder, name, deps):
+        (folder / name).mkdir(parents=True)
+        (folder / name / "plugin.json").write_text(json.dumps({"name": name, "python_dependencies": deps}))
+
+    bundled, user = tmp_path / "launcher_sciqlop" / "plugins", tmp_path / "user"
+    plugin(bundled, "sciqlop_cocat", ["cocat-rs>=0.11,<0.12", "tscat>=0.5.1"])
+    plugin(bundled, "speasy_provider", ["speasy>=1.6.1"])
+    plugin(user, "mine", ["hapiclient"])
+    monkeypatch.setattr(folders, "bundled_plugins_folder", lambda: str(bundled), raising=False)
+
+    deps = collect_plugin_dependencies([str(bundled), str(user)], ["sciqlop_cocat", "speasy_provider", "mine"])
+    generate_pyproject_toml(WorkspaceManifest(name="ws"), deps, tmp_path / "pyproject.toml")
+    written = (tmp_path / "pyproject.toml").read_text()
+    assert "hapiclient" in written
+    assert "cocat-rs" not in written and "tscat" not in written and "speasy>=1.6.1" not in written

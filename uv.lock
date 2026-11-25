@@ -3307,6 +3307,7 @@ dependencies = [
 [package.optional-dependencies]
 all = [
     { name = "cloudpickle" },
+    { name = "cocat-rs" },
     { name = "defusedxml" },
     { name = "expression" },
     { name = "huggingface-hub" },
@@ -3334,6 +3335,7 @@ all = [
     { name = "seaborn" },
     { name = "shiboken6" },
     { name = "speasy", extra = ["blosc"] },
+    { name = "tscat" },
 ]
 dev = [
     { name = "agent-client-protocol" },
@@ -3387,7 +3389,7 @@ dev = [
 requires-dist = [
     { name = "agent-client-protocol", marker = "extra == 'dev'", specifier = ">=0.12.0,<1" },
     { name = "cloudpickle", marker = "extra == 'all'" },
-    { name = "cocat-rs", marker = "extra == 'dev'", specifier = ">=0.12,<0.13" },
+    { name = "cocat-rs", marker = "extra == 'all'", specifier = ">=0.12,<0.13" },
     { name = "defusedxml", marker = "extra == 'all'" },
     { name = "expression", marker = "extra == 'all'" },
     { name = "huggingface-hub", marker = "extra == 'all'" },
@@ -3429,7 +3431,7 @@ requires-dist = [
     { name = "shiboken6", marker = "extra == 'all'", specifier = "==6.12.0" },
     { name = "speasy", extras = ["blosc"], marker = "extra == 'all'", specifier = ">=1.8.5" },
     { name = "tomli-w" },
-    { name = "tscat", marker = "extra == 'dev'", specifier = ">=0.5.1" },
+    { name = "tscat", marker = "extra == 'all'", specifier = ">=0.5.1" },
     { name = "uv" },
     { name = "uvicorn", marker = "extra == 'dev'", specifier = ">=0.30.0" },
 ]

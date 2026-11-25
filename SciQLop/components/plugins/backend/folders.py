@@ -12,10 +12,14 @@ if TYPE_CHECKING:
     from .settings import SciQLopPluginsSettings
 
 
-def plugins_folders(settings: Optional["SciQLopPluginsSettings"] = None) -> List[str]:
+def bundled_plugins_folder() -> str:
+    """The plugins shipped inside the running SciQLop package."""
     from SciQLop import plugins
+    return os.path.dirname(os.path.realpath(plugins.__file__))
+
+
+def plugins_folders(settings: Optional["SciQLopPluginsSettings"] = None) -> List[str]:
     from .settings import SciQLopPluginsSettings, USER_PLUGINS_FOLDERS
-    bundled = os.path.dirname(os.path.realpath(plugins.__file__))
     if settings is None:
         settings = SciQLopPluginsSettings()
-    return [bundled, USER_PLUGINS_FOLDERS] + list(settings.extra_plugins_folders)
+    return [bundled_plugins_folder(), USER_PLUGINS_FOLDERS] + list(settings.extra_plugins_folders)

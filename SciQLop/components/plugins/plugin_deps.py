@@ -7,6 +7,14 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 
+def _is_bundled(folder: Path) -> bool:
+    """The bundled plugins' deps come with sciqlop[all] of the workspace's own SciQLop. Read here, they
+    would be the launcher's copy, maybe older: a stale launcher wrote cocat-rs 0.11 into a workspace
+    whose SciQLop needed 0.12 (tests/test_bundled_plugin_pins.py keeps [all] and plugin.json equal)."""
+    from SciQLop.components.plugins.backend import folders
+    return folder.resolve() == Path(folders.bundled_plugins_folder()).resolve()
+
+
 def collect_plugin_dependencies(
     plugin_folders: list[Path | str],
     enabled_plugins: list[str],
@@ -37,7 +45,7 @@ def collect_plugin_dependencies(
 
     for folder in plugin_folders:
         folder = Path(folder)
-        if not folder.is_dir():
+        if not folder.is_dir() or _is_bundled(folder):
             continue
         for plugin_name in effective:
             plugin_json_path = folder / plugin_name / "plugin.json"
