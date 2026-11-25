@@ -3,9 +3,11 @@ app's plain words as a live filter, errors in plain words, presets, "Save as sma
 smart catalogue's own search edited in place ("Its search": preview, Save changes, Revert)."""
 import cocat_rs
 import pytest
+from PySide6.QtWidgets import QMenu, QWidget
 
 from SciQLop.components.catalogs import CatalogEvent
 
+from ..helpers import windows_shown_while
 from .conftest import HOUR, T0, loaded
 
 
@@ -307,6 +309,28 @@ def test_the_browser_previews_its_search_then_shows_what_it_saved(attached, smar
                     and not browser._previewing, timeout=5000)
 
 
+def test_its_box_and_mode_buttons_sit_in_the_browser_never_in_windows_of_their_own(attached, smart, tagged,
+                                                                                    qtbot, qapp):
+    loaded(attached, smart, qtbot)
+    browser = _browser_on(attached, tagged, qtbot)
+    browser.show()
+    qtbot.waitExposed(browser)
+
+    def open_switch_and_change_mode():
+        attached.open_requested.emit(smart)
+        attached.open_requested.emit(tagged)
+        attached.open_requested.emit(smart)
+        browser._event_filter.show_filter()
+        browser._event_filter.show_search()
+
+    assert windows_shown_while(qapp, open_switch_and_change_mode) == []
+    box = browser._event_filter
+    parts = [*box._modes.buttons(), box.line]
+    assert all(part.window() is browser for part in parts)
+    qtbot.waitUntil(lambda: all(part.isVisible() for part in parts), timeout=3000)
+    assert not [w for w in box.widget().findChildren(QWidget) if w.isWindow() and not isinstance(w, QMenu)]
+
+
 # ---- what reads the whole project runs off the GUI thread ----
 
 class _Recording:
@@ -340,3 +364,4 @@ def test_the_box_reads_the_project_off_the_gui_thread(attached, tagged, qtbot, m
     box = _box(attached, smart, qtbot)
     _type(qtbot, box, "tag:w", signal="shown_events")
     assert recording.on_gui_thread == []
+

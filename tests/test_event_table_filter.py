@@ -8,7 +8,7 @@ import pytest
 from PySide6.QtCore import Qt
 
 from .fixtures import *  # noqa: F401,F403
-from .helpers import provider_indexes  # noqa: F401
+from .helpers import provider_indexes, windows_shown_while  # noqa: F401
 
 
 def _ev(uuid, meta, day=1):
@@ -292,3 +292,13 @@ def test_adding_and_deleting_while_filtered_keep_the_count_right(two, qtbot):
     provider.remove_event(a, gone)
     qtbot.waitUntil(lambda: browser._filter_count.text() == "1 of 3", timeout=2000)
     assert _shown(browser) == ["a9"]
+
+
+def test_the_filter_box_sits_in_the_browser_never_in_a_window_of_its_own(two, qtbot, qapp):
+    browser, provider, a, b = two
+    browser.show()
+    qtbot.waitExposed(browser)
+    assert windows_shown_while(qapp, lambda: (_select(browser, a), _select(browser, b))) == []
+    box = browser._event_filter.widget()
+    assert box.window() is browser
+    qtbot.waitUntil(box.isVisible, timeout=2000)

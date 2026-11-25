@@ -113,3 +113,27 @@ def _node(model, index):
 def provider_index(model, provider):
     from PySide6.QtCore import QModelIndex
     return next((i for i in provider_indexes(model) if _node(model, i).provider is provider), QModelIndex())
+
+
+def windows_shown_while(qapp, action):
+    """The widgets shown as top-level windows while action runs (macOS draws each with a title bar)."""
+    from PySide6.QtCore import QObject
+
+    class Spy(QObject):
+        def __init__(self):
+            super().__init__()
+            self.windows = []
+
+        def eventFilter(self, obj, event):
+            if event.type() == QEvent.Type.Show and obj.isWidgetType() and obj.isWindow():
+                self.windows.append(type(obj).__name__)
+            return False
+
+    spy = Spy()
+    qapp.installEventFilter(spy)
+    try:
+        action()
+    finally:
+        qapp.removeEventFilter(spy)
+    return spy.windows
+

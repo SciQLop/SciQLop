@@ -120,7 +120,8 @@ class CocatSearchFilter(BackgroundEventFilter):
             button.setText(text)
             button.setToolTip(tip)
             button.setCheckable(True)
-            button.setVisible(self._search is not None)
+            if self._search is None:
+                button.hide()  # never show() it here: without a parent yet, it would open as a window of its own
             button.clicked.connect(lambda _checked, m=mode: self._enter(m))
             group.addButton(button)
             button.setProperty("mode", mode)
