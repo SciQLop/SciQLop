@@ -245,8 +245,8 @@ class HistoryDialog(QDialog):
 
     def _empty_text(self) -> str:
         if self._history.catalogue:
-            return "No saved version changed this catalogue yet."
-        return "No saved version yet.\n\nRight-click the project > Save version… to make one."
+            return "No saved version changed this catalogue yet.\n\nRight-click the catalogue > Save version… to make one."
+        return "No saved version yet.\n\nRight-click the project > Save version of the whole project… to make one."
 
     def _show_placeholder(self, text: str) -> None:
         self._placeholder.setText(text)

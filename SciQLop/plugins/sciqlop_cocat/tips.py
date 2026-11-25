@@ -26,7 +26,10 @@ ACTIONS = {
     "Open CoCat in browser": "The CoCat web app, which also manages groups",
     "Leave": "Hide this project here; Join brings it back",
     "Join": "Load this project and keep it in sync",
-    "Save version…": "Name this point of the project's history, to restore or copy it later",
+    "Save version…": "Save the whole project as a version, named after this catalogue; this catalogue's History "
+                     "lists it when it changed the catalogue. Restore or copy it later",
+    "Save version of the whole project…": "Name this point of the whole project's history, to restore or copy it "
+                                          "later",
     "History…": "Who changed what and when; restore, name or copy a version",
     "Sharing…": "Who has access, with which role; invite people",
     "Import…": "Add catalogues from a VOTable, tscat JSON or TFCat file",

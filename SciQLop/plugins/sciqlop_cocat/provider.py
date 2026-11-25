@@ -755,7 +755,14 @@ class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following
             self.error_occurred.emit(f"Cannot save a version of {self.folder_display_name([room_id])}: "
                                      f"{describe(error)}")
             return False
+        self._refresh_histories()
         return True
+
+    def _refresh_histories(self) -> None:
+        """An open History window shows the version just saved."""
+        for (kind, _), window in list(self._windows.items()):
+            if kind == "history" and window.isVisible():
+                window.refresh()
 
     async def copy_public_catalogue(self, row: dict) -> None:
         """Asks into which project: a new one, or one the person can edit."""
@@ -776,8 +783,15 @@ class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following
         if project_id is None:
             await self.add_project(cocat_rs.ProjectInfo(copied["project_id"], copied["name"], "owner"))
 
-    def _ask_and_save_version(self, room_id: str) -> None:
-        name = ask_text(QApplication.activeWindow(), "Save version", "Version name (optional):")
+    def _ask_and_save_version(self, room_id: str, catalog: Catalog | None = None) -> None:
+        """From a catalogue, the version is still the whole project's: its name says which catalogue it
+        was saved for, and the catalogue's History lists it when the version changed it."""
+        label, default = "Version name (optional):", ""
+        if catalog is not None:
+            label = (f"A version saves the whole project. It shows in the History of “{catalog.name}” "
+                     f"when it changed this catalogue.\n\n{label}")
+            default = catalog.name
+        name = ask_text(QApplication.activeWindow(), "Save version", label, text=default)
         if name is not None:
             asyncio.ensure_future(self.save_version(room_id, name))
 
@@ -865,7 +879,7 @@ class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following
         if not self._room_infos[path[0]].personal:  # the server refuses to share it
             server.append(action("Sharing…", lambda p: self._show_sharing(p[0])))
         if path[0] in self._rooms and self._can_write(path[0]):
-            server.insert(0, action("Save version…", lambda p: self._ask_and_save_version(p[0])))
+            server.insert(0, action("Save version of the whole project…", lambda p: self._ask_and_save_version(p[0])))
         return [membership, *server, *self._import_actions(path[0]), browse]
 
     def _local_actions(self, room_id: str) -> list[ProviderAction]:
@@ -898,7 +912,10 @@ class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following
             return [*searches, export, *link]
         submit = [action("Submit as a public catalogue…", lambda c: self.offer_submission(c))] \
             if self._cannot_submit(catalog) is None else []
-        return [*searches, action("History…", lambda c: self._show_history(c.path[0], c)), export, *link, *submit]
+        save = [action("Save version…", lambda c: self._ask_and_save_version(c.path[0], c))] \
+            if self._can_write(catalog.path[0]) else []
+        return [*searches, *save, action("History…", lambda c: self._show_history(c.path[0], c)), export, *link,
+                *submit]
 
     def _public_actions(self, catalog: Catalog) -> list[ProviderAction]:
         row = self._public_views[catalog.uuid]

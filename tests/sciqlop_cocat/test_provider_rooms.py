@@ -60,6 +60,10 @@ class FakeSession:
             return cocat_rs.ProjectInfo("new-id", args[0], "owner")
         if function is cocat_rs.raw.public_catalogues:  # at every connect: not recorded
             return self.public
+        if function is cocat_rs.raw.history:  # the versions committed so far, newest first: not recorded
+            commits = [call for call in self.calls if call[0] == "commit" and call[1] == args[0]]
+            return [{"id": n, "name": call[2], "ended_ms": 1_700_000_000_000 + n, "author_email": "me@h"}
+                    for n, call in reversed(list(enumerate(commits, 1)))]
         self.calls.append((function.__name__, *args, *kwargs.values()))
         if function == cocat_rs.Project.at:
             assert args == ("a", 3)
@@ -85,7 +89,7 @@ class RecordingRoom:
         self.saved = True
 
 
-PROJECT_ACTIONS = ["Leave", "Save version…", "History…", "Import…", "Import tscat catalogues", "Open in browser"]
+PROJECT_ACTIONS = ["Leave", "Save version of the whole project…", "History…", "Import…", "Import tscat catalogues", "Open in browser"]
 SHARED_ACTIONS = ["Leave", "History…", "Sharing…", "Open in browser"]  # a project shared with the person, read-only
 CONNECTED_ACTIONS = ["Sign out", "New project…", "Open CoCat in browser"]
 PUBLIC = [{"id": "public.bow-shocks", "name": "Bow shocks", "folder": "MMS", "source": "", "description": "",
@@ -784,3 +788,47 @@ def test_events_are_freed_once_no_longer_shown(make_provider):
     assert _live_events() - before == 200
     p.leave_room("a")
     assert _live_events() == before
+
+
+# ---- a version saved from a catalogue ----
+
+def test_a_catalogue_offers_save_version_where_the_project_does(make_provider, opened, monkeypatch):
+    p = make_provider(FakeSession(rooms=ROOMS))
+    run(p.connect())
+    catalog = p.create_catalog("shocks", ["a"])
+    names = [a.name for a in p.actions(catalog)]
+    assert names.index("Save version…") == names.index("History…") - 1
+    monkeypatch.setattr(p, "_can_write", lambda room_id: False)
+    assert "Save version…" not in [a.name for a in p.actions(catalog)]
+    assert "Save version of the whole project…" not in [a.name for a in project_actions(p, ["a"])]
+
+
+def test_save_version_from_a_catalogue_names_it_and_its_history_lists_it(make_provider, opened, monkeypatch, qapp):
+    from PySide6.QtWidgets import QApplication
+    from SciQLop.plugins.sciqlop_cocat.history_dialog import HistoryDialog
+    from ..helpers import windows_shown_while
+    asked = []
+    monkeypatch.setattr(provider_module, "ask_text",
+                        lambda parent, title, label, text="": asked.append((title, label, text)) or text)
+    session = FakeSession(rooms=ROOMS)
+    p = make_provider(session)
+    run(p.connect())
+    catalog = p.create_catalog("shocks", ["a"])
+    [save] = [a for a in p.actions(catalog) if a.name == "Save version…"]
+    [history] = [a for a in p.actions(catalog) if a.name == "History…"]
+
+    async def save_then_look():
+        await _call_and_settle(save.callback, catalog)
+        await _call_and_settle(history.callback, catalog)
+        await _settle()
+
+    windows = windows_shown_while(qapp, lambda: run(save_then_look()))
+    [(title, label, default)] = asked
+    assert "shocks" in default and "whole project" in label
+    assert ("commit", "a", default) in session.calls
+    dialog = p._windows[("history", catalog.uuid)]
+    assert isinstance(dialog, HistoryDialog) and windows == ["HistoryDialog"]
+    QApplication.processEvents()
+    assert default in [dialog._tree.topLevelItem(0).child(i).text(2)
+                       for i in range(dialog._tree.topLevelItem(0).childCount())]
+    dialog.close()
