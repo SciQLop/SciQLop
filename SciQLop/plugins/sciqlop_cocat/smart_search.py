@@ -28,6 +28,7 @@ class Problem:
 class Preview:
     count: int               # every event the search holds
     rows: list[EventRow]     # the first of them, in time order
+    capped: bool = False     # the server sent only the first public events of more
 
 
 def fields(project) -> list[Field]:
@@ -38,9 +39,17 @@ def fields(project) -> list[Field]:
     return fixed + attributes
 
 
-def problem(project, text: str, source: str | None = None) -> Problem | None:
+def scoped(public: bool) -> dict:
+    """``public=`` only for the public scope: cocat-rs before 0.12.8 has no such argument on query_kind
+    and vocabulary, and the project's scopes keep working with it."""
+    return {"public": True} if public else {}
+
+
+def problem(project, text: str, source: str | None = None, public: bool = False) -> Problem | None:
+    """``public``: checked with the server's public catalogue names (cocat-rs raises RuntimeError when
+    it cannot ask them: signed out, or no list from the server)."""
     try:
-        project.parse_query(text, source=source)
+        project.parse_query(text, source=source, **scoped(public))
     except cocat_rs.QueryError as error:
         return _problem_of(text, error)
     return None
@@ -70,7 +79,7 @@ def preview(project, search, source: str | None = None, limit: int = 50, public:
     cocat-rs evaluates without the GIL and touches nothing of SciQLop's."""
     found = project.preview(search, source=source, public=public, limit=limit, attributes=True) \
         if not isinstance(search, dict) else project.preview(search, limit=limit, attributes=True)
-    return Preview(found["count"], event_rows(found))
+    return Preview(found["count"], event_rows(found), bool(found.get("capped")))
 
 
 def match_items(events) -> list:
@@ -110,9 +119,9 @@ def filter_answer(project, text: str, items: list, ids: list[str]) -> Answer:
 
 
 def preview_answer(project, text: str, source: str | None, limit: int, public: bool = False) -> Answer:
-    kind = project.query_kind(text)
+    kind = project.query_kind(text, **scoped(public))
     if kind == "broken":
-        return Answer(kind, problem(project, text, source))
+        return Answer(kind, problem(project, text, source, public))
     if kind == "empty":
         return Answer(kind)
     try:

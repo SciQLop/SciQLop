@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QMenu, QWidget
 from SciQLop.components.catalogs import CatalogEvent, CatalogSearch
 
 from ..helpers import windows_shown_while
-from .conftest import HOUR, T0, loaded
+from .conftest import HOUR, T0, answer_public_from, loaded
 from .test_search_filter import _box, _browser_on, _type
 
 PUBLIC_ID, PUBLIC_NAME = "pub-1", "DONKI CMEs"
@@ -23,7 +23,7 @@ def elsewhere(attached, tagged):
 
 
 @pytest.fixture
-def public_server(attached, monkeypatch):
+def public_server(attached, public_names, monkeypatch):
     """The server's public catalogues, as cocat-rs would answer: one event of the DONKI CMEs catalogue."""
     from SciQLop.plugins.sciqlop_cocat import smart_search
     from SciQLop.plugins.sciqlop_cocat.convert import EventRow
@@ -39,6 +39,8 @@ def public_server(attached, monkeypatch):
 
     monkeypatch.setattr(smart_search, "preview", preview)
     monkeypatch.setattr(attached, "_public_views", {"view": {"id": PUBLIC_ID, "name": PUBLIC_NAME}})
+    public_names.create_catalogue(name=PUBLIC_NAME, author="curator")
+    answer_public_from(attached, public_names, monkeypatch)
     return asked
 
 

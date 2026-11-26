@@ -97,3 +97,54 @@ def only(provider):
 def project_actions(provider, path):
     """A project's own menu entries, without the "New smart catalogue" presets."""
     return [a for a in provider.folder_actions(path) if a.group is None]
+
+
+class WithPublicNames:
+    """A project whose public calls answer as the server would, from the public names."""
+
+    def __init__(self, room, public, broken_listing: str | None = None):
+        self._room, self._public, self._broken = room, public, broken_listing
+        self.gate = None  # a threading.Event the public vocabulary waits for
+
+    def __getattr__(self, name):
+        return getattr(self._room, name)
+
+    def _server(self):
+        if self._broken:
+            raise RuntimeError(self._broken)
+        return self._public
+
+    def vocabulary(self, public=False):
+        if not public:
+            return self._room.vocabulary()
+        if self.gate is not None:
+            self.gate.wait(5)
+        return self._server().vocabulary()
+
+    def query_kind(self, text, public=False):
+        return self._server().query_kind(text) if public else self._room.query_kind(text)
+
+    def parse_query(self, text, source=None, public=False):
+        return self._server().parse_query(text) if public else self._room.parse_query(text, source=source)
+
+
+def answer_public_from(provider, public, monkeypatch) -> dict:
+    """The provider's rooms answer their public calls from the catalogue names of ``public``, a cocat-rs
+    project standing in for the server's public catalogues. The wrapped rooms, by id of the room."""
+    rooms = {}
+    real_room_of = provider._room_of
+
+    def room_of(catalog):
+        room = real_room_of(catalog)
+        return rooms.setdefault(id(room), WithPublicNames(room, public))
+
+    monkeypatch.setattr(provider, "_room_of", room_of)
+    return rooms
+
+
+@pytest.fixture
+def public_names(tmp_path):
+    """A cocat-rs project standing in for the server's list of public catalogues."""
+    public = cocat_rs.Project.open(tmp_path / "public", "public")
+    yield public
+    public.close()

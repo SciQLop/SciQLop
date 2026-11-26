@@ -463,3 +463,55 @@ def test_a_link_into_my_catalogues_reaches_my_other_computer(qapp, server, tmp_p
     finally:
         for p in providers:
             CatalogRegistry.instance()._forget_for_tests(p)
+
+
+LIVE_PUBLIC = ["DONKI CMEs", "jet candidates", 'Bow "shocks" ☀']   # one named like a project catalogue
+LIVE_PROJECT = ["jet candidates", "Événements 😀"]
+
+
+@pytest.mark.parametrize("scope", ["This catalogue", "All events", "Public catalogues"])
+def test_every_name_completion_offers_reads_in_its_scope(qapp, qtbot, server, tmp_path, scope):
+    """Alexis's case: in Public catalogues, catalogue: offered the project's names, which the server's
+    search then refused ("No catalogue is named “jet candidates”"). Each scope completes and checks with
+    its own names, the public ones read from the server."""
+    from .test_search_in import _scopes
+    from .test_search_scopes import _accepted, _answered, _offered
+    url, room_id = server
+    curator = cocat_rs.Client(url)
+    curator.login(EMAIL, PASSWORD)
+    for name in LIVE_PUBLIC:
+        public_id = curator.create_public_catalogue(name, "MMS")
+        published = curator.open(public_id, cache=tmp_path / f"curator-{public_id}")
+        listed = published.create_catalogue(name=name, author=EMAIL)
+        listed.add_events([published.create_event(start=T0, stop=T0 + HOUR, author=EMAIL)])
+        published.save(10)
+        published.close()
+    provider = CocatRsProvider(author=EMAIL, session=_signed_in(url), cache_dir=tmp_path / "reader")
+
+    async def scenario():  # the Qt waits block the loop: the checks ask the server from worker threads
+        assert await provider.connect()
+        await _until(lambda: provider.room_status(room_id) == "synced")
+        made = [provider.create_catalog(name, [room_id]) for name in LIVE_PROJECT]  # empty: names are enough
+        box = provider.event_filter(made[0], None)
+        qtbot.addWidget(box.widget())
+        box.set_events(provider.events(made[0]))
+        if scope != "This catalogue":
+            _scopes(box)[scope].click()
+        public = scope == "Public catalogues"
+        suggestions = _offered(qtbot, box, public, LIVE_PUBLIC if public else LIVE_PROJECT)
+        for suggestion in suggestions:
+            box.line.setPlainText("catalogue:")
+            box.line.moveCursor(box.line.textCursor().MoveOperation.End)
+            box.line.complete_now()
+            _answered(qtbot, box, _accepted(box, suggestion))
+            assert box.line.extraSelections() == [], (scope, suggestion, box.problem.text())
+            assert "No catalogue is named" not in box.problem.text(), (scope, suggestion)
+            if scope != "This catalogue":
+                assert box.count.isVisibleTo(box.widget()), (scope, suggestion, box.problem.text())
+        box.dispose()
+        await provider.close()
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        CatalogRegistry.instance()._forget_for_tests(provider)

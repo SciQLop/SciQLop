@@ -33,6 +33,7 @@ SCOPES = (
     (SOURCE, "", "Its search looks in this catalogue."),
 )
 SAVABLE = ("words", "rule")
+CAPPED = ". The server sends only the first ones, by start time: narrow the search to see the others."
 
 
 def found(count: int) -> str:
@@ -91,9 +92,9 @@ class CocatSearchFilter(BackgroundEventFilter):
         self._previewer.done.connect(self._show_preview)
         self._previewer.failed.connect(self._preview_failed)
         self._widget = self._build()
-        self._words = LatestOnly(self)
+        self._words = LatestOnly(self)  # a scope left before its names arrive: its answer is dropped
         self._words.done.connect(self.line.set_vocabulary)
-        self._words.submit(self._room.vocabulary)
+        self._words_public = None
         self._enter(self._first_scope())
 
     # ---- the widget ----
@@ -256,6 +257,7 @@ class CocatSearchFilter(BackgroundEventFilter):
         leaving, self._scope = self._scope, scope
         searching = scope != CATALOGUE
         self._check(scope)
+        self._ask_words(scope == PUBLIC)
         text_form = not searching or scope != self._saved_scope() or self._search.query is not None
         self.line.setVisible(text_form)
         self.line.setReadOnly(searching and not self._editable and not self._every)
@@ -269,6 +271,16 @@ class CocatSearchFilter(BackgroundEventFilter):
             BackgroundEventFilter._apply(self, None)  # a search of its own says what the catalogue holds
         self._set_text(text if text is not None else self._text_entering(scope, leaving))
         self.refilter()
+
+    def _ask_words(self, public: bool) -> None:
+        """Completion offers the names the scope's check reads: the server's public catalogues, or the
+        project's; none while they are asked."""
+        if public == self._words_public:
+            return
+        self._words_public = public
+        self.line.set_vocabulary({})
+        room = self._room
+        self._words.submit(lambda: room.vocabulary(**smart_search.scoped(public)))
 
     def _text_entering(self, scope: str, leaving: str | None) -> str:
         """Filtering: the filter's text. Searching: its own search's text, coming from the filter;
@@ -338,8 +350,12 @@ class CocatSearchFilter(BackgroundEventFilter):
     # ---- All events, Public catalogues: a search of its own, previewed, then Save or Revert ----
 
     def _preview_failed(self, why: str) -> None:
-        """cocat-rs's sign-in error ends with a hint for programmers (Project.use_server)."""
+        """No answer (signed out, no list of public catalogues from the server): no count, nothing to
+        save. cocat-rs's sign-in error ends with a hint for programmers (Project.use_server)."""
+        self.line.underline(None)
         self._say(SIGN_IN if why.lower().startswith("sign in to search the public catalogues") else why)
+        self.count.hide()
+        self.save.hide()
 
     def _differs(self, text: str) -> bool:
         return (text, self._scope) != (self._saved_text(), self._saved_scope())
@@ -369,19 +385,25 @@ class CocatSearchFilter(BackgroundEventFilter):
         self._show_rows(answer.preview)
 
     def _show_preview_before(self) -> None:
-        """As for the filter: a text that does not read shows the last search that did, or the catalogue."""
+        """As for the filter: a text that does not read shows the last search that did, or the catalogue;
+        but no count and no Save, which would be the old search's."""
         before = self._preview_before
         if before is None:
             return self._end_preview(keep_revert=True)
-        self._show_rows(before.preview)
+        self._show_rows(before.preview, mistaken=True)
 
-    def _show_rows(self, preview: smart_search.Preview) -> None:
+    def _show_rows(self, preview: smart_search.Preview, mistaken: bool = False) -> None:
         self._previewing = True
-        self.count.setText(found(preview.count) if self._every else would_match(preview.count))
+        self.count.setText(self._count_text(preview))
         self._show_preview_row(True)
-        self.save.setVisible(self._editable)
+        self.count.setVisible(not mistaken)
+        self.save.setVisible(self._editable and not mistaken)
         self.revert.setVisible(not self._every)
         self.shown_events.emit(self._events_of(preview.rows))
+
+    def _count_text(self, preview: smart_search.Preview) -> str:
+        said = found(preview.count) if self._every else would_match(preview.count)
+        return said + CAPPED if preview.capped else said
 
     def _events_of(self, rows) -> list[CatalogEvent]:
         return [CatalogEvent(uuid=row.uuid, start=row.start, stop=row.stop, meta=self._provider._named_public(row.meta))
