@@ -162,6 +162,15 @@ def test_the_list_carries_each_suggestion_s_kind_and_inserts_the_text(qtbot, mon
     assert line.completion_words() == ["#origin:", "OR "]
 
 
+def test_nothing_to_complete_leaves_no_old_suggestions(qtbot):
+    line = _line(qtbot, "tag:sh")
+    line.complete_now()
+    line.setPlainText("tag:zz")                           # no tag begins so
+    line.moveCursor(line.textCursor().MoveOperation.End)
+    line.complete_now()
+    assert line.completion_words() == []
+
+
 def test_a_suggestion_without_a_kind_shows_none(qtbot, monkeypatch):
     """cocat-rs before 0.12.5 gives no detail."""
     from SciQLop.plugins.sciqlop_cocat.search_line import DETAIL_ROLE
@@ -190,3 +199,58 @@ def _option(view):
     option = QStyleOptionViewItem()
     view.initViewItemOption(option)
     return option
+
+
+# ---- positions: Qt counts UTF-16 units, cocat-rs characters (an emoji is two units, one character) ----
+
+def _wave(line):
+    [wrong] = line.extraSelections()
+    return wrong.cursor.selectionStart(), wrong.cursor.selectionEnd()
+
+
+def test_after_an_emoji_completion_takes_the_word_at_the_cursor(qtbot):
+    line = _line(qtbot, "😀 tag:sh")
+    line.complete_now()
+    assert line.completion_words() == ["tag:sheath ", "tag:shock "]
+    line.accept_completion("tag:shock ")
+    assert line.toPlainText() == "😀 tag:shock "
+    assert line.textCursor().position() == len("😀 tag:shock ".encode("utf-16-le")) // 2
+
+
+def test_after_an_emoji_tab_takes_the_only_suggestion_for_the_word_at_the_cursor(qtbot):
+    line = _line(qtbot, "😀 tag:she OR x")
+    cursor = line.textCursor()
+    cursor.setPosition(len("😀 tag:she".encode("utf-16-le")) // 2)
+    line.setTextCursor(cursor)
+    qtbot.keyClick(line, Qt.Key.Key_Tab)
+    assert line.toPlainText() == "😀 tag:sheath OR x"
+
+
+def test_after_an_emoji_the_wave_marks_the_wrong_part(qtbot):
+    line = _line(qtbot, "😀 auhtor:me")
+    line.underline(2, 6)                                  # characters, as cocat-rs gives them
+    assert _wave(line) == (3, 9)                          # Qt's units: the emoji is two
+
+
+def test_after_an_emoji_the_colours_fall_on_their_parts(qtbot):
+    from SciQLop.plugins.sciqlop_cocat.search_line import TONES
+    line = _line(qtbot, "😀 tag:shock")
+    assert _tone_at(line, 3) == TONES["field"]            # t, after the two units of the emoji
+    assert _tone_at(line, 6) == TONES["op"]
+    assert _tone_at(line, 7) == TONES["value"]
+
+
+# ---- the wave at the end of the text ----
+
+def test_a_mistake_at_the_end_is_still_underlined(qtbot):
+    line = _line(qtbot, "tag:")
+    line.underline(4, 1)                                  # past the last character
+    assert _wave(line) == (3, 4)
+    line.underline(4, 0)
+    assert _wave(line) == (3, 4)
+
+
+def test_nothing_to_underline_in_an_empty_line(qtbot):
+    line = _line(qtbot, "")
+    line.underline(0, 1)
+    assert line.extraSelections() == []

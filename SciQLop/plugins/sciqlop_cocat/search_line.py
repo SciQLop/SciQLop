@@ -17,6 +17,16 @@ TONES = {"field": QColor("#3d7fd6"), "op": QColor("#8a8a8a"), "value": QColor("#
          "keyword": QColor("#b0569e")}
 
 
+def to_units(text: str, chars: int) -> int:
+    """Qt's position (UTF-16 units) of cocat-rs's (characters): an emoji is two units, one character."""
+    return len(text[:chars].encode("utf-16-le")) // 2
+
+
+def to_chars(text: str, units: int) -> int:
+    """cocat-rs's position (characters) of Qt's (UTF-16 units)."""
+    return len(text.encode("utf-16-le")[:2 * units].decode("utf-16-le", "ignore"))
+
+
 def _tone(name: str) -> QTextCharFormat:
     fmt = QTextCharFormat()
     fmt.setForeground(TONES[name])
@@ -96,7 +106,8 @@ def _suggestion_item(suggestion: dict) -> QStandardItem:
 class _Colours(QSyntaxHighlighter):
     def highlightBlock(self, text: str) -> None:
         for start, length, tone in coloured_spans(text):
-            self.setFormat(start, length, _tone(tone))
+            at = to_units(text, start)
+            self.setFormat(at, to_units(text, start + length) - at, _tone(tone))
 
 
 class SearchLine(QPlainTextEdit):
@@ -128,22 +139,30 @@ class SearchLine(QPlainTextEdit):
         return [model.item(row).text() for row in range(model.rowCount())]
 
     def underline(self, start: int | None, length: int = 0) -> None:
-        if start is None:
+        """A wave under [start, start + length), in characters; a mistake at the end (``tag:``) waves
+        under the last character, or nothing would show."""
+        text = self.toPlainText()
+        if start is None or not text:
             return self.setExtraSelections([])
+        start = min(start, len(text) - 1)
+        end = max(start + 1, min(start + length, len(text)))
         selection = QTextEdit.ExtraSelection()
         selection.cursor = QTextCursor(self.document())
-        end = min(start + length, len(self.toPlainText()))
-        selection.cursor.setPosition(min(start, end))
-        selection.cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+        selection.cursor.setPosition(to_units(text, start))
+        selection.cursor.setPosition(to_units(text, end), QTextCursor.MoveMode.KeepAnchor)
         selection.format = _underline()
         self.setExtraSelections([selection])
 
+    def _completion_here(self) -> dict | None:
+        text = self.toPlainText()
+        return cocat_rs.complete(text, to_chars(text, self.textCursor().position()), self._vocabulary)
+
     def complete_now(self) -> None:
-        self._completion = cocat_rs.complete(self.toPlainText(), self.textCursor().position(), self._vocabulary)
-        if not self._completion:
-            return self.completer.popup().hide()
+        self._completion = self._completion_here()
         model = self.completer.model()
         model.setRowCount(0)
+        if not self._completion:
+            return self.completer.popup().hide()
         for suggestion in self._completion["suggestions"]:
             model.appendRow(_suggestion_item(suggestion))
         rect = self.cursorRect()
@@ -158,7 +177,7 @@ class SearchLine(QPlainTextEdit):
         self._completion = None
         self.setPlainText(text)
         cursor = self.textCursor()
-        cursor.setPosition(position)
+        cursor.setPosition(to_units(text, position))
         self.setTextCursor(cursor)
 
     def event(self, event: QEvent) -> bool:
@@ -185,7 +204,7 @@ class SearchLine(QPlainTextEdit):
         if self.completer.popup().isVisible():
             self._take_highlighted()
             return True
-        completion = cocat_rs.complete(self.toPlainText(), self.textCursor().position(), self._vocabulary)
+        completion = self._completion_here()
         if not completion or completion["from"] == completion["to"] or not completion["suggestions"]:
             return False
         if len(completion["suggestions"]) > 1:
