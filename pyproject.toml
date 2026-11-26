@@ -54,7 +54,7 @@ all = [
     "SciQLopPlots==0.53.0",
     "cloudpickle",
     "defusedxml",
-    "speasy[blosc]>=1.8.5",
+    "speasy[blosc]>=1.10.0",
     "qtconsole",
     "humanize",
     "seaborn",

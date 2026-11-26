@@ -143,6 +143,7 @@
 
 ### Dependencies
 
+- Speasy 1.10.0 at least. It brings the data reductions that panel templates use (`reduce`), so a template's product is now always drawn reduced. Speasy no longer needs astroquery; pycdfpp moves to 0.20 and pysciqlop-cache to 0.4.
 - SciQLopPlots 0.53.0, with PySide6 6.12.0 and PySide6-QtAds 5.1.1.1 (the build for PySide6 6.12). SciQLopPlots 0.53 reviewed its whole Python API: wrong arguments now raise an error where they used to be ignored, and several names were renamed (the old ones still work, with a warning).
 - PySide6 6.12.0 destroys twice the widgets of a row that was filled before being added to a window's layout ([PYSIDE-3479](https://bugreports.qt.io/browse/PYSIDE-3479), fixed in 6.12.1). SciQLop corrects this at start, for its own code and for plugins, on 6.12.0 only.
 - agent-client-protocol is capped below 1.0. Version 1.0 changed its Python API, and the agent panel could not connect to any agent with it.

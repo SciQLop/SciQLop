@@ -11,6 +11,6 @@
   ],
   "license": "MIT",
   "python_dependencies": [
-    "speasy>=1.8.5"
+    "speasy>=1.10.0"
   ]
 }
