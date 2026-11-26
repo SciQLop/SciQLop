@@ -246,10 +246,12 @@ def test_an_editor_demoted_while_joined_can_no_longer_edit(qapp, server, tmp_pat
         await owner.call(cocat_rs.raw.set_role, room_id, colleague_id, "viewer")
 
         await _until(lambda: colleague._roles.get(room_id) == "viewer")
-        [catalog] = colleague.catalogs()
+        [catalog] = [c for c in colleague.catalogs() if c.name == "shared"]
         assert colleague.capabilities(catalog) == set()
+        [all_events] = [c for c in colleague.catalogs() if c.uuid == "all-events:" + room_id]
+        assert colleague.capabilities(all_events) == set()
         assert colleague._session.signed_in
-        assert colleague.folder_display_name([room_id]).endswith("(read-only)")
+        assert colleague.project_state(room_id) == "read-only"
         await colleague.close()
 
     try:
@@ -275,7 +277,8 @@ def test_a_member_removed_while_joined_loses_the_project_but_stays_signed_in(qap
         await owner.call(cocat_rs.raw.remove_member, room_id, colleague_id)
 
         await _until(lambda: room_id not in colleague._room_infos)
-        assert colleague._session.signed_in and colleague.catalogs() == []
+        assert colleague._session.signed_in
+        assert [c for c in colleague.catalogs() if c.path and c.path[0] == room_id] == []
         assert any("no longer" in e for e in notices)
         await colleague.close()
 

@@ -10,6 +10,6 @@
     }
   ],
   "license": "MIT",
-  "python_dependencies": ["cocat-rs>=0.12.7,<0.13", "numpy", "tscat>=0.5.1"],
+  "python_dependencies": ["cocat-rs>=0.12.8,<0.13", "numpy", "tscat>=0.5.1"],
   "dependencies": []
 }
