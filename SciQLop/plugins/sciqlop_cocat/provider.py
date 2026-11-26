@@ -1150,6 +1150,11 @@ class CocatRsProvider(Placing, Rereading, Searching, ShowingAllEvents, Following
         else:
             self._read_notes.pop(catalog.uuid, None)
 
+    def columns(self, catalog: Catalog) -> list[str]:
+        """What the catalogue keeps of its file's column order: the AMDA relay fills it."""
+        cocat_cat = self._cocat_catalogue(catalog)
+        return list(cocat_cat.columns) if cocat_cat is not None else []
+
     def _wrap_catalogue(self, room_id: str, cocat_cat) -> Catalog:
         attributes = cocat_cat.attributes
         catalog = Catalog(uuid=cocat_cat.uuid, name=cocat_cat.name, provider=self,

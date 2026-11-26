@@ -21,11 +21,18 @@ def _sort_value(value) -> tuple:
     return 1, str(value)
 
 
-def _meta_keys(events) -> list[str]:
+def _meta_keys(events) -> set[str]:
     keys: set[str] = set()
     for e in events:
         keys.update(e.meta.keys())
-    return sorted(keys)
+    return keys
+
+
+def _in_column_order(keys: set[str], columns: list[str]) -> list[str]:
+    """The catalogue's own order first (IVOA VOTable 1.5 §2: FIELD order is the column order), then the
+    other keys, sorted. A listed column no event has is left out: AMDA lists its Start/Stop Time too."""
+    listed = [c for c in dict.fromkeys(columns) if c in keys]
+    return listed + sorted(keys.difference(listed))
 
 
 class EventTableModel(QAbstractTableModel):
@@ -52,6 +59,7 @@ class EventTableModel(QAbstractTableModel):
         self._resort.setInterval(0)
         self._resort.timeout.connect(self._sort_again)
         self._meta_keys: list[str] = []
+        self._columns: list[str] = []
         self._provider = None
         self._catalog = None
         self._signals_provider = None
@@ -87,10 +95,16 @@ class EventTableModel(QAbstractTableModel):
     def set_events(self, events: list[CatalogEvent]) -> None:
         """The catalogue's events (all of them: the kept set, if any, still applies)."""
         self.beginResetModel()
-        self._meta_keys = _meta_keys(events)
+        self._columns = self._catalog_columns()
+        self._meta_keys = _in_column_order(_meta_keys(events), self._columns)
         self._arrange(self._sorted(events))
         self._keep()
         self.endResetModel()
+
+    def _catalog_columns(self) -> list[str]:
+        if self._provider is None or self._catalog is None:
+            return []
+        return list(self._provider.columns(self._catalog))
 
     def set_kept(self, kept: set[str] | None) -> None:
         """The uuids the filter keeps; None keeps every event."""
@@ -186,7 +200,7 @@ class EventTableModel(QAbstractTableModel):
         if row < 0:
             return
         if key not in self._meta_keys:
-            new_keys = sorted(set(self._meta_keys) | {key})
+            new_keys = _in_column_order({*self._meta_keys, key}, self._columns)
             insert_idx = new_keys.index(key)
             col = len(self._FIXED_COLUMNS) + insert_idx
             self.beginInsertColumns(QModelIndex(), col, col)

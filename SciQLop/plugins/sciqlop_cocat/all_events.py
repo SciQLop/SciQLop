@@ -15,6 +15,7 @@ class _AllEventsSource:
     """What the reads ask of a cocat-rs catalogue, for every event of the project."""
     rule = ALL_RULE
     searches_public = False
+    columns: list[str] = []
 
     def __init__(self, room, uuid: str):
         self._room, self.uuid = room, uuid

@@ -11,6 +11,7 @@
 - A smart catalogue whose rule cannot be used says so: its tooltip reads "Invalid rule" with the reason, instead of asking to update cocat-rs, and the status bar tells it once.
 - A smart catalogue has a funnel in its colour in the catalog tree, instead of the dot of a catalogue you fill by hand. Its colour still matches its events on the plots.
 - Catalogs: each open project shows "All events", every event of the project outside the trash, read when you open it and kept up to date. It is a view: nothing to rename, delete or edit.
+- Catalogs: the event table shows a catalogue's columns in its file's own order, when the catalogue keeps one (AMDA catalogues shared through the relay do): "Col 2" comes before "Col 10" again. Other columns follow, sorted, as before.
 - Catalogs: the event table's filter no longer slows typing on big catalogues (it matches in the background), says how many events it keeps ("1,203 of 116,370"), and is remembered for each catalogue until SciQLop closes. "Show only these on the plots" (off by default) makes the panels draw only the events the filter keeps.
 - Notebooks and agents: `catalogs.filter(path, text)` gives the events of any catalogue that the browser's filter box would keep.
 - Catalogs: a catalogue of 100,000 events opens in about 0.2 s instead of 8 s, and each change of its filter shows in about 25 ms instead of 2 to 11 s. The event table now sorts and filters its events itself, once per change, instead of row by row.

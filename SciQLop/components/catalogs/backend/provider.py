@@ -212,6 +212,10 @@ class CatalogProvider(QObject):
         start = make_utc_datetime(start)
         return [e for e in event_list[:hi] if e.stop >= start]
 
+    def columns(self, catalog: Catalog) -> list[str]:
+        """The catalogue's own order of its meta columns (a VOTable's FIELD order), or [] when it has none."""
+        return []
+
     def _ensure_sorted(self, catalog_uuid: str) -> None:
         if catalog_uuid not in self._needs_sort:
             return
