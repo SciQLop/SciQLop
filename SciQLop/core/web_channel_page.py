@@ -2,14 +2,32 @@
 from __future__ import annotations
 
 import os
+import time
 
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtWebChannel import QWebChannel
-from PySide6.QtWebEngineCore import QWebEngineSettings
+from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from jinja2 import Environment, FileSystemLoader
+
+from SciQLop.components import sciqlop_logging
+
+log = sciqlop_logging.getLogger(__name__)
+
+_CRASH_WINDOW_S = 60.0
+_MAX_RELOADS_PER_WINDOW = 3
+
+
+def should_reload(status: QWebEnginePage.RenderProcessTerminationStatus,
+                  earlier_crashes: list[float], now: float) -> bool:
+    """A dead renderer leaves a blank page: reload it, unless it keeps dying."""
+    if status == QWebEnginePage.RenderProcessTerminationStatus.NormalTerminationStatus:
+        return False
+    recent = sum(now - t < _CRASH_WINDOW_S for t in earlier_crashes)
+    return recent < _MAX_RELOADS_PER_WINDOW
+
 
 class WebChannelPage(QWidget):
     """Base widget: renders a Jinja2 template in QWebEngineView with a QWebChannel backend.
@@ -40,6 +58,7 @@ class WebChannelPage(QWidget):
         # channel still exist, so backend logic keeps working; view-touching
         # code no-ops.
         self._view: QWebEngineView | None = None
+        self._crash_times: list[float] = []
         if os.environ.get("SCIQLOP_NO_WEBENGINE") == "1":
             page_widget: QWidget = QWidget(self)
         else:
@@ -54,6 +73,7 @@ class WebChannelPage(QWidget):
             settings.setAttribute(
                 QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls,
                 self.allows_remote_content)
+            view.renderProcessTerminated.connect(self._on_render_process_terminated)
             page_widget = self._view = view
 
         self._load_html()
@@ -69,6 +89,19 @@ class WebChannelPage(QWidget):
         raise NotImplementedError
 
     def _on_theme_changed(self, _palette_name: str) -> None:
+        self._load_html()
+
+    def _on_render_process_terminated(self, status, exit_code: int) -> None:
+        if status == QWebEnginePage.RenderProcessTerminationStatus.NormalTerminationStatus:
+            return
+        now = time.monotonic()
+        if not should_reload(status, self._crash_times, now):
+            log.error("%s: web renderer keeps crashing (%s, exit code %s); not reloading",
+                      self.windowTitle(), status.name, exit_code)
+            return
+        self._crash_times.append(now)
+        log.warning("%s: web renderer died (%s, exit code %s); reloading",
+                    self.windowTitle(), status.name, exit_code)
         self._load_html()
 
     def _load_html(self):

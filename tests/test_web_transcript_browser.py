@@ -64,3 +64,10 @@ def test_an_unchanged_part_is_not_rebuilt_when_its_message_changes(report):
     becomes <br>, quotes in text are re-escaped), so thinking parts never
     matched and were rebuilt on every streamed tick."""
     assert report["unchanged_part_kept"] is True
+
+
+def test_a_killed_renderer_comes_back_with_the_transcript(report):
+    """Without a reload, a dead renderer leaves a blank (or sad-face) page
+    until the user restarts SciQLop."""
+    assert report["renderer_replaced"] is True
+    assert report["text_after_crash"] is True

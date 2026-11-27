@@ -46,7 +46,6 @@ export RESOURCES="$HERE/../Resources"
 export PATH="$RESOURCES/opt/uv:$RESOURCES/usr/local/bin/:/usr/bin:/bin:/usr/sbin:/sbin"
 export LD_LIBRARY_PATH="$RESOURCES/usr/local/lib"
 export DYLD_LIBRARY_PATH="$RESOURCES/usr/local/lib:$RESOURCES/usr/local/bin/"
-export QTWEBENGINE_CHROMIUM_FLAGS="--single-process"
 SSL_CERT_FILE=$("$RESOURCES/usr/local/bin/python3" -m certifi 2>/dev/null || true)
 if [ -n "$SSL_CERT_FILE" ]; then
     export SSL_CERT_FILE

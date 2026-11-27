@@ -3,6 +3,8 @@
 Driven by test_web_transcript_browser.py in a subprocess: the test suite
 itself runs without WebEngine (SCIQLOP_NO_WEBENGINE=1)."""
 import json
+import os
+import signal
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -107,6 +109,13 @@ def main():
     pump(1)
     unchanged_part_kept = js(view, "document.querySelector('.thinking').probe === 1")
 
+    old_pid = view._view.page().renderProcessPid()
+    os.kill(old_pid, signal.SIGKILL)
+    pump(5)
+    new_pid = view._view.page().renderProcessPid()
+    renderer_replaced = new_pid not in (0, old_pid)
+    text_after_crash = js(view, "document.body.innerText.includes('a b')")
+
     print(json.dumps({
         "tilde_code": tilde_code,
         "double_tick": double_tick,
@@ -114,6 +123,8 @@ def main():
         "katex_count": katex_count,
         "indented_code": indented_code,
         "unchanged_part_kept": unchanged_part_kept,
+        "renderer_replaced": renderer_replaced,
+        "text_after_crash": text_after_crash,
         "remote_hits": remote_hits,
         "expanded_after_toggle": expanded_after_toggle,
         "expanded_after_reload": expanded_after_reload,

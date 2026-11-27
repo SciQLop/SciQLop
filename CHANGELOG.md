@@ -41,6 +41,7 @@
 
 ### Fixes before the release
 
+- macOS: a crash in a web page (welcome page, Plugin Store, agent chat) no longer closes SciQLop. Web pages ran inside SciQLop's own process on macOS; they now run apart, as on Linux and Windows. A page whose renderer dies reloads itself, and stops trying after three crashes within a minute.
 - Export to PDF works again, from the panel's Export menu and from `panel.save("….pdf")`. It failed with "called with wrong argument types" and wrote no file.
 - Startup: about 0.7 s faster before the window shows. seaborn is no longer imported at startup (only a plot panel's colours use it), and the speasy product tree reads each product's components once. Set `SCIQLOP_STARTUP_TIMINGS=1` to have each startup phase, each plugin, the workspace `uv sync`, and every stall of the window over 100 ms in its first 30 s written to the session log.
 - Welcome page: the quickstart cards have equal widths and clearer icons; "What's new" shows its first two items when folded, and "Show all" says how many there are; "Up to date" is a quiet line instead of a band at the top.
