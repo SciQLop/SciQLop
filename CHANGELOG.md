@@ -57,6 +57,7 @@
 - Catalogs: changing an event's tags or rating (in the table, or with `catalogs.save()`) is kept. It was stored beside CoCat's own tags and rating, so the old value came back at the next read and collaborators never saw the change. Removing them works too.
 - Agents: links in the agent's replies work. A file of the workspace opens in the JupyterLab pane (a notebook as a notebook), a web link opens in your browser, and a link to anything else says why it can't be opened, under the chat.
 - JupyterLab (jupyqt 0.7.0): images, PDFs and SVGs open in the JupyterLab pane, and notebooks start on SciQLop's kernel without asking which kernel to use. A file opened from an agent's link appears in the running Lab without reloading it.
+- JupyterLab: PDFs opened in the JupyterLab pane show again instead of a blank white page (jupyqt 0.7.1).
 - Agents: closing SciQLop stops the agent processes started by the Agents panel. They were only stopped when a session was replaced, so one could keep running after SciQLop had quit.
 - "Restart now", opening another workspace and the store's restart now ask about unsaved catalog changes and running jobs, like closing the window does. They used to quit directly and the edits were lost. Answering No keeps SciQLop open.
 - Muted text is readable on dark themes: "Add a product to this panel", the tour's "1 / 14" and the hints in Settings were drawn in half-transparent black. A theme that sets no `PlaceholderText` colour now gets its `UnselectedText` colour.
