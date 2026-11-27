@@ -13,7 +13,8 @@ def _checked(ok: bool, path: str) -> None:
 
 def _as(image_format: str):
     def write(panel, path, width, height, scale):
-        _checked(panel._get_impl_or_raise().save(path, width, height, scale, format=image_format), path)
+        impl = panel._get_impl_or_raise()
+        _checked(impl.save(path, width, height, 1.0 if scale is None else scale, format=image_format), path)
     return write
 
 

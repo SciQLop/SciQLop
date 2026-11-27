@@ -29,3 +29,35 @@ def test_scale_is_refused_for_pdf(plot_panel, tmp_path):
 def test_unknown_extension_is_refused(plot_panel, tmp_path):
     with pytest.raises(ValueError, match="Unsupported"):
         plot_panel.save(str(tmp_path / "ql.svg"))
+
+
+def _rendered_pdf(path, width, height):
+    from PySide6.QtCore import QSize
+    from PySide6.QtPdf import QPdfDocument
+    document = QPdfDocument()
+    assert document.load(str(path)) == QPdfDocument.Error.None_
+    assert document.pageCount() == 1
+    return document.render(0, QSize(width, height))
+
+
+def _curve_pixels(image):
+    """Pixels in a vivid colour: the curve, not the grey axes and text nor the dull background."""
+    import numpy as np
+    from PIL import Image
+    rgb = np.asarray(Image.open(image).convert("RGB")).astype(int)
+    return int((rgb.max(axis=-1) - rgb.min(axis=-1) > 80).sum())
+
+
+def test_pdf_holds_the_plotted_curve(plot_panel, tmp_path, qtbot):
+    """The PDF writer forwarded scale=None, which SciQLopPlots' save refuses: no PDF was written."""
+    import numpy as np
+    x = np.linspace(1.7e9, 1.7e9 + 3600, 2000)
+    plot_panel.plot_data(x, 10 * np.sin(np.linspace(0, 20, 2000)))
+    plot_panel.time_range = (x[0], x[-1])
+    qtbot.wait(200)
+    plot_panel.save(str(tmp_path / "ql.pdf"), width=800, height=600)
+    plot_panel.save(str(tmp_path / "ql.png"), width=800, height=600)
+    _rendered_pdf(tmp_path / "ql.pdf", 800, 600).save(str(tmp_path / "pdf.png"))
+    on_screen = _curve_pixels(tmp_path / "ql.png")
+    assert on_screen > 1000
+    assert _curve_pixels(tmp_path / "pdf.png") > on_screen / 2

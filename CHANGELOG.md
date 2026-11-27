@@ -41,6 +41,7 @@
 
 ### Fixes before the release
 
+- Export to PDF works again, from the panel's Export menu and from `panel.save("….pdf")`. It failed with "called with wrong argument types" and wrote no file.
 - Startup: about 0.7 s faster before the window shows. seaborn is no longer imported at startup (only a plot panel's colours use it), and the speasy product tree reads each product's components once. Set `SCIQLOP_STARTUP_TIMINGS=1` to have each startup phase, each plugin, the workspace `uv sync`, and every stall of the window over 100 ms in its first 30 s written to the session log.
 - Welcome page: the quickstart cards have equal widths and clearer icons; "What's new" shows its first two items when folded, and "Show all" says how many there are; "Up to date" is a quiet line instead of a band at the top.
 - Welcome page and Plugin Store: cards have a soft outline and lift slightly under the mouse instead of zooming over their neighbours; thumbnails are no longer faded at the bottom; template cards look like the other cards and "Import a template…" has a proper card; section titles line up; in the store the current tab is underlined and long descriptions end with an ellipsis.
