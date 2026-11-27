@@ -434,20 +434,20 @@ wheels = [
 
 [[package]]
 name = "cocat-rs"
-version = "0.12.8"
+version = "0.12.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "keyring" },
     { name = "numpy" },
     { name = "platformdirs" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3f/ee/04869f3e18fcfc6a579b71e43d9df1f684ffadde3ec312edad2d6f3b371f/cocat_rs-0.12.8.tar.gz", hash = "sha256:da68046c45804a476c081de9465736facd855df69e4bca21fe3506421ad1f22e", size = 5317315, upload-time = "2026-11-26T19:33:05.577Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ce/2f/542a8206af21b573a2d8f67376bebb6dc966f697413f8b4c71c832fe920f/cocat_rs-0.12.10.tar.gz", hash = "sha256:5914b81ea08c638bc3d3b1c767a5a74a2e8e1d9e4af594ade30b82350c1cdae2", size = 5331315, upload-time = "2026-11-27T14:08:12.366Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/66/1b/b4789a797afee0fe13346e0374f97845a7a6cf167e03fe8dcb129a9d0c45/cocat_rs-0.12.8-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:25e88c03aefe4e1f7ecfb5abe7c1b9d6fb443516fc0542c16e990cea9cd968e2", size = 5116200, upload-time = "2026-11-26T19:32:55.831Z" },
-    { url = "https://files.pythonhosted.org/packages/9e/b4/02d383ece8ded0d7c307a4b5da45991ec511cc569e971ed53b59cfad834e/cocat_rs-0.12.8-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:7e74e575cdab06c1a52897e95495ceee59e941c364bab6360411e6275f8e19ca", size = 4921886, upload-time = "2026-11-26T19:32:57.903Z" },
-    { url = "https://files.pythonhosted.org/packages/86/1a/0e2aead0590e50e80a0097343f06f0bfbb04ddc6a1c58cbeca9e0716e7d7/cocat_rs-0.12.8-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:df8d47a9c8e48cba9dce2fb29336620dd96d0bfedaedc088530bb51fb292778e", size = 5489545, upload-time = "2026-11-26T19:32:59.767Z" },
-    { url = "https://files.pythonhosted.org/packages/63/c2/9596f7b2bf4543687abe36f7ef9944175c8f7d62a397a7570dcff2fde67a/cocat_rs-0.12.8-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:dfb147390eeadca71b1061bae2e1b73ff2c7fc06e80d629c75c9c9d43c440dfc", size = 5517298, upload-time = "2026-11-26T19:33:01.661Z" },
-    { url = "https://files.pythonhosted.org/packages/ae/31/4b9231fd3cff9d62c00f267e2452e6b5ca00e7f17f88fda21239581df76d/cocat_rs-0.12.8-cp310-abi3-win_amd64.whl", hash = "sha256:70d4c01a89d1f7adad4dc18f59b3dd87d3eee4ccce7768780f4c02faea454f8d", size = 4803271, upload-time = "2026-11-26T19:33:03.442Z" },
+    { url = "https://files.pythonhosted.org/packages/47/4a/609a18431b63a81c5eefee87433c29bfb81d5e0c37a06afaf0d4499d0f8c/cocat_rs-0.12.10-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:754955118af2462d368f1e4eb2bc96d985250b1f167e8b3b4d99973468f9c529", size = 5120530, upload-time = "2026-11-27T14:08:03.544Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/6d/56f1d1cf2fbbd007e80088864cd436215aece4acd0e72def59e2327b1892/cocat_rs-0.12.10-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:fb597f1dbb5868a99e8e5522bfaca057906be66475cae0454e2f40017d10ee07", size = 4930271, upload-time = "2026-11-27T14:08:05.299Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/3a/1c678f128541558bf23ff9bb3eb96ae9ab48b16714c68b0c9529538688c2/cocat_rs-0.12.10-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:2c02c25ccdbdd567c20ff9b912ea5acb34c5ea9b85b42f22cfc27d2f9964f2ce", size = 5501598, upload-time = "2026-11-27T14:08:07.136Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/c5/28f8def452ba170115b741605ac6e091c64ea3d0124c49a3cdf229972cf1/cocat_rs-0.12.10-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:3b4e3ad9af75cef61331c1d20342945013142a76e8e2556464e2b4b508135762", size = 5528251, upload-time = "2026-11-27T14:08:08.803Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/e7/a3da1b53ed615b9ef4745c8396cd7c1be7f2ad21f6d497a014ac7d4b491c/cocat_rs-0.12.10-cp310-abi3-win_amd64.whl", hash = "sha256:da3fa7290420d83005061dc2421146e2062e48111e65e9e16c16e4fd9daaf0fe", size = 4815992, upload-time = "2026-11-27T14:08:10.614Z" },
 ]
 
 [[package]]
@@ -3461,7 +3461,7 @@ dev = [
 requires-dist = [
     { name = "agent-client-protocol", marker = "extra == 'dev'", specifier = ">=0.12.0,<1" },
     { name = "cloudpickle", marker = "extra == 'all'" },
-    { name = "cocat-rs", marker = "extra == 'all'", specifier = ">=0.12.8,<0.13" },
+    { name = "cocat-rs", marker = "extra == 'all'", specifier = ">=0.12.10,<0.13" },
     { name = "defusedxml", marker = "extra == 'all'" },
     { name = "expression", marker = "extra == 'all'" },
     { name = "huggingface-hub", marker = "extra == 'all'" },
